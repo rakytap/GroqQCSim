@@ -24,19 +24,21 @@ matrix_size = int(2**qbit_num)
 
 
 
-class UploadTopLevel(g.Component):  # Create our top level component for the upload
-
+class UploadTopLevel(g.Component): 
+	"""
+	Top level component for initial upload of the state vector to the chip
+	"""
 
 	def __init__(self):
 		super().__init__()    
 
 
 	def build(self, state_real_mt, state_imag_mt, time=0):   #Provide input matrices and a default time
-    #def build(self, mat1_mt, mat20_mt, mat21_mt, time=0):   #Provide input matrices and a default time
 
 		# component to perform the int8 matrix multiplication, splitted into chunks.
 		with g.ResourceScope(name="uploadscope", is_buffered=True, time=0) as uploadscope :
 
+			# make a copy of the real part somewhere else on the chip (just for testing, will be removed)
 			print('uploadscope')   
 			state_real_st = state_real_mt.read(streams=g.SG4_W[2], time=0) 
 
@@ -142,7 +144,6 @@ def run(iop_file, input_real, input_imag):
 
 def main( State_orig_real_float32, State_orig_imag_float32 ):
 	"""Compiles and runs the example programs."""
-	shape = (2, 20)
 
 	iop_files = compile()
 	print(f"Program compiled to IOP file: {iop_files}")
