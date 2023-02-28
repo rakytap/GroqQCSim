@@ -8,7 +8,7 @@ import scipy
 import groqQCsim
 
 
-qbit_num = 7
+qbit_num = 8
 
 # determine the soze of the unitary to be decomposed
 matrix_size = int(2**qbit_num)
@@ -46,5 +46,12 @@ circuit.Apply_To( parameters, State )
 State_orig_real_float32 = np.real(State_orig).astype( np.float32 )
 State_orig_imag_float32 = np.imag(State_orig).astype( np.float32 )
 
+#State_orig_real_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
+#State_orig_imag_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
+
 real_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32)
 print( 'Error: ', scipy.linalg.norm( real_part - State_orig_real_float32 , 2) )
+
+print( real_part )
+print(' ' )
+print( State_orig_real_float32 )
