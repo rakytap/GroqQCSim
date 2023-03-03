@@ -28,7 +28,7 @@ matrix_size = int(2**qbit_num)
 
 class UploadTopLevel(g.Component): 
 	"""
-	Top level component for initial upload of the state vector to the chip   --- currently unused
+	Top level component for initial upload of maps (permutation, mem-scatter/gather, etc)
 	"""
 
 	def __init__(self):
