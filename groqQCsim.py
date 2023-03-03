@@ -1,6 +1,7 @@
 import groq.api as g
 import groq.api.nn as nn
 import groq.runner.tsp as tsp;
+from groq.api import instruction as inst
 import numpy as np
 
 import os
@@ -18,7 +19,7 @@ print("Python packages imported successfully")
 
 
 qbit_num = 8
-target_qbit = 0
+target_qbit = 1
 
 # determine the soze of the unitary to be decomposed
 matrix_size = int(2**qbit_num)
@@ -34,20 +35,33 @@ class UploadTopLevel(g.Component):
 		super().__init__()    
 
 
-	def build(self, state_real_mt, state_imag_mt, time=0):   #Provide input matrices and a default time
+	def build(self, time=0):   #Provide input matrices and a default time
 
-		# component to perform the int8 matrix multiplication, splitted into chunks.
-		with g.ResourceScope(name="uploadscope", is_buffered=True, time=0) as uploadscope :
+		permute_maps_mt_list = []
 
-			# make a copy of the real part somewhere else on the chip (just for testing, will be removed)
-			print('uploadscope')   
-			state_real_st = state_real_mt.read(streams=g.SG4[2], time=0) 
+		for target_qbit_loc in range(7):
 
-			uploaded_real_mt = state_real_st.write(name=f"uploaded_real", layout=f"H1(W), -1, S4(0-3)", program_output=True)
-			uploaded_imag_mt = state_real_st.write(name=f"uploaded_imag", layout=f"H1(W), -1, S4(4-7)", program_output=True)
+			permute_map_np = np.zeros( (256,), dtype=np.uint32 )
+			target_qbit_pair_diff = 1 << target_qbit_loc
+			print('target_qubit_pair_diff', target_qbit_pair_diff)
+			
+			for idx in range(256):
+				if (idx < matrix_size):
+					permute_map_np[idx] = idx ^ target_qbit_pair_diff
+				else:
+					permute_map_np[idx] = idx
+			
+
+			permute_map = inst.encode_permute_map(  permute_map_np.tolist() )
+
+			permute_map_mt = g.from_data( np.asarray(permute_map, dtype=np.uint8), layout=f"-1, H1(W), S1(43)" )
+			permute_map_mt.is_static = True
+
+			permute_maps_mt_list.append( permute_map_mt )
+
+
             
-            
-		return uploaded_real_mt, uploaded_imag_mt
+		return permute_maps_mt_list
 		
 		
 class GateTopLevel(g.Component): 
@@ -55,11 +69,12 @@ class GateTopLevel(g.Component):
 	Top level component for a gate operation
 	"""
 
-	def __init__(self, state_real_mt, state_imag_mt):
+	def __init__(self, state_real_mt, state_imag_mt, permute_maps_mt_list):
 		super().__init__()    
 		
 		self.state_real_mt = state_real_mt
 		self.state_imag_mt = state_imag_mt
+		self.permute_maps_mt_list = permute_maps_mt_list
 
 
 	def build(self, time=0):   #Provide input matrices and a default time
@@ -70,46 +85,7 @@ class GateTopLevel(g.Component):
 			# make a copy of the real part somewhere else on the chip (just for testing, will be removed)
 			print('gatescope')   
 			
-
-
-			#permute_map_np = np.zeros( (4,256,), dtype=np.int32 )
-			permute_map_np = np.zeros( (256,), dtype=np.uint32 )
-			#permute_map_np = np.ones( (256), dtype=np.int ) * 17
-			target_qbit_pair_diff = 1 << target_qbit
-			print('target_qubit_pair_diff', target_qbit_pair_diff)
-			
-			for idx in range(256):
-				if (idx < matrix_size):
-					permute_map_np[idx] = idx ^ target_qbit_pair_diff
-					#permute_map_np[0,idx] = idx ^ target_qbit_pair_diff
-					#permute_map_np[1,idx] = idx ^ target_qbit_pair_diff
-					#permute_map_np[2,idx] = idx ^ target_qbit_pair_diff
-					#permute_map_np[3,idx] = idx ^ target_qbit_pair_diff
-				else:
-					permute_map_np[idx] = idx
-			
-			#permute_map_np[0] = 7
-
-
-			#permute_map_np = permute_map_np.astype(np.uint8)
-
-			print( permute_map_np )
-
-			from groq.api import instruction as inst
-			tmp = permute_map_np
-			permute_idx = np.random.permutation(256)
-			print( type(permute_idx) )
-			print( type(permute_idx[0]) )
-			print( permute_idx.shape )
-			print( permute_idx.tolist() )
-			print(type( tmp ) )
-			print(type( tmp[0] ) )
-			print( tmp.shape )
-			print( tmp.tolist() )
-			permute_map = inst.encode_permute_map(  permute_map_np.tolist() )
-
-			permute_map_mt = g.from_data( np.asarray(permute_map, dtype=np.uint8) )
-
+			permute_map_mt = self.permute_maps_mt_list[target_qbit]
 			
 			state_real_mt_8 = g.reinterpret(self.state_real_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
 			#state_real_mt_8 = self.state_real_mt
@@ -120,7 +96,7 @@ class GateTopLevel(g.Component):
 			state_real_st = g.reinterpret(state_real_st_8, g.float32 )
 			#state_real_st = state_real_st_8
 
-			result_mt = state_real_st.write(name=f"result", layout=f"H1(W), -1, S4(40-43)", program_output=True)
+			result_mt = state_real_st.write(name=f"result", layout=f"H1(W), -1, S4(32-35)", program_output=True)
 			#result_mt = state_real_st.write(name=f"result", layout=f"H1(W), -1, S1", program_output=True)
             
             
@@ -154,8 +130,8 @@ def compile() -> List[str]:
 		State_input_real_mt.is_static = True
 		State_input_imag_mt.is_static = True
 
-		#top = UploadTopLevel()    # instantiate the top level component
-		#uploaded_real_mt, uploaded_imag_mt = top(State_input_real, State_input_imag, time=0)    # call into the instance of the top level, providing your inputs and time
+		top = UploadTopLevel()    # instantiate the top level component
+		permute_maps_mt_list = top(time=0)    # call into the instance of the top level, providing your inputs and time
 
 		pgm_pkg.compile_program_context(pgm1)
 
@@ -172,7 +148,11 @@ def compile() -> List[str]:
 		State_input_real_shared = g.shared_memory_tensor(State_input_real_mt, name="State_input_real_shared")
 		State_input_imag_shared = g.shared_memory_tensor(State_input_imag_mt, name="State_input_imag_shared")
 
-		top = GateTopLevel(State_input_real_shared, State_input_imag_shared)    # instantiate the top level component
+		permute_maps_mt_list_shared = []
+		for target_qbit_loc in range(len(permute_maps_mt_list)):
+			permute_maps_mt_list_shared.append( g.shared_memory_tensor(permute_maps_mt_list[target_qbit_loc], name=f"permute_map_target_qbit_{target_qbit_loc}_shared") )
+
+		top = GateTopLevel(State_input_real_shared, State_input_imag_shared, permute_maps_mt_list_shared)    # instantiate the top level component
 		top(time=0)    # call into the instance of the top level, providing your inputs and time
 
 		pgm_pkg.compile_program_context(pgm2)
