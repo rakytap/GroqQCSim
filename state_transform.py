@@ -10,6 +10,8 @@ import groqQCsim
 
 qbit_num = 8
 
+target_qbit = 5
+
 # determine the soze of the unitary to be decomposed
 matrix_size = int(2**qbit_num)
    
@@ -22,7 +24,7 @@ State_orig = Umtx[:,0]
 
 # define quantum circuit
 circuit = Gates_Block(qbit_num)
-circuit.add_RX( 5 )
+circuit.add_X( target_qbit )
 
 
 # get the number of free parameters in the circuit
@@ -35,7 +37,8 @@ parameters = np.random.rand( parameter_num )*2*np.pi
 
 # apply the circuit to a quantum state
 State = State_orig.copy()
-circuit.Apply_To( parameters, State )
+State_transformed_oracle = State_orig.copy()
+circuit.Apply_To( parameters, State_transformed_oracle )
 
 
 
@@ -49,9 +52,13 @@ State_orig_imag_float32 = np.imag(State_orig).astype( np.float32 )
 #State_orig_real_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
 #State_orig_imag_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
 
-real_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32)
-print( 'Error: ', scipy.linalg.norm( real_part - State_orig_real_float32 , 2) )
-
+real_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbit)
+print(' ')
+print( 'difference between CPU oracle and Groq chip (real part): ', scipy.linalg.norm( real_part - np.real( State_transformed_oracle ) , 2) )
+'''
+print( np.real( State_transformed_oracle ) )
+print(' ')
 print( real_part )
 print(' ' )
 print( State_orig_real_float32 )
+'''
