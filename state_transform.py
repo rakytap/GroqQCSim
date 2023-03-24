@@ -41,6 +41,15 @@ State_transformed_oracle = State_orig.copy()
 circuit.Apply_To( parameters, State_transformed_oracle )
 
 
+#####################################################
+# get the gate kernel
+
+gate_kernel_single = np.array([[0,1],[1,0]], dtype = np.complex64)
+
+gate_kernels = np.zeros((80, 2, 2,), dtype=np.complex64) #np.array([[[0,1],[1,0]]])
+for idx in range(80):
+	gate_kernels[idx] = gate_kernel_single
+print( "gate kernel shape: ", gate_kernels.shape )
 
 
 #####################################################
@@ -52,9 +61,9 @@ State_orig_imag_float32 = np.imag(State_orig).astype( np.float32 )
 #State_orig_real_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
 #State_orig_imag_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
 
-real_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbit)
+real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbit, gate_kernels)
 print(' ')
-print( 'difference between CPU oracle and Groq chip (real part): ', scipy.linalg.norm( real_part - np.real( State_transformed_oracle ) , 2) )
+print( 'difference between CPU oracle and Groq chip (real part): ', scipy.linalg.norm( real_part - np.real( State_transformed_oracle ) , 2), '(imag part): ', scipy.linalg.norm( imag_part - np.imag( State_transformed_oracle ) , 2) )
 '''
 print( np.real( State_transformed_oracle ) )
 print(' ')
