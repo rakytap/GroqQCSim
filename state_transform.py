@@ -10,7 +10,7 @@ import groqQCsim
 
 qbit_num = 8
 
-target_qbit = 5
+target_qbit = 3
 
 # determine the soze of the unitary to be decomposed
 matrix_size = int(2**qbit_num)
