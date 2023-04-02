@@ -44,11 +44,13 @@ circuit.Apply_To( parameters, State_transformed_oracle )
 #####################################################
 # get the gate kernel
 
-gate_kernel_single = np.array([[1+5j,2+6j],[3+7j,4+8j]], dtype = np.complex64)
+gate_kernel_single = np.array([[0+5j,1+6j],[2+7j,3+8j]], dtype = np.complex64)
 
 gate_kernels = np.zeros((80, 2, 2,), dtype=np.complex64) #np.array([[[0,1],[1,0]]])
 for idx in range(80):
 	gate_kernels[idx] = gate_kernel_single
+
+gate_kernels[0] = np.array([[0+0j,1+0j],[1+0j,0+0j]], dtype = np.complex64)
 print( "gate kernel shape: ", gate_kernels.shape )
 
 
