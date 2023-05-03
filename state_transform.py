@@ -6,6 +6,7 @@ import sys
 from scipy.stats import unitary_group
 import scipy
 import groqQCsim
+import time
 
 
 qbit_num = 8
@@ -24,7 +25,7 @@ State_orig = Umtx[:,0]
 
 # define quantum circuit
 circuit = Gates_Block(qbit_num)
-circuit.add_X( target_qbit )
+circuit.add_Y( target_qbit )
 
 
 # get the number of free parameters in the circuit
@@ -38,7 +39,10 @@ parameters = np.random.rand( parameter_num )*2*np.pi
 # apply the circuit to a quantum state
 State = State_orig.copy()
 State_transformed_oracle = State_orig.copy()
+start_time = time.time()
 circuit.Apply_To( parameters, State_transformed_oracle )
+time_Cpp = time.time()-start_time
+
 
 
 #####################################################
@@ -50,7 +54,7 @@ gate_kernels = np.zeros((80, 2, 2,), dtype=np.complex64) #np.array([[[0,1],[1,0]
 for idx in range(80):
 	gate_kernels[idx] = gate_kernel_single
 
-gate_kernels[0] = np.array([[0+0j,1+0j],[1+0j,0+0j]], dtype = np.complex64)
+gate_kernels[0] = np.array([[0+0j,0-1j],[0+1j,0+0j]], dtype = np.complex64)
 print( "gate kernel shape: ", gate_kernels.shape )
 
 
@@ -66,6 +70,10 @@ State_orig_imag_float32 = np.imag(State_orig).astype( np.float32 )
 real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbit, gate_kernels)
 print(' ')
 print( 'difference between CPU oracle and Groq chip (real part): ', scipy.linalg.norm( real_part - np.real( State_transformed_oracle ) , 2), '(imag part): ', scipy.linalg.norm( imag_part - np.imag( State_transformed_oracle ) , 2) )
+
+
+print("time elapsed with C++: ", time_Cpp )
+
 '''
 print( np.real( State_transformed_oracle ) )
 print(' ')

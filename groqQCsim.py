@@ -33,11 +33,20 @@ matrix_size = int(2**qbit_num)
 
 # putting the state onto the WEST hemisphere and the gate data on the EAST hemisphere
 
+# memory layout to store the quantum state
 layout_State_input_real 	="H1(W), S4(0-3)"
 layout_State_input_imag 	="H1(W), S4(4-7)"
 
+# memory layout to temporary store the permuted state vector
+layout_state_vector_real_permuted = "H1(W), -1, S4(34-38)"
+layout_state_vector_imag_permuted = "H1(W), -1, S4(39-43)"
+
+
+
 # layout to gather map selecting the permutation map corresponding to the target qubit  -- the MT should be replaced by on chip determined gather map, currently it is uploaded from CPU
 layout_state_permute_map_selector ="H1(W), A1(320), S1(17)"
+layout_state_1_selector				="H1(E), A1(0), S1(19)"
+layout_state_0_selector				="H1(E), A1(0), S1(21)"
 
 layout_gate_kernels_real_packed ="H1(E), S4(40-43)"
 layout_gate_kernels_imag_packed	="H1(E), S4(40-43)"
@@ -59,16 +68,20 @@ layout_gate_kernels_imag_EAST_copy	="H1(E), S4(4-7)"
 # addresses from 0 to small_qbit_num_limit-1       			are occupied by vectors describing states |0> and |1> for different target qubits (states |1> are labeled by bits 1)
 # addresses from small_qbit_num_limit to 2*small_qbit_num_limit-1 	are occupied by vectors describing states |0> and |1> for different target qubits (states |0> are labeled by bits 1)
 # addresses from 2*small_qbit_num_limit to 2*small_qbit_num_limit+3 	are occupied by distributor maps to used to broadcast elements 01,10,11 of the gate kernel
-layout_state_1			= f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(E), S1(17)"  
-layout_state_0			= f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(E), S1(18)"
-layout_distribute_map_tensor    = "H1(E), S1(17)"
-layout_distribute_map_tensor_state1    = "H1(E), S1(17)"
-layout_distribute_map_tensor_state0    = "H1(E), S1(18)"
+layout_states_1						= f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(E), S1(17)"  
+layout_states_0						= f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(E), S1(18)"
+layout_distribute_map_tensor    	= "H1(E), S1(17)"
+layout_distribute_map_tensor_state1 = "H1(E), S1(17)"
+layout_distribute_map_tensor_state0 = "H1(E), S1(18)"
 
-# permute maps at -- used to reorder the amplitude elements according to the given target qubit
+#layout_state_1_broadcasted			= 
+
+
+# permute maps at -- used to reorder the state vector elements according to the given target qubit
 layout_permute_maps = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(43)"
+
 # gate count stored in a single packed vector 
-gate_count = 6
+gate_count = 2
 
 # label to indicate the 00, 01, 10, 11 elements of the gate kernel
 gate_kernel_element_labels = ["00", "01", "10", "11"]
@@ -90,20 +103,26 @@ def compile() -> List[str]:
 	name = "upload"
 	with pgm_pkg.create_program_context(name) as pgm1:
 
-		State_input_real_mt = g.input_tensor(shape=(matrix_size,), dtype=g.float32, name="State_input_real", layout=layout_State_input_real)
-		State_input_imag_mt = g.input_tensor(shape=(matrix_size,), dtype=g.float32, name="State_input_imag", layout=layout_State_input_imag)
+		memory_slices = 1 << (qbit_num-small_qbit_num_limit)
 
-		state_permute_map_selector_mt = g.input_tensor(shape=(1,320,), dtype=g.uint8, name="state_permute_map_selector", layout=layout_state_permute_map_selector)
+		State_input_real_mt = g.input_tensor(shape=(matrix_size,), dtype=g.float32, name="State_input_real", layout=layout_State_input_real + f", A{memory_slices}(0-{memory_slices-1})")
+		State_input_imag_mt = g.input_tensor(shape=(matrix_size,), dtype=g.float32, name="State_input_imag", layout=layout_State_input_imag + f", A{memory_slices}(0-{memory_slices-1})")
+
+		state_permute_map_selector_mt 	= g.input_tensor(shape=(1,320,), dtype=g.uint8, name="state_permute_map_selector", layout=layout_state_permute_map_selector)
+		state_1_selector_mt				= g.input_tensor(shape=(1,320,), dtype=g.uint8, name="state_1_selector", layout=layout_state_1_selector)
+		state_0_selector_mt				= g.input_tensor(shape=(1,320,), dtype=g.uint8, name="state_0_selector", layout=layout_state_0_selector)
 
 		gate_kernels_real_packed_mt = g.input_tensor(shape=(320,), dtype=g.float32, name="gate_kernels_real_packed", layout=layout_gate_kernels_real_packed)
 		gate_kernels_imag_packed_mt = g.input_tensor(shape=(320,), dtype=g.float32, name="gate_kernels_imag_packed", layout=layout_gate_kernels_imag_packed)
 
 
-		State_input_real_mt.is_static 		= True
-		State_input_imag_mt.is_static 		= True
-		state_permute_map_selector_mt.is_static 	= True
+		State_input_real_mt.is_static 			= True
+		State_input_imag_mt.is_static 			= True
+		state_permute_map_selector_mt.is_static = True
 		gate_kernels_real_packed_mt.is_static 	= True
 		gate_kernels_imag_packed_mt.is_static 	= True
+		state_1_selector_mt.is_static			= True
+		state_0_selector_mt.is_static			= True
 
 
 		# generate permutation maps to reorder the state vector elements for qubits less than small_qbit_num_limit
@@ -147,10 +166,10 @@ def compile() -> List[str]:
 			print( "states |1> at target qubit ", target_qbit_loc, " is:" )
 			print( states_1_np[target_qbit_loc, 0:256] )
 
-		states_1_mt = g.from_data( np.asarray(states_1_np, dtype=np.uint8), layout=layout_state_1 )
+		states_1_mt = g.from_data( np.asarray(states_1_np, dtype=np.uint8), layout=layout_states_1 )
 		states_1_mt.is_static = True
 
-		states_0_mt = g.from_data( np.asarray(states_0_np, dtype=np.uint8), layout=layout_state_0 )
+		states_0_mt = g.from_data( np.asarray(states_0_np, dtype=np.uint8), layout=layout_states_0 )
 		states_0_mt.is_static = True
 
 		pgm_pkg.compile_program_context(pgm1)
@@ -225,13 +244,13 @@ def compile() -> List[str]:
 
 		# create distributo maps for the process to broadcast elements 00,01,10,11 of the gate kernel onto a 320 element vectors
 		distributor_00_np = np.zeros( (320,), dtype=np.uint8 )
-		distribute_map_tensor_mt_00 = g.from_data( np.asarray(distributor_00_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*small_qbit_num_limit})" )
+		distribute_map_tensor_mt_00 = g.from_data( np.asarray(distributor_00_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({small_qbit_num_limit})" )
 		distributor_01_np = np.ones( (320,), dtype=np.uint8 )
-		distribute_map_tensor_mt_01 = g.from_data( np.asarray(distributor_01_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*small_qbit_num_limit+1})" )
+		distribute_map_tensor_mt_01 = g.from_data( np.asarray(distributor_01_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({small_qbit_num_limit+1})" )
 		distributor_10_np = np.ones( (320,), dtype=np.uint8 )*2
-		distribute_map_tensor_mt_10 = g.from_data( np.asarray(distributor_10_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*small_qbit_num_limit+2})" )
+		distribute_map_tensor_mt_10 = g.from_data( np.asarray(distributor_10_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({small_qbit_num_limit+2})" )
 		distributor_11_np = np.ones( (320,), dtype=np.uint8 )*3
-		distribute_map_tensor_mt_11 = g.from_data( np.asarray(distributor_11_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*small_qbit_num_limit+3})" )
+		distribute_map_tensor_mt_11 = g.from_data( np.asarray(distributor_11_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({small_qbit_num_limit+3})" )
 
 		g.add_mem_constraints([distribute_map_tensor_mt_01, distribute_map_tensor_mt_10, distribute_map_tensor_mt_11], [distribute_map_tensor_mt_00], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
 		g.add_mem_constraints([distribute_map_tensor_mt_00, distribute_map_tensor_mt_10, distribute_map_tensor_mt_11], [distribute_map_tensor_mt_01], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
@@ -363,7 +382,9 @@ def compile() -> List[str]:
 		State_input_real_shared = g.shared_memory_tensor(State_input_real_mt, name="State_input_real_shared")
 		State_input_imag_shared = g.shared_memory_tensor(State_input_imag_mt, name="State_input_imag_shared")
 
-		state_permute_map_selector_shared = g.shared_memory_tensor(state_permute_map_selector_mt, name="state_permute_map_selector_shared")
+		state_permute_map_selector_shared 	= g.shared_memory_tensor(state_permute_map_selector_mt, name="state_permute_map_selector_shared")
+		state_1_selector_shared 			= g.shared_memory_tensor(state_1_selector_mt, name="state_1_selector_shared")
+		state_0_selector_shared 			= g.shared_memory_tensor(state_0_selector_mt, name="state_0_selector_shared")
 
 		permute_maps_mt_shared = g.shared_memory_tensor(permute_maps_mt, name=f"permute_maps_shared")
 
@@ -407,293 +428,315 @@ def compile() -> List[str]:
 
 
 
+		# the transformed states are interated further from gate to gate, but for the first gate they are set to the initial state
+		Psi_transformed_real_mt = State_input_real_shared
+		Psi_transformed_imag_mt = State_input_imag_shared
 
-		
+		# distribute maps to broadcast teh gate kernel elements over a vector
+		distribute_map_np = np.zeros( (320,), dtype=np.uint8 )
+		for idx in range(320):
+			distribute_map_np[idx] = idx % 16
 
-		# component to perform the gate operation
-		with g.ResourceScope(name="prepare_gate_kernel_scope", is_buffered=True, time=0) as prepare_gate_kernel_scope :
+		distribute_map_tensor_state1_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state1 + f", A1({small_qbit_num_limit+4})" )
+		distribute_map_tensor_state0_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state0 + f", A1({small_qbit_num_limit+4})" )
+		g.add_mem_constraints([states_1_shared], [distribute_map_tensor_state1_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+		g.add_mem_constraints([states_0_shared], [distribute_map_tensor_state0_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 
+		for gate_idx in range( 1 ):
 
-			# combine 00 and 10 elements of the gate kernel to be used in the transformation
-			states_1_mt_list = g.split( states_1_shared, 1, 0)
-			states_0_mt_list = g.split( states_0_shared, 1, 0)
+			# component to perform the gate operation
+			with g.ResourceScope(name=f"prepare_gate_kernel_scope_{gate_idx}", is_buffered=True, time=0) as prepare_gate_kernel_scope :
 
-			state_1_mt = states_1_mt_list[target_qbit] #TODO: do with gather map
-			state_0_mt = states_0_mt_list[target_qbit] #TODO: do with gather map
+	
+				# combine 00 and 10 elements of the gate kernel to be used in the transformation
+				#states_1_mt_list = g.split( states_1_shared, 1, 0)
+				#states_0_mt_list = g.split( states_0_shared, 1, 0)
 
-			with g.ResourceScope(name="distribute_state_indices_scope", is_buffered=True, time=0) as distribute_state_indices_scope :
+				#state_1_mt = states_1_mt_list[target_qbit] #TODO: do with gather map
+				#state_0_mt = states_0_mt_list[target_qbit] #TODO: do with gather map
 
-				state_1_st = state_1_mt.read( streams=g.SG1[0], time=0 )
-				state_0_st = state_0_mt.read( streams=g.SG1[24], time=0 )
-				distribute_map_np = np.zeros( (320,), dtype=np.uint8 )
-				for idx in range(320):
-					distribute_map_np[idx] = idx % 16
-		
+				with g.ResourceScope(name="distribute_state_indices_scope", is_buffered=True, time=0) as distribute_state_indices_scope :
 
-				distribute_map_tensor_state1_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state1 + f", A1(0)" )
-				distribute_map_tensor_state0_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state0 + f", A1(0)" )
-				g.add_mem_constraints([state_permute_map_selector_shared, states_1_shared], [distribute_map_tensor_state1_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
-				g.add_mem_constraints([states_0_shared], [distribute_map_tensor_state0_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+					#state_1_st = state_1_mt.read( streams=g.SG1[0], time=0 )
+					#state_0_st = state_0_mt.read( streams=g.SG1[24], time=0 )
 
+					state_1_selector_st = state_1_selector_shared.read(streams=[g.SG1[0]])
+					state_1_st = g.mem_gather(states_1_shared, state_1_selector_st, output_streams=[g.SG1[0]], time=0)
 
-				distributor_request = distributor_requests[0]
-				state_1_broadcasted_st = g.distribute_lowest( state_1_st, 
-			        	distribute_map_tensor_state1_mt,
-			        	distributor_req=distributor_request,
-			       		map_stream_req=g.SG1[12],
-			        	bypass8=0b00001111,
-				)
-
-				state_1_broadcasted_st = g.transpose_null(
-					state_1_broadcasted_st,
-					transposer_req=2,
-					stream_order=[4,5,6,7],
-				)
-
-			
-				distributor_request = distributor_requests[1]
-				state_0_broadcasted_st = g.distribute_lowest( state_0_st, 
-			        	distribute_map_tensor_state0_mt,
-			        	distributor_req=distributor_request,
-			        	map_stream_req=g.SG1[31],
-			        	bypass8=0b00001111,
-				)
-
-				state_0_broadcasted_st = g.transpose_null(
-					state_0_broadcasted_st,
-					transposer_req=3,
-					stream_order=[12,13,14,15],
-				)
-
-		
-				state_1_broadcasted_st = g.reinterpret( state_1_broadcasted_st, g.uint32 )
-				state_1_broadcasted_mt = state_1_broadcasted_st.write(name=f"ttt", layout=f"H1(E), -1, S4", program_output=True)
-				state_0_broadcasted_st = g.reinterpret( state_0_broadcasted_st, g.uint32 )
-				state_0_broadcasted_mt = state_0_broadcasted_st.write(name=f"ttt0", layout=f"H1(E), -1, S4", program_output=True)
-
-			# filter the elements in the vector according to the indices standig for output states |0> and |1> 
-
-			with g.ResourceScope(name="prepare_fileterd_gate_elements_scope", is_buffered=True, predecessors=[distribute_state_indices_scope], time=None) as prepare_fileterd_gate_elements_scope :
-
-				state_1_broadcasted_st = state_1_broadcasted_mt.read( streams=g.SG4[1] )
-				state_0_broadcasted_st = state_0_broadcasted_mt.read( streams=g.SG4[7] )
-			
-				# real and imaginary parts of the state concatenated into a unified tensor
-				gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[6], time=0 )
-				gate_00_imag_st = gate_kernels_broadcasted_imag_shared_dict["0_00"].read( streams=g.SG4[6], time=0 )
-				gate_00_st 	= g.stack( [gate_00_real_st, gate_00_imag_st], dim=0 )
-
-				#gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[6] )
-				gate_00_st = g.reinterpret( gate_00_st, g.uint32 )
-				gate_00_st = g.bitwise_and( gate_00_st, state_0_broadcasted_st, alus=[8], output_streams=g.SG4[4] )
-				gate_00_st = g.reinterpret( gate_00_st, g.float32 )
+					state_0_selector_st = state_0_selector_shared.read(streams=[g.SG1[24]])
+					state_0_st = g.mem_gather(states_0_shared, state_0_selector_st, output_streams=[g.SG1[24]], time=0)
+						
 
 
 
 
-				# real and imaginary parts of the state concatenated into a unified tensor
-				gate_10_real_st = gate_kernels_broadcasted_real_shared_copy_dict["0_11"].read( streams=g.SG4[0], time=2 )
-				gate_10_imag_st = gate_kernels_broadcasted_imag_shared_copy_dict["0_11"].read( streams=g.SG4[0], time=2 )
-				gate_10_st 	= g.stack( [gate_10_real_st, gate_10_imag_st], dim=0 )
 
-				gate_10_st = g.reinterpret( gate_10_st, g.uint32 )
-				gate_10_st = g.bitwise_and( gate_10_st, state_1_broadcasted_st, alus=[0], output_streams=g.SG4[3] )
-				gate_10_st = g.reinterpret( gate_10_st, g.float32 )
+
+					distributor_request = distributor_requests[0]
+					state_1_broadcasted_st = g.distribute_lowest( state_1_st, 
+				        	distribute_map_tensor_state1_mt,
+				        	distributor_req=distributor_request,
+				       		map_stream_req=g.SG1[12],
+				        	bypass8=0b00001111,
+					)
+
+					state_1_broadcasted_st = g.transpose_null(
+						state_1_broadcasted_st,
+						transposer_req=2,
+						stream_order=[4,5,6,7],
+					)
 
 			
-				# combine the filtered gate element vectors
-				gate_diag_st = g.add(gate_00_st, gate_10_st, alus=[5], output_streams=g.SG4[3])
+					distributor_request = distributor_requests[1]
+					state_0_broadcasted_st = g.distribute_lowest( state_0_st, 
+				        	distribute_map_tensor_state0_mt,
+				        	distributor_req=distributor_request,
+				        	map_stream_req=g.SG1[31],
+				        	bypass8=0b00001111,
+					)
+
+					state_0_broadcasted_st = g.transpose_null(
+						state_0_broadcasted_st,
+						transposer_req=3,
+						stream_order=[12,13,14,15],
+					)
+
+			
+					state_1_broadcasted_st = g.reinterpret( state_1_broadcasted_st, g.uint32 )
+					state_1_broadcasted_mt = state_1_broadcasted_st.write(name=f"state_1_broadcasted_{gate_idx}", layout=f"H1(E), -1, S4", program_output=False) #TODO layout
+					state_0_broadcasted_st = g.reinterpret( state_0_broadcasted_st, g.uint32 )
+					state_0_broadcasted_mt = state_0_broadcasted_st.write(name=f"state_0_broadcasted_{gate_idx}", layout=f"H1(E), -1, S4", program_output=False) #TODO layout
+
+				# filter the elements in the vector according to the indices standig for output states |0> and |1> 
+
+				with g.ResourceScope(name=f"prepare_fileterd_gate_elements_scope_{gate_idx}", is_buffered=True, predecessors=[distribute_state_indices_scope], time=None) as prepare_fileterd_gate_elements_scope :
+
+					state_1_broadcasted_st = state_1_broadcasted_mt.read( streams=g.SG4[1] )
+					state_0_broadcasted_st = state_0_broadcasted_mt.read( streams=g.SG4[7] )
+			
+					# real and imaginary parts of the state concatenated into a unified tensor
+					gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[6], time=0 )
+					gate_00_imag_st = gate_kernels_broadcasted_imag_shared_dict["0_00"].read( streams=g.SG4[6], time=0 )
+					gate_00_st 	= g.stack( [gate_00_real_st, gate_00_imag_st], dim=0 )
+
+					#gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[6] )
+					gate_00_st = g.reinterpret( gate_00_st, g.uint32 )
+					gate_00_st = g.bitwise_and( gate_00_st, state_0_broadcasted_st, alus=[8], output_streams=g.SG4[4] )
+					gate_00_st = g.reinterpret( gate_00_st, g.float32 )
+
+
+
+
+					# real and imaginary parts of the state concatenated into a unified tensor
+					gate_10_real_st = gate_kernels_broadcasted_real_shared_copy_dict["0_11"].read( streams=g.SG4[0])#, time=2 )
+					gate_10_imag_st = gate_kernels_broadcasted_imag_shared_copy_dict["0_11"].read( streams=g.SG4[0])#, time=2 )
+					gate_10_st 	= g.stack( [gate_10_real_st, gate_10_imag_st], dim=0 )
+
+					gate_10_st = g.reinterpret( gate_10_st, g.uint32 )
+					gate_10_st = g.bitwise_and( gate_10_st, state_1_broadcasted_st, alus=[0], output_streams=g.SG4[3] )
+					gate_10_st = g.reinterpret( gate_10_st, g.float32 )
+
+			
+					# combine the filtered gate element vectors
+					gate_diag_st = g.add(gate_00_st, gate_10_st, alus=[5], output_streams=g.SG4[3])
 			
 			
-				layout_real = layout_gate_kernels_real_EAST
-				layout_imag = layout_gate_kernels_imag_EAST
+					layout_real = layout_gate_kernels_real_EAST
+					layout_imag = layout_gate_kernels_imag_EAST
 
-				address_offset = 4*gate_count
+					address_offset = 4*gate_count
 
-				layout_real_diag = layout_real + f", A1({address_offset})"
-				layout_imag_diag = layout_imag + f", A1({address_offset})"			
+					layout_real_diag = layout_real + f", A1({address_offset})"
+					layout_imag_diag = layout_imag + f", A1({address_offset})"			
 				
-				gate_diag_st_list	= g.split( gate_diag_st, num_splits=2, dim=0 )
-				gate_diag_real_mt 	= gate_diag_st_list[0].write(name=f"gate_diag_real", layout=layout_real_diag, program_output=True)
-				gate_diag_imag_mt 	= gate_diag_st_list[1].write(name=f"gate_diag_imag", layout=layout_imag_diag, program_output=True)
+					gate_diag_st_list	= g.split( gate_diag_st, num_splits=2, dim=0 )
+					gate_diag_real_mt 	= gate_diag_st_list[0].write(name=f"gate_diag_real_{gate_idx}", layout=layout_real_diag, program_output=True)
+					gate_diag_imag_mt 	= gate_diag_st_list[1].write(name=f"gate_diag_imag_{gate_idx}", layout=layout_imag_diag, program_output=True)
 			
 
-				#gate_for_output_state_0_combined_st = g.add(gate_00_real_st, gate_10_real_st, alus=[5], output_streams=g.SG4[3])
-				#state_0_broadcasted_mt = gate_for_output_state_0_combined_st.write(name=f"ttt", layout=f"H1(E), -1, S4", program_output=True)
+					#gate_for_output_state_0_combined_st = g.add(gate_00_real_st, gate_10_real_st, alus=[5], output_streams=g.SG4[3])
+					#state_0_broadcasted_mt = gate_for_output_state_0_combined_st.write(name=f"ttt", layout=f"H1(E), -1, S4", program_output=True)
 
 
 
 			#with g.ResourceScope(name="prepare_gate_elements_output_state_1_scope", is_buffered=True, predecessors=[prepare_gate_elements_output_state_0_scope], time=None) as prepare_gate_elements_output_state_1_scope :
 
-				state_1_broadcasted_st = state_1_broadcasted_mt.read( streams=g.SG4[1] )
-				state_0_broadcasted_st = state_0_broadcasted_mt.read( streams=g.SG4[7] )
+					state_1_broadcasted_st = state_1_broadcasted_mt.read( streams=g.SG4[1] )
+					state_0_broadcasted_st = state_0_broadcasted_mt.read( streams=g.SG4[7] )
 			
+					# real and imaginary parts of the state concatenated into a unified tensor
+					gate_01_real_st = gate_kernels_broadcasted_real_shared_dict["0_01"].read( streams=g.SG4[6])#, time=5 )
+					gate_01_imag_st = gate_kernels_broadcasted_imag_shared_dict["0_01"].read( streams=g.SG4[6])#, time=5 )
+					gate_01_st 	= g.stack( [gate_01_real_st, gate_01_imag_st], dim=0 )
+
+					#gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[6] )
+					gate_01_st = g.reinterpret( gate_01_st, g.uint32 )
+					gate_01_st = g.bitwise_and( gate_01_st, state_0_broadcasted_st, alus=[10], output_streams=g.SG4[4] )
+					gate_01_st = g.reinterpret( gate_01_st, g.float32 )
+
+					# real and imaginary parts of the state concatenated into a unified tensor
+					gate_11_real_st = gate_kernels_broadcasted_real_shared_copy_dict["0_10"].read( streams=g.SG4[0], time=7 )
+					gate_11_imag_st = gate_kernels_broadcasted_imag_shared_copy_dict["0_10"].read( streams=g.SG4[0], time=7 )
+					gate_11_st 	= g.stack( [gate_11_real_st, gate_11_imag_st], dim=0 )
+
+					gate_11_st = g.reinterpret( gate_11_st, g.uint32 )
+					gate_11_st = g.bitwise_and( gate_11_st, state_1_broadcasted_st, alus=[2], output_streams=g.SG4[3] )
+					gate_11_st = g.reinterpret( gate_11_st, g.float32 )
+				
+					# combine the filtered gate element vectors
+					gate_offdiag_st = g.add(gate_01_st, gate_11_st, alus=[7], output_streams=g.SG4[3])
+			
+			
+					layout_real_copy = layout_gate_kernels_real_EAST_copy
+					layout_imag_copy = layout_gate_kernels_imag_EAST_copy
+	
+					address_offset = 4*gate_count
+
+					layout_real_offdiag = layout_real_copy + f", A1({address_offset})"
+					layout_imag_offdiag = layout_imag_copy + f", A1({address_offset})"			
+				
+					gate_offdiag_st_list	= g.split( gate_offdiag_st, num_splits=2, dim=0 )
+					gate_offdiag_real_mt 	= gate_offdiag_st_list[0].write(name=f"gate_offdiag_real_{gate_idx}", layout=layout_real_offdiag, program_output=True)
+					gate_offdiag_imag_mt 	= gate_offdiag_st_list[1].write(name=f"gate_offdiag_imag_{gate_idx}", layout=layout_imag_offdiag, program_output=True)
+					#gate_output_state_0_real_copy_mt = gate_output_state_0_st_list[0].write(name=f"gate_output_state_0_real_copy", layout=layout_real_copy, program_output=True)
+					#gate_output_state_0_imag_copy_mt = gate_output_state_0_st_list[1].write(name=f"gate_output_state_0_imag_copy", layout=layout_imag_copy, program_output=True)
+					#gate_output_state_0_copy_mt = gate_output_state_0_st.write(name=f"gate_output_state_copy_0", layout=layout_real_copy)			
+				
+
+					#gate_for_output_state_0_combined_st = g.add(gate_00_real_st, gate_10_real_st, alus=[5], output_streams=g.SG4[3])
+					#state_0_broadcasted_mt = gate_for_output_state_0_combined_st.write(name=f"ttt", layout=f"H1(E), -1, S4", program_output=True)
+			
+			#################################################################################
+			with g.ResourceScope(name=f"prepare_state_pair_scope_{gate_idx}", is_buffered=True, time=0) as prepare_state_pair_scope :
+
+				# make a copy of the real part somewhere else on the chip (just for testing, will be removed)
+				print('gatescope')   
+				target_qbit = 0
+				'''
+				permute_map_mt = self.permute_maps_mt_list[target_qbit]
+				state_real_mt_8 = g.reinterpret(self.state_real_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
+				state_real_st_8 = g.permute_inner(state_real_mt_8, permute_map_mt, permutor_req=0, input_streams=[g.SG1[0], g.SG1[24]], output_streams=g.SG1[0], time=0 )
+				'''
+
+				print( g.mem_gather.__doc__ )
+				print( permute_maps_mt_shared.physical_shape )
+				state_permute_map_selector_st = state_permute_map_selector_shared.read(streams=[g.SG1_W[24]])
+				permute_map_st = g.mem_gather(permute_maps_mt_shared, state_permute_map_selector_st, output_streams=[g.SG1_W[24]])
+
+
+				state_real_mt_8 = g.reinterpret(Psi_transformed_real_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
+				state_imag_mt_8 = g.reinterpret(Psi_transformed_imag_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
+
 				# real and imaginary parts of the state concatenated into a unified tensor
-				gate_01_real_st = gate_kernels_broadcasted_real_shared_dict["0_01"].read( streams=g.SG4[6], time=5 )
-				gate_01_imag_st = gate_kernels_broadcasted_imag_shared_dict["0_01"].read( streams=g.SG4[6], time=5 )
-				gate_01_st 	= g.stack( [gate_01_real_st, gate_01_imag_st], dim=0 )
+				state_mt_8 = g.concat( [state_real_mt_8, state_imag_mt_8], dim=0 )
 
-				#gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[6] )
-				gate_01_st = g.reinterpret( gate_01_st, g.uint32 )
-				gate_01_st = g.bitwise_and( gate_01_st, state_0_broadcasted_st, alus=[10], output_streams=g.SG4[4] )
-				gate_01_st = g.reinterpret( gate_01_st, g.float32 )
 
-				# real and imaginary parts of the state concatenated into a unified tensor
-				gate_11_real_st = gate_kernels_broadcasted_real_shared_copy_dict["0_10"].read( streams=g.SG4[0], time=7 )
-				gate_11_imag_st = gate_kernels_broadcasted_imag_shared_copy_dict["0_10"].read( streams=g.SG4[0], time=7 )
-				gate_11_st 	= g.stack( [gate_11_real_st, gate_11_imag_st], dim=0 )
 
-				gate_11_st = g.reinterpret( gate_11_st, g.uint32 )
-				gate_11_st = g.bitwise_and( gate_11_st, state_1_broadcasted_st, alus=[2], output_streams=g.SG4[3] )
-				gate_11_st = g.reinterpret( gate_11_st, g.float32 )
+				state_st_8 = state_mt_8.read( streams=g.SG1[0] )
+
+			
+				#state_mt_8 = g.reinterpret(state_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
+				permuted_state_st_8 = g.permute_inner(state_st_8, permute_map_st, permutor_req=0, input_streams=[g.SG1[0], g.SG1[24]], output_streams=g.SG1[0], time=0 )
+			
+				permuted_state_st_8 = g.reshape( permuted_state_st_8, [2,4,256] )
+
+				# split unified tensor into real and imaginary perts
+				permuted_state_st_8_list = g.split( permuted_state_st_8, num_splits=2, dim=0 )
+
+				print( permuted_state_st_8_list )
+				print( permuted_state_st_8_list[0].physical_shape )
+				permuted_state_real_st_8 = g.reshape(permuted_state_st_8_list[0], [4,256] )
+				permuted_state_imag_st_8 = g.reshape(permuted_state_st_8_list[1], [4,256] )
+				#state_real_st = g.reinterpret(state_st_8_list[0], g.float32 )
+			
+				permuted_state_real_st = g.reinterpret(permuted_state_real_st_8, g.float32 )
+				permuted_state_imag_st = g.reinterpret(permuted_state_imag_st_8, g.float32 )
+
+				permuted_state_real_mt = permuted_state_real_st.write(name=f"permuted_result_real", layout=layout_state_vector_real_permuted)
+				permuted_state_imag_mt = permuted_state_imag_st.write(name=f"permuted_result_imag", layout=layout_state_vector_imag_permuted)
+
+
+			#################################################################################
+			with g.ResourceScope(name=f"apply_gate_scope_{gate_idx}", is_buffered=True, predecessors=[prepare_state_pair_scope], time=None) as apply_gate_scope :
+
+				# calculate Psi_real * gate_diag_real
+				state_real_st 			= Psi_transformed_real_mt.read( streams=[g.SG4[0]] )
+				gate_diag_real_st 		= gate_diag_real_mt.read( streams=[g.SG4[1]] )
+				state_real__gate_diag_real_st	= g.mul( state_real_st, gate_diag_real_st, alus=[12], output_streams=g.SG4_E[0], time=0 )
+
+				# calculate Psi_imag * gate_diag_imag
+				state_imag_st 			= Psi_transformed_imag_mt.read( streams=[g.SG4[3]] )
+				gate_diag_imag_st 		= gate_diag_imag_mt.read( streams=[g.SG4[2]] )
+				state_imag__gate_diag_imag_st	= g.mul( state_imag_st, gate_diag_imag_st, alus=[4], output_streams=g.SG4_E[2] )			
+
+				# calculate Psi_real * gate_diag_real - Psi_imag * gate_diag_imag
+				state__gate_diag_real_st	= g.sub( state_real__gate_diag_real_st, state_imag__gate_diag_imag_st, alus=[2], output_streams=g.SG4_E[2] )
+				#res_mt = state__gate_diag_real_st.write(name=f"test", layout="H1(E), -1, S4", program_output=True)
+
+
+
+
+				# calculate Psi_imag * gate_diag_real
+				state_imag__gate_diag_real_st	= g.mul( state_imag_st, gate_diag_real_st, alus=[1], output_streams=g.SG4_E[1] )
+	
+				# calculate Psi_real * gate_diag_imag
+				state_real__gate_diag_imag_st	= g.mul( state_real_st, gate_diag_imag_st, alus=[0], output_streams=g.SG4_E[3] )
+
+				# calculate Psi_real * gate_diag_imag + Psi_imag * gate_diag_real
+				state__gate_diag_imag_st	= g.add( state_imag__gate_diag_real_st, state_real__gate_diag_imag_st, alus=[3], output_streams=g.SG4_W[0]  )
+			
+				#res3_mt = state__gate_diag_imag_st.write(name=f"test3", layout="H1(E), -1, S4(30-33)", program_output=True)
+
+
+
+
+				# calculate Psi_permuted_real * gate_offdiag_real
+				state_permuted_real_st 				= permuted_state_real_mt.read( streams=[g.SG4[7]] )
+				gate_offdiag_real_st 				= gate_offdiag_real_mt.read( streams=[g.SG4[6]] )
+				state_permuted_real__gate_offdiag_real_st	= g.mul( state_permuted_real_st, gate_offdiag_real_st, alus=[13], output_streams=g.SG4_E[6] )
+
+				# calculate Psi_permuted_imag * gate_offdiag_imag
+				state_permuted_imag_st 				= permuted_state_imag_mt.read( streams=[g.SG4[4]] )
+				gate_offdiag_imag_st 				= gate_offdiag_imag_mt.read( streams=[g.SG4[5]] )
+				state_permuted_imag__gate_offdiag_imag_st	= g.mul( state_permuted_imag_st, gate_offdiag_imag_st, alus=[5], output_streams=g.SG4_E[5] )			
+
+				# calculate Psi_permuted_real * gate_offdiag_real - Psi_permuted_imag * gate_offdiag_imag
+				state_permuted__gate_offdiag_real_st	= g.sub( state_permuted_real__gate_offdiag_real_st, state_permuted_imag__gate_offdiag_imag_st, alus=[10], output_streams=g.SG4_E[4]  )
+				#res_mt = state_permuted__gate_offdiag_real_st.write(name=f"test2", layout="H1(E), -1, S4(20-28)", program_output=True)
+
+
+			
+				# calculate Psi_permuted_imag * gate_offdiag_real
+				state_permuted_imag__gate_offdiag_real_st	= g.mul( state_permuted_imag_st, gate_offdiag_real_st, alus=[9], output_streams=g.SG4_E[4] )
+				#res_mt = state_permuted_imag__gate_offdiag_real_st.write(name=f"test4", layout="H1(E), -1, S4(20-28)", program_output=True)
 				
-				# combine the filtered gate element vectors
-				gate_offdiag_st = g.add(gate_01_st, gate_11_st, alus=[7], output_streams=g.SG4[3])
-			
-			
-				layout_real_copy = layout_gate_kernels_real_EAST_copy
-				layout_imag_copy = layout_gate_kernels_imag_EAST_copy
-
-				address_offset = 4*gate_count
-
-				layout_real_offdiag = layout_real_copy + f", A1({address_offset})"
-				layout_imag_offdiag = layout_imag_copy + f", A1({address_offset})"			
-				
-				gate_offdiag_st_list	= g.split( gate_offdiag_st, num_splits=2, dim=0 )
-				gate_offdiag_real_mt 	= gate_offdiag_st_list[0].write(name=f"gate_offdiag_real", layout=layout_real_offdiag, program_output=True)
-				gate_offdiag_imag_mt 	= gate_offdiag_st_list[1].write(name=f"gate_offdiag_imag", layout=layout_imag_offdiag, program_output=True)
-				#gate_output_state_0_real_copy_mt = gate_output_state_0_st_list[0].write(name=f"gate_output_state_0_real_copy", layout=layout_real_copy, program_output=True)
-				#gate_output_state_0_imag_copy_mt = gate_output_state_0_st_list[1].write(name=f"gate_output_state_0_imag_copy", layout=layout_imag_copy, program_output=True)
-				#gate_output_state_0_copy_mt = gate_output_state_0_st.write(name=f"gate_output_state_copy_0", layout=layout_real_copy)			
-				
-
-				#gate_for_output_state_0_combined_st = g.add(gate_00_real_st, gate_10_real_st, alus=[5], output_streams=g.SG4[3])
-				#state_0_broadcasted_mt = gate_for_output_state_0_combined_st.write(name=f"ttt", layout=f"H1(E), -1, S4", program_output=True)
-			
-		#################################################################################
-		with g.ResourceScope(name="prepare_state_pair_scope", is_buffered=True, time=0) as prepare_state_pair_scope :
-
-			# make a copy of the real part somewhere else on the chip (just for testing, will be removed)
-			print('gatescope')   
-			target_qbit = 0
-			'''
-			permute_map_mt = self.permute_maps_mt_list[target_qbit]
-			state_real_mt_8 = g.reinterpret(self.state_real_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
-			state_real_st_8 = g.permute_inner(state_real_mt_8, permute_map_mt, permutor_req=0, input_streams=[g.SG1[0], g.SG1[24]], output_streams=g.SG1[0], time=0 )
-			'''
-
-			print( g.mem_gather.__doc__ )
-			print( permute_maps_mt_shared.physical_shape )
-			state_permute_map_selector_st = state_permute_map_selector_shared.read(streams=[g.SG1_W[24]])
-			permute_map_st = g.mem_gather(permute_maps_mt_shared, state_permute_map_selector_st, output_streams=[g.SG1_W[24]])
-
-
-			state_real_mt_8 = g.reinterpret(State_input_real_shared, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
-			state_imag_mt_8 = g.reinterpret(State_input_imag_shared, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
-
-			# real and imaginary parts of the state concatenated into a unified tensor
-			state_mt_8 = g.concat( [state_real_mt_8, state_imag_mt_8], dim=0 )
-
-
-
-			state_st_8 = state_mt_8.read( streams=g.SG1[0] )
+				# calculate Psi_permuted_real * gate_diag_imag
+				state_permuted_real__gate_offdiag_imag_st	= g.mul( state_permuted_real_st, gate_offdiag_imag_st, alus=[8], output_streams=g.SG4_E[7] )
+				#res_mt = state_permuted_real__gate_offdiag_imag_st.write(name=f"test5", layout="H1(E), -1, S4(10-20)", program_output=True)
 
 			
-			#state_mt_8 = g.reinterpret(state_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
-			permuted_state_st_8 = g.permute_inner(state_st_8, permute_map_st, permutor_req=0, input_streams=[g.SG1[0], g.SG1[24]], output_streams=g.SG1[0], time=0 )
+				# calculate Psi_permuted_real * gate_offdiag_imag + Psi_permuted_imag * gate_offdiag_real
+				state_permuted__gate_offdiag_imag_st	= g.add( state_permuted_imag__gate_offdiag_real_st, state_permuted_real__gate_offdiag_imag_st, alus=[11], output_streams=g.SG4_W[7]  )
 			
-			permuted_state_st_8 = g.reshape( permuted_state_st_8, [2,4,256] )
-
-			# split unified tensor into real and imaginary perts
-			permuted_state_st_8_list = g.split( permuted_state_st_8, num_splits=2, dim=0 )
-
-			print( permuted_state_st_8_list )
-			print( permuted_state_st_8_list[0].physical_shape )
-			permuted_state_real_st_8 = g.reshape(permuted_state_st_8_list[0], [4,256] )
-			permuted_state_imag_st_8 = g.reshape(permuted_state_st_8_list[1], [4,256] )
-			#state_real_st = g.reinterpret(state_st_8_list[0], g.float32 )
-			
-			permuted_state_real_st = g.reinterpret(permuted_state_real_st_8, g.float32 )
-			permuted_state_imag_st = g.reinterpret(permuted_state_imag_st_8, g.float32 )
-
-			permuted_state_real_mt = permuted_state_real_st.write(name=f"permuted_result_real", layout=f"H1(W), -1, S4(25-29)")
-			permuted_state_imag_mt = permuted_state_imag_st.write(name=f"permuted_result_imag", layout=f"H1(W), -1, S4(30-33)")
-
-
-		#################################################################################
-		with g.ResourceScope(name="apply_gate_scope", is_buffered=True, predecessors=[prepare_state_pair_scope], time=None) as apply_gate_scope :
-
-			# calculate Psi_real * gate_diag_real
-			state_real_st 			= State_input_real_shared.read( streams=[g.SG4[0]] )
-			gate_diag_real_st 		= gate_diag_real_mt.read( streams=[g.SG4[1]] )
-			state_real__gate_diag_real_st	= g.mul( state_real_st, gate_diag_real_st, alus=[12], output_streams=g.SG4_E[0], time=0 )
-
-			# calculate Psi_imag * gate_diag_imag
-			state_imag_st 			= State_input_imag_shared.read( streams=[g.SG4[3]] )
-			gate_diag_imag_st 		= gate_diag_imag_mt.read( streams=[g.SG4[2]] )
-			state_imag__gate_diag_imag_st	= g.mul( state_imag_st, gate_diag_imag_st, alus=[4], output_streams=g.SG4_E[2], time=0 )			
-
-			# calculate Psi_real * gate_diag_real - Psi_imag * gate_diag_imag
-			state__gate_diag_real_st	= g.sub( state_real__gate_diag_real_st, state_imag__gate_diag_imag_st, alus=[2], output_streams=g.SG4_E[2], time=3 )
-			#res_mt = state__gate_diag_real_st.write(name=f"test", layout="H1(E), -1, S4", program_output=True)
-
-
-
-
-			# calculate Psi_imag * gate_diag_real
-			state_imag__gate_diag_real_st	= g.mul( state_imag_st, gate_diag_real_st, alus=[1], output_streams=g.SG4_E[1], time=0 )
-
-			# calculate Psi_real * gate_diag_imag
-			state_real__gate_diag_imag_st	= g.mul( state_real_st, gate_diag_imag_st, alus=[0], output_streams=g.SG4_E[3], time=0 )
-
-			# calculate Psi_real * gate_diag_imag + Psi_imag * gate_diag_real
-			state__gate_diag_imag_st	= g.add( state_imag__gate_diag_real_st, state_real__gate_diag_imag_st, alus=[3], output_streams=g.SG4_W[0], time=3  )
-			
-			#res3_mt = state__gate_diag_imag_st.write(name=f"test3", layout="H1(E), -1, S4(30-33)", program_output=True)
-
-
-
-
-			# calculate Psi_permuted_real * gate_offdiag_real
-			state_permuted_real_st 				= permuted_state_real_mt.read( streams=[g.SG4[7]] )
-			gate_offdiag_real_st 				= gate_offdiag_real_mt.read( streams=[g.SG4[6]] )
-			state_permuted_real__gate_offdiag_real_st	= g.mul( state_permuted_real_st, gate_offdiag_real_st, alus=[13], output_streams=g.SG4_E[6], time=0 )
-
-			# calculate Psi_permuted_imag * gate_offdiag_imag
-			state_permuted_imag_st 				= permuted_state_imag_mt.read( streams=[g.SG4[4]] )
-			gate_offdiag_imag_st 				= gate_offdiag_imag_mt.read( streams=[g.SG4[5]] )
-			state_permuted_imag__gate_offdiag_imag_st	= g.mul( state_permuted_imag_st, gate_offdiag_imag_st, alus=[5], output_streams=g.SG4_E[5], time=0 )			
-
-			# calculate Psi_permuted_real * gate_offdiag_real - Psi_permuted_imag * gate_offdiag_imag
-			state_permuted__gate_offdiag_real_st	= g.sub( state_permuted_real__gate_offdiag_real_st, state_permuted_imag__gate_offdiag_imag_st, alus=[10], output_streams=g.SG4_E[4], time=3  )
-			#res_mt = state_permuted__gate_offdiag_real_st.write(name=f"test2", layout="H1(E), -1, S4(20-28)", program_output=True)
-
-
-			
-			# calculate Psi_permuted_imag * gate_offdiag_real
-			state_permuted_imag__gate_offdiag_real_st	= g.mul( state_permuted_imag_st, gate_offdiag_real_st, alus=[9], output_streams=g.SG4_E[4], time=0 )
-			#res_mt = state_permuted_imag__gate_offdiag_real_st.write(name=f"test4", layout="H1(E), -1, S4(20-28)", program_output=True)
-			
-			# calculate Psi_permuted_real * gate_diag_imag
-			state_permuted_real__gate_offdiag_imag_st	= g.mul( state_permuted_real_st, gate_offdiag_imag_st, alus=[8], output_streams=g.SG4_E[7], time=0 )
-			#res_mt = state_permuted_real__gate_offdiag_imag_st.write(name=f"test5", layout="H1(E), -1, S4(10-20)", program_output=True)
-
-			
-			# calculate Psi_permuted_real * gate_offdiag_imag + Psi_permuted_imag * gate_offdiag_real
-			state_permuted__gate_offdiag_imag_st	= g.add( state_permuted_imag__gate_offdiag_real_st, state_permuted_real__gate_offdiag_imag_st, alus=[11], output_streams=g.SG4_W[7], time=3  )
-			
-			#res4_mt = state_permuted__gate_offdiag_imag_st.write(name=f"test2", layout="H1(E), -1, S4(20-28)", program_output=True)	
+				#res4_mt = state_permuted__gate_offdiag_imag_st.write(name=f"test2", layout="H1(E), -1, S4(20-28)", program_output=True)	
 			
 
+				# number of memory slices to store the transformed state
+				memory_slices = 1 << (qbit_num-small_qbit_num_limit)
+				slice_offset  = ((gate_idx+1) % 2) * 4096
+	
 
-			# calculate (Psi*gate_diag).real + (Psi_permuted*gate_offdiag).real
-			Psi_transformed_real_st	= g.add( state__gate_diag_real_st,  state_permuted__gate_offdiag_real_st, alus=[7], output_streams=g.SG4_E[2] )
-			res_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real", layout="H1(E), -1, S4", program_output=True)
+				layout_transformed_state_real = layout_State_input_real + f", A{memory_slices}({slice_offset}-{slice_offset+memory_slices-1})"
+				layout_transformed_state_imag = layout_State_input_imag + f", A{memory_slices}({slice_offset}-{slice_offset+memory_slices-1})"
+
+				# calculate (Psi*gate_diag).real + (Psi_permuted*gate_offdiag).real
+				Psi_transformed_real_st	= g.add( state__gate_diag_real_st,  state_permuted__gate_offdiag_real_st, alus=[7], output_streams=g.SG4_W[2] )
+				Psi_transformed_real_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real_{gate_idx}", layout=layout_transformed_state_real, program_output=True)
 
 			
-			# calculate (Psi*gate_diag).imag + (Psi_permuted*gate_offdiag).imag
-			Psi_transformed_imag_st	= g.add( state__gate_diag_imag_st,  state_permuted__gate_offdiag_imag_st, alus=[14], output_streams=g.SG4_E[6] )
-			res_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag", layout="H1(E), -1, S4(30-33)", program_output=True)
+				# calculate (Psi*gate_diag).imag + (Psi_permuted*gate_offdiag).imag
+				Psi_transformed_imag_st	= g.add( state__gate_diag_imag_st,  state_permuted__gate_offdiag_imag_st, alus=[14], output_streams=g.SG4_W[6] )
+				Psi_transformed_imag_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag_{gate_idx}", layout=layout_transformed_state_imag, program_output=True)
 			
 
 
@@ -772,6 +815,11 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 
 	#print( state_permute_map_selector )
 
+
+	# maps for mem_gather to select the correct state_1 indices according to the target qubit
+	state_1_selector = state_permute_map_selector#np.zeros( (1,320,), dtype=np.uint8 )
+	state_0_selector = state_permute_map_selector#np.zeros( (1,320,), dtype=np.uint8 )
+
 	# generate packed gate kernel data
 	gate_kernels_real_packed = np.zeros( (320,), dtype=np.float32 )
 	gate_kernels_imag_packed = np.zeros( (320,), dtype=np.float32 )
@@ -793,7 +841,7 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 	gate_kernels_imag_packed = np.ascontiguousarray( gate_kernels_imag.reshape( (-1,) ) )
 
 	# run the first program
-	pgm_1_output = invoke(device, iop, 0, 0, {"State_input_real": input_real, "State_input_imag": input_imag, "state_permute_map_selector": state_permute_map_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed})
+	pgm_1_output = invoke(device, iop, 0, 0, {"State_input_real": input_real, "State_input_imag": input_imag, "state_permute_map_selector": state_permute_map_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector})
 	
 	# run the gate split program
 	index_of_split_program = 1
@@ -831,12 +879,12 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 	# run the second program
 	index_of_gate_program = 2
 	pgm_3_output = invoke(device, iop, index_of_gate_program, 0, {})
-	print(pgm_3_output["gate_diag_real"])
-	print(pgm_3_output["gate_diag_imag"])
-	print(pgm_3_output["Psi_transformed_real"])
-	print(pgm_3_output["Psi_transformed_imag"])
+	#print(pgm_3_output["gate_diag_real"])
+	#print(pgm_3_output["gate_diag_imag"])
+	#print(pgm_3_output["Psi_transformed_real"])
+	#print(pgm_3_output["Psi_transformed_imag"])
 
-	return pgm_3_output["Psi_transformed_real"], pgm_3_output["Psi_transformed_imag"]
+	return pgm_3_output["Psi_transformed_real_0"], pgm_3_output["Psi_transformed_imag_0"]
 
 
 
@@ -846,8 +894,12 @@ def main( State_orig_real_float32, State_orig_imag_float32, target_qbit, gate_ke
 	iop_files = compile()
 	print(f"Program compiled to IOP file: {iop_files}")
 
+	import time
 
+	start_time = time.time()
 	transformed_state = run(iop_files[0], State_orig_real_float32, State_orig_imag_float32, target_qbit, np.real(gate_kernels), np.imag(gate_kernels) )
+
+	print("time elapsed with groq: ", time.time() - start_time )
 	'''
 	##################################xx
 	import shutil
