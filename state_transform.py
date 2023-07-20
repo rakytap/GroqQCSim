@@ -11,7 +11,7 @@ import time
 
 qbit_num = 8
 
-target_qbit = 3
+target_qbit = [3, 2]
 
 # determine the soze of the unitary to be decomposed
 matrix_size = int(2**qbit_num)
@@ -25,7 +25,7 @@ State_orig = Umtx[:,0]
 
 # define quantum circuit
 circuit = Gates_Block(qbit_num)
-circuit.add_Y( target_qbit )
+#circuit.add_Y( target_qbit )
 
 
 # get the number of free parameters in the circuit
@@ -40,7 +40,7 @@ parameters = np.random.rand( parameter_num )*2*np.pi
 State = State_orig.copy()
 State_transformed_oracle = State_orig.copy()
 start_time = time.time()
-circuit.Apply_To( parameters, State_transformed_oracle )
+#circuit.Apply_To( parameters, State_transformed_oracle )
 time_Cpp = time.time()-start_time
 
 

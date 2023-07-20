@@ -44,9 +44,9 @@ layout_state_vector_imag_permuted = "H1(W), -1, S4(39-43)"
 
 
 # layout to gather map selecting the permutation map corresponding to the target qubit  -- the MT should be replaced by on chip determined gather map, currently it is uploaded from CPU
-layout_state_permute_map_selector ="H1(W), A1(320), S1(17)"
-layout_state_1_selector				="H1(E), A1(0), S1(19)"
-layout_state_0_selector				="H1(E), A1(0), S1(21)"
+layout_state_permute_map_selector ="H1(W), A1(320), S2(17-18)"
+layout_state_1_selector				="H1(E), A1(0), S2(19-21)" # [19, 21] because 20 is reserved
+layout_state_0_selector				="H1(E), A1(0), S2(22-23)"
 
 layout_gate_kernels_real_packed ="H1(E), S4(40-43)"
 layout_gate_kernels_imag_packed	="H1(E), S4(40-43)"
@@ -108,9 +108,9 @@ def compile() -> List[str]:
 		State_input_real_mt = g.input_tensor(shape=(matrix_size,), dtype=g.float32, name="State_input_real", layout=layout_State_input_real + f", A{memory_slices}(0-{memory_slices-1})")
 		State_input_imag_mt = g.input_tensor(shape=(matrix_size,), dtype=g.float32, name="State_input_imag", layout=layout_State_input_imag + f", A{memory_slices}(0-{memory_slices-1})")
 
-		state_permute_map_selector_mt 	= g.input_tensor(shape=(1,320,), dtype=g.uint8, name="state_permute_map_selector", layout=layout_state_permute_map_selector)
-		state_1_selector_mt				= g.input_tensor(shape=(1,320,), dtype=g.uint8, name="state_1_selector", layout=layout_state_1_selector)
-		state_0_selector_mt				= g.input_tensor(shape=(1,320,), dtype=g.uint8, name="state_0_selector", layout=layout_state_0_selector)
+		state_permute_map_selector_mt 	= g.input_tensor(shape=(2,320,), dtype=g.uint8, name="state_permute_map_selector", layout=layout_state_permute_map_selector)
+		state_1_selector_mt				= g.input_tensor(shape=(2,320,), dtype=g.uint8, name="state_1_selector", layout=layout_state_1_selector)
+		state_0_selector_mt				= g.input_tensor(shape=(2,320,), dtype=g.uint8, name="state_0_selector", layout=layout_state_0_selector)
 
 		gate_kernels_real_packed_mt = g.input_tensor(shape=(320,), dtype=g.float32, name="gate_kernels_real_packed", layout=layout_gate_kernels_real_packed)
 		gate_kernels_imag_packed_mt = g.input_tensor(shape=(320,), dtype=g.float32, name="gate_kernels_imag_packed", layout=layout_gate_kernels_imag_packed)
@@ -392,7 +392,7 @@ def compile() -> List[str]:
 		# state_0_mt: if target_qubit_loc at the idx-th element is in state_0 |0> then all the 8 bits of the idx-th element is set to 1, thus state_0[idx] = 255
 		states_1_shared = g.shared_memory_tensor(states_1_mt, name="states_1_shared")
 		states_0_shared = g.shared_memory_tensor(states_0_mt, name="states_0_shared")
-		target_qbit = 3
+		#target_qbit = 3
 
 
 
@@ -443,7 +443,59 @@ def compile() -> List[str]:
 		g.add_mem_constraints([states_0_shared], [distribute_map_tensor_state0_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 
 		for gate_idx in range( 1 ):
+			with g.ResourceScope(name=f"prepare_state_pair_scope_{gate_idx}", is_buffered=True, time=0) as prepare_state_pair_scope :
 
+				# make a copy of the real part somewhere else on the chip (just for testing, will be removed)
+				print('gatescope')   
+				#target_qbit = 0
+				'''
+				permute_map_mt = self.permute_maps_mt_list[target_qbit]
+				state_real_mt_8 = g.reinterpret(self.state_real_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
+				state_real_st_8 = g.permute_inner(state_real_mt_8, permute_map_mt, permutor_req=0, input_streams=[g.SG1[0], g.SG1[24]], output_streams=g.SG1[0], time=0 )
+				'''
+
+				print( g.mem_gather.__doc__ )
+				print( permute_maps_mt_shared.physical_shape )
+				print( state_permute_map_selector_shared.physical_shape )
+				state_permute_map_selector_st = state_permute_map_selector_shared.read(streams=[g.SG1_W[24]])
+				permute_map_st = g.mem_gather(permute_maps_mt_shared, state_permute_map_selector_st, output_streams=[g.SG1_W[24]])
+
+
+				state_real_mt_8 = g.reinterpret(Psi_transformed_real_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
+				state_imag_mt_8 = g.reinterpret(Psi_transformed_imag_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
+
+				# real and imaginary parts of the state concatenated into a unified tensor
+				state_mt_8 = g.concat( [state_real_mt_8, state_imag_mt_8], dim=0 )
+
+
+
+				state_st_8 = state_mt_8.read( streams=g.SG1[0] )
+
+			
+				#state_mt_8 = g.reinterpret(state_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
+				permuted_state_st_8 = g.permute_inner(state_st_8, permute_map_st, permutor_req=0, input_streams=[g.SG1[0], g.SG1[24]], output_streams=g.SG1[0], time=0 )
+			
+				permuted_state_st_8 = g.reshape( permuted_state_st_8, [2,4,256] )
+
+				# split unified tensor into real and imaginary perts
+				permuted_state_st_8_list = g.split( permuted_state_st_8, num_splits=2, dim=0 )
+
+				print( permuted_state_st_8_list )
+				print( permuted_state_st_8_list[0].physical_shape )
+				permuted_state_real_st_8 = g.reshape(permuted_state_st_8_list[0], [4,256] )
+				permuted_state_imag_st_8 = g.reshape(permuted_state_st_8_list[1], [4,256] )
+				#state_real_st = g.reinterpret(state_st_8_list[0], g.float32 )
+			
+				permuted_state_real_st = g.reinterpret(permuted_state_real_st_8, g.float32 )
+				permuted_state_imag_st = g.reinterpret(permuted_state_imag_st_8, g.float32 )
+
+				permuted_state_real_mt = permuted_state_real_st.write(name=f"permuted_result_real", layout=layout_state_vector_real_permuted)
+				permuted_state_imag_mt = permuted_state_imag_st.write(name=f"permuted_result_imag", layout=layout_state_vector_imag_permuted)
+
+
+			#################################################################################
+			if gate_idx == 1:
+				break
 			# component to perform the gate operation
 			with g.ResourceScope(name=f"prepare_gate_kernel_scope_{gate_idx}", is_buffered=True, time=0) as prepare_gate_kernel_scope :
 
@@ -607,56 +659,6 @@ def compile() -> List[str]:
 					#state_0_broadcasted_mt = gate_for_output_state_0_combined_st.write(name=f"ttt", layout=f"H1(E), -1, S4", program_output=True)
 			
 			#################################################################################
-			with g.ResourceScope(name=f"prepare_state_pair_scope_{gate_idx}", is_buffered=True, time=0) as prepare_state_pair_scope :
-
-				# make a copy of the real part somewhere else on the chip (just for testing, will be removed)
-				print('gatescope')   
-				target_qbit = 0
-				'''
-				permute_map_mt = self.permute_maps_mt_list[target_qbit]
-				state_real_mt_8 = g.reinterpret(self.state_real_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
-				state_real_st_8 = g.permute_inner(state_real_mt_8, permute_map_mt, permutor_req=0, input_streams=[g.SG1[0], g.SG1[24]], output_streams=g.SG1[0], time=0 )
-				'''
-
-				print( g.mem_gather.__doc__ )
-				print( permute_maps_mt_shared.physical_shape )
-				state_permute_map_selector_st = state_permute_map_selector_shared.read(streams=[g.SG1_W[24]])
-				permute_map_st = g.mem_gather(permute_maps_mt_shared, state_permute_map_selector_st, output_streams=[g.SG1_W[24]])
-
-
-				state_real_mt_8 = g.reinterpret(Psi_transformed_real_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
-				state_imag_mt_8 = g.reinterpret(Psi_transformed_imag_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
-
-				# real and imaginary parts of the state concatenated into a unified tensor
-				state_mt_8 = g.concat( [state_real_mt_8, state_imag_mt_8], dim=0 )
-
-
-
-				state_st_8 = state_mt_8.read( streams=g.SG1[0] )
-
-			
-				#state_mt_8 = g.reinterpret(state_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
-				permuted_state_st_8 = g.permute_inner(state_st_8, permute_map_st, permutor_req=0, input_streams=[g.SG1[0], g.SG1[24]], output_streams=g.SG1[0], time=0 )
-			
-				permuted_state_st_8 = g.reshape( permuted_state_st_8, [2,4,256] )
-
-				# split unified tensor into real and imaginary perts
-				permuted_state_st_8_list = g.split( permuted_state_st_8, num_splits=2, dim=0 )
-
-				print( permuted_state_st_8_list )
-				print( permuted_state_st_8_list[0].physical_shape )
-				permuted_state_real_st_8 = g.reshape(permuted_state_st_8_list[0], [4,256] )
-				permuted_state_imag_st_8 = g.reshape(permuted_state_st_8_list[1], [4,256] )
-				#state_real_st = g.reinterpret(state_st_8_list[0], g.float32 )
-			
-				permuted_state_real_st = g.reinterpret(permuted_state_real_st_8, g.float32 )
-				permuted_state_imag_st = g.reinterpret(permuted_state_imag_st_8, g.float32 )
-
-				permuted_state_real_mt = permuted_state_real_st.write(name=f"permuted_result_real", layout=layout_state_vector_real_permuted)
-				permuted_state_imag_mt = permuted_state_imag_st.write(name=f"permuted_result_imag", layout=layout_state_vector_imag_permuted)
-
-
-			#################################################################################
 			with g.ResourceScope(name=f"apply_gate_scope_{gate_idx}", is_buffered=True, predecessors=[prepare_state_pair_scope], time=None) as apply_gate_scope :
 
 				# calculate Psi_real * gate_diag_real
@@ -800,25 +802,26 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 	device.load(iop[0], unsafe_keep_entry_points=True)
 	device.load(iop[1], unsafe_keep_entry_points=True)
 	device.load(iop[2], unsafe_keep_entry_points=True)
-
+	"""
 	# encode the target qubits: the 320 lanes are organized into 20 16byte superlanes. The distributor can distribute elements in one superlane in one clock cycle. 
 	# so the target qubits is encoded in the first 1 byte of each 16byte segments
 	modified_qbits = np.zeros( (320,), dtype=np.uint8 )
-	modified_qbits[0:320:16] = target_qbit
-
+	modified_qbits[0:320:16] = target_qbit[0]
+	"""
 	# map for mem_gather to select the permutation map for the given target qubit. Th epermutor is used only for target qubits smaller than small_qbit_num_limit
-	state_permute_map_selector = np.zeros( (1,320,), dtype=np.uint8 )
-	if ( target_qbit < small_qbit_num_limit ) :
-		state_permute_map_selector[0,0:320:16] = target_qbit
-	else :
-		state_permute_map_selector[0,0:320:16] = 0
-
-	#print( state_permute_map_selector )
+	state_permute_map_selector = np.zeros( (2,320,), dtype=np.uint8 )
+	for i in range(len(target_qbit)):
+		if ( target_qbit[i] < small_qbit_num_limit ) :
+			state_permute_map_selector[i,0:320:16] = target_qbit[i]
+		else :
+			state_permute_map_selector[i,0:320:16] = 0
+		print( f"Permute map for {target_qbit[i]}. qbit" )
+		print( state_permute_map_selector[i] )
 
 
 	# maps for mem_gather to select the correct state_1 indices according to the target qubit
-	state_1_selector = state_permute_map_selector#np.zeros( (1,320,), dtype=np.uint8 )
-	state_0_selector = state_permute_map_selector#np.zeros( (1,320,), dtype=np.uint8 )
+	state_1_selector = state_permute_map_selector#np.zeros( (2,320,), dtype=np.uint8 )
+	state_0_selector = state_permute_map_selector#np.zeros( (2,320,), dtype=np.uint8 )
 
 	# generate packed gate kernel data
 	gate_kernels_real_packed = np.zeros( (320,), dtype=np.float32 )
