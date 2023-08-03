@@ -25,7 +25,8 @@ State_orig = Umtx[:,0]
 
 # define quantum circuit
 circuit = Gates_Block(qbit_num)
-#circuit.add_Y( target_qbit )
+print(dir(circuit))
+print(circuit.add_X( target_qbit[0] ))
 
 
 # get the number of free parameters in the circuit
@@ -40,7 +41,7 @@ parameters = np.random.rand( parameter_num )*2*np.pi
 State = State_orig.copy()
 State_transformed_oracle = State_orig.copy()
 start_time = time.time()
-#circuit.Apply_To( parameters, State_transformed_oracle )
+circuit.apply_to( parameters, State_transformed_oracle )
 time_Cpp = time.time()-start_time
 
 
@@ -48,7 +49,7 @@ time_Cpp = time.time()-start_time
 #####################################################
 # get the gate kernel
 
-gate_kernel_single = np.array([[0+5j,1+6j],[2+7j,3+8j]], dtype = np.complex64)
+gate_kernel_single = np.array([[0+0j,1+0j],[1+0j,0+0j]], dtype = np.complex64)
 
 gate_kernels = np.zeros((80, 2, 2,), dtype=np.complex64) #np.array([[[0,1],[1,0]]])
 for idx in range(80):
