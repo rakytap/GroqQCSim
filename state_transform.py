@@ -27,7 +27,7 @@ State_orig = Umtx[:,0]
 circuit = Gates_Block(qbit_num)
 print(dir(circuit))
 print(circuit.add_X( target_qbit[0] ))
-
+circuit.add_X(target_qbit[1])
 
 # get the number of free parameters in the circuit
 parameter_num = circuit.get_Parameter_Num()
@@ -55,7 +55,8 @@ gate_kernels = np.zeros((80, 2, 2,), dtype=np.complex64) #np.array([[[0,1],[1,0]
 for idx in range(80):
 	gate_kernels[idx] = gate_kernel_single
 
-gate_kernels[0] = np.array([[0+0j,0-1j],[0+1j,0+0j]], dtype = np.complex64)
+gate_kernels[0] = np.array([[0+0j,1+0j],[1+0j,0+0j]], dtype = np.complex64)
+gate_kernels[1] = np.array([[0+0j,1+0j],[1+0j,0+0j]], dtype = np.complex64)
 print( "gate kernel shape: ", gate_kernels.shape )
 
 
@@ -74,7 +75,6 @@ print( 'difference between CPU oracle and Groq chip (real part): ', scipy.linalg
 
 
 print("time elapsed with C++: ", time_Cpp )
-
 '''
 print( np.real( State_transformed_oracle ) )
 print(' ')

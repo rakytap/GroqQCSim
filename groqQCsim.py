@@ -459,6 +459,11 @@ def compile() -> List[str]:
 		g.add_mem_constraints([states_0_shared], [distribute_map_tensor_state0_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 		pre = []
 		tm = [0, 118]
+
+		gate_first_column_real_list = []
+		gate_first_column_imag_list = []
+		gate_second_column_real_list = []
+		gate_second_column_imag_list = []
 		for gate_idx in range( gate_count ):
 			with g.ResourceScope(name=f"prepare_state_pair_scope_{gate_idx}", is_buffered=True, time=tm[gate_idx]) as prepare_state_pair_scope :
 
@@ -476,6 +481,9 @@ def compile() -> List[str]:
 				print( state_permute_map_selector_shared.physical_shape )
 				#state_permute_map_selector_st = state_permute_map_selector_shared.read(streams=[g.SG1_W[24]])
 				print(state_permute_map_selector_list[0].shape)
+				if gate_idx > 0:
+					#g.add_mem_constraints()
+					pass
 				state_permute_map_selector_st = state_permute_map_selector_list[gate_idx].read(streams=[g.SG1_W[24]])
 				if gate_idx % 2 == 1:
 					tmp_mt = state_permute_map_selector_st.write(name="tmp_mt", layout="H1(W), -1, S1(18-43)", program_output=True)
@@ -583,8 +591,8 @@ def compile() -> List[str]:
 					state_0_broadcasted_st = state_0_broadcasted_mt.read( streams=g.SG4[7] )
 			
 					# real and imaginary parts of the state concatenated into a unified tensor
-					gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[6], time=0 )
-					gate_00_imag_st = gate_kernels_broadcasted_imag_shared_dict["0_00"].read( streams=g.SG4[6], time=0 )
+					gate_00_real_st = gate_kernels_broadcasted_real_shared_dict[f"{gate_idx}_00"].read( streams=g.SG4[6], time=0 )
+					gate_00_imag_st = gate_kernels_broadcasted_imag_shared_dict[f"{gate_idx}_00"].read( streams=g.SG4[6], time=0 )
 					gate_00_st 	= g.stack( [gate_00_real_st, gate_00_imag_st], dim=0 )
 
 					#gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[6] )
@@ -596,8 +604,8 @@ def compile() -> List[str]:
 
 
 					# real and imaginary parts of the state concatenated into a unified tensor
-					gate_10_real_st = gate_kernels_broadcasted_real_shared_copy_dict["0_11"].read( streams=g.SG4[0])#, time=2 )
-					gate_10_imag_st = gate_kernels_broadcasted_imag_shared_copy_dict["0_11"].read( streams=g.SG4[0])#, time=2 )
+					gate_10_real_st = gate_kernels_broadcasted_real_shared_copy_dict[f"{gate_idx}_11"].read( streams=g.SG4[0])#, time=2 )
+					gate_10_imag_st = gate_kernels_broadcasted_imag_shared_copy_dict[f"{gate_idx}_11"].read( streams=g.SG4[0])#, time=2 )
 					gate_10_st 	= g.stack( [gate_10_real_st, gate_10_imag_st], dim=0 )
 
 					gate_10_st = g.reinterpret( gate_10_st, g.uint32 )
@@ -612,7 +620,7 @@ def compile() -> List[str]:
 					layout_real = layout_gate_kernels_real_EAST
 					layout_imag = layout_gate_kernels_imag_EAST
 
-					address_offset = 4*gate_count
+					address_offset = 4*gate_count + gate_idx
 
 					layout_real_first_column = layout_real + f", A1({address_offset})"
 					layout_imag_first_column = layout_imag + f", A1({address_offset})"			
@@ -621,7 +629,12 @@ def compile() -> List[str]:
 					gate_first_column_st_list	= g.split( gate_first_column_st, num_splits=2, dim=0 )
 					gate_first_column_real_mt 	= gate_first_column_st_list[0].write(name=f"gate_first_column_real_{gate_idx}", layout=layout_real_first_column, program_output=True)
 					gate_first_column_imag_mt 	= gate_first_column_st_list[1].write(name=f"gate_first_column_imag_{gate_idx}", layout=layout_imag_first_column, program_output=True)
-			
+					if gate_idx > 0:
+						g.add_mem_constraints(gate_first_column_real_list, [gate_first_column_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+						g.add_mem_constraints(gate_first_column_imag_list, [gate_first_column_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+
+					gate_first_column_real_list.append(gate_first_column_real_mt)
+					gate_first_column_imag_list.append(gate_first_column_imag_mt)
 
 					#gate_for_output_state_0_combined_st = g.add(gate_00_real_st, gate_10_real_st, alus=[5], output_streams=g.SG4[3])
 					#state_0_broadcasted_mt = gate_for_output_state_0_combined_st.write(name=f"ttt", layout=f"H1(E), -1, S4", program_output=True)
@@ -634,8 +647,8 @@ def compile() -> List[str]:
 					state_0_broadcasted_st = state_0_broadcasted_mt.read( streams=g.SG4[7] )
 			
 					# real and imaginary parts of the state concatenated into a unified tensor
-					gate_01_real_st = gate_kernels_broadcasted_real_shared_dict["0_01"].read( streams=g.SG4[6])#, time=5 )
-					gate_01_imag_st = gate_kernels_broadcasted_imag_shared_dict["0_01"].read( streams=g.SG4[6])#, time=5 )
+					gate_01_real_st = gate_kernels_broadcasted_real_shared_dict[f"{gate_idx}_01"].read( streams=g.SG4[6])#, time=5 )
+					gate_01_imag_st = gate_kernels_broadcasted_imag_shared_dict[f"{gate_idx}_01"].read( streams=g.SG4[6])#, time=5 )
 					gate_01_st 	= g.stack( [gate_01_real_st, gate_01_imag_st], dim=0 )
 
 					#gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[6] )
@@ -644,8 +657,8 @@ def compile() -> List[str]:
 					gate_01_st = g.reinterpret( gate_01_st, g.float32 )
 
 					# real and imaginary parts of the state concatenated into a unified tensor
-					gate_11_real_st = gate_kernels_broadcasted_real_shared_copy_dict["0_10"].read( streams=g.SG4[0], time=7 )
-					gate_11_imag_st = gate_kernels_broadcasted_imag_shared_copy_dict["0_10"].read( streams=g.SG4[0], time=7 )
+					gate_11_real_st = gate_kernels_broadcasted_real_shared_copy_dict[f"{gate_idx}_10"].read( streams=g.SG4[0], time=7 )
+					gate_11_imag_st = gate_kernels_broadcasted_imag_shared_copy_dict[f"{gate_idx}_10"].read( streams=g.SG4[0], time=7 )
 					gate_11_st 	= g.stack( [gate_11_real_st, gate_11_imag_st], dim=0 )
 
 					gate_11_st = g.reinterpret( gate_11_st, g.uint32 )
@@ -659,7 +672,7 @@ def compile() -> List[str]:
 					layout_real_copy = layout_gate_kernels_real_EAST_copy
 					layout_imag_copy = layout_gate_kernels_imag_EAST_copy
 	
-					address_offset = 4*gate_count
+					address_offset = 4*gate_count+gate_idx
 
 					layout_real_second_column = layout_real_copy + f", A1({address_offset})"
 					layout_imag_second_column = layout_imag_copy + f", A1({address_offset})"			
@@ -667,6 +680,12 @@ def compile() -> List[str]:
 					gate_second_column_st_list	= g.split( gate_second_column_st, num_splits=2, dim=0 )
 					gate_second_column_real_mt 	= gate_second_column_st_list[0].write(name=f"gate_second_column_real_{gate_idx}", layout=layout_real_second_column, program_output=True)
 					gate_second_column_imag_mt 	= gate_second_column_st_list[1].write(name=f"gate_second_column_imag_{gate_idx}", layout=layout_imag_second_column, program_output=True)
+
+					if gate_idx > 0:
+						g.add_mem_constraints(gate_second_column_real_list, [gate_second_column_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+						g.add_mem_constraints(gate_second_column_imag_list, [gate_second_column_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+					gate_second_column_real_list.append(gate_second_column_real_mt)
+					gate_second_column_imag_list.append(gate_second_column_imag_mt)
 					#gate_output_state_0_real_copy_mt = gate_output_state_0_st_list[0].write(name=f"gate_output_state_0_real_copy", layout=layout_real_copy, program_output=True)
 					#gate_output_state_0_imag_copy_mt = gate_output_state_0_st_list[1].write(name=f"gate_output_state_0_imag_copy", layout=layout_imag_copy, program_output=True)
 					#gate_output_state_0_copy_mt = gate_output_state_0_st.write(name=f"gate_output_state_copy_0", layout=layout_real_copy)			
@@ -676,8 +695,6 @@ def compile() -> List[str]:
 					#state_0_broadcasted_mt = gate_for_output_state_0_combined_st.write(name=f"ttt", layout=f"H1(E), -1, S4", program_output=True)
 			
 			#################################################################################
-			if gate_idx == 1:
-				break
 			with g.ResourceScope(name=f"apply_gate_scope_{gate_idx}", is_buffered=True, predecessors=[prepare_state_pair_scope], time=None) as apply_gate_scope :
 
 				# calculate Psi_real * gate_first_column_real
@@ -747,20 +764,16 @@ def compile() -> List[str]:
 				slice_offset  = ((gate_idx+1) % 2) * 4096
 	
 
-				if gate_idx % 2 == 0:
-					layout_transformed_state_real = f"H1(E), S4(0-3), A{memory_slices}({slice_offset}-{slice_offset+memory_slices-1})"
-					layout_transformed_state_imag = f"H1(E), S4(4-7), A{memory_slices}({slice_offset}-{slice_offset+memory_slices-1})"
-				else:
-					layout_transformed_state_real = f"H1(W), S4(0-3), A{memory_slices}({slice_offset}-{slice_offset+memory_slices-1})"
-					layout_transformed_state_imag = f"H1(W), S4(4-7), A{memory_slices}({slice_offset}-{slice_offset+memory_slices-1})"
+				layout_transformed_state_real = layout_State_input_real + f", A{memory_slices}({slice_offset}-{slice_offset+memory_slices-1})"
+				layout_transformed_state_imag = layout_State_input_imag + f", A{memory_slices}({slice_offset}-{slice_offset+memory_slices-1})"
 
 				# calculate (Psi*gate_first_column).real + (Psi_permuted*gate_second_column).real
-				Psi_transformed_real_st	= g.add( state__gate_first_column_real_st,  state_permuted__gate_second_column_real_st, alus=[7], output_streams=g.SG4_E[2] )
+				Psi_transformed_real_st	= g.add( state__gate_first_column_real_st,  state_permuted__gate_second_column_real_st, alus=[7], output_streams=g.SG4_W[2] )
 				Psi_transformed_real_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real_{gate_idx}", layout=layout_transformed_state_real, program_output=True)
 
 			
 				# calculate (Psi*gate_first_column).imag + (Psi_permuted*gate_second_column).imag
-				Psi_transformed_imag_st	= g.add( state__gate_first_column_imag_st,  state_permuted__gate_second_column_imag_st, alus=[14], output_streams=g.SG4_E[6] )
+				Psi_transformed_imag_st	= g.add( state__gate_first_column_imag_st,  state_permuted__gate_second_column_imag_st, alus=[14], output_streams=g.SG4_W[6] )
 				Psi_transformed_imag_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag_{gate_idx}", layout=layout_transformed_state_imag, program_output=True)
 
 
