@@ -481,12 +481,7 @@ def compile() -> List[str]:
 				print( state_permute_map_selector_shared.physical_shape )
 				#state_permute_map_selector_st = state_permute_map_selector_shared.read(streams=[g.SG1_W[24]])
 				print(state_permute_map_selector_list[0].shape)
-				if gate_idx > 0:
-					#g.add_mem_constraints()
-					pass
 				state_permute_map_selector_st = state_permute_map_selector_list[gate_idx].read(streams=[g.SG1_W[24]])
-				if gate_idx % 2 == 1:
-					tmp_mt = state_permute_map_selector_st.write(name="tmp_mt", layout="H1(W), -1, S1(18-43)", program_output=True)
 				permute_map_st = g.mem_gather(permute_maps_mt_shared, state_permute_map_selector_st, output_streams=[g.SG1_W[24]])
 
 				state_real_mt_8 = g.reinterpret(Psi_transformed_real_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
@@ -516,6 +511,7 @@ def compile() -> List[str]:
 			
 				permuted_state_real_st = g.reinterpret(permuted_state_real_st_8, g.float32 )
 				permuted_state_imag_st = g.reinterpret(permuted_state_imag_st_8, g.float32 )
+
 				permuted_state_real_mt = permuted_state_real_st.write(name=f"permuted_result_real", layout=layout_state_vector_real_permuted)
 				permuted_state_imag_mt = permuted_state_imag_st.write(name=f"permuted_result_imag", layout=layout_state_vector_imag_permuted)
 
@@ -629,12 +625,12 @@ def compile() -> List[str]:
 					gate_first_column_st_list	= g.split( gate_first_column_st, num_splits=2, dim=0 )
 					gate_first_column_real_mt 	= gate_first_column_st_list[0].write(name=f"gate_first_column_real_{gate_idx}", layout=layout_real_first_column, program_output=True)
 					gate_first_column_imag_mt 	= gate_first_column_st_list[1].write(name=f"gate_first_column_imag_{gate_idx}", layout=layout_imag_first_column, program_output=True)
-					if gate_idx > 0:
-						g.add_mem_constraints(gate_first_column_real_list, [gate_first_column_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
-						g.add_mem_constraints(gate_first_column_imag_list, [gate_first_column_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+					#if gate_idx > 0:
+					#	g.add_mem_constraints(gate_first_column_real_list, [gate_first_column_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+					#	g.add_mem_constraints(gate_first_column_imag_list, [gate_first_column_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 
-					gate_first_column_real_list.append(gate_first_column_real_mt)
-					gate_first_column_imag_list.append(gate_first_column_imag_mt)
+					#gate_first_column_real_list.append(gate_first_column_real_mt)
+					#gate_first_column_imag_list.append(gate_first_column_imag_mt)
 
 					#gate_for_output_state_0_combined_st = g.add(gate_00_real_st, gate_10_real_st, alus=[5], output_streams=g.SG4[3])
 					#state_0_broadcasted_mt = gate_for_output_state_0_combined_st.write(name=f"ttt", layout=f"H1(E), -1, S4", program_output=True)
@@ -771,6 +767,7 @@ def compile() -> List[str]:
 				Psi_transformed_real_st	= g.add( state__gate_first_column_real_st,  state_permuted__gate_second_column_real_st, alus=[7], output_streams=g.SG4_W[2] )
 				Psi_transformed_real_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real_{gate_idx}", layout=layout_transformed_state_real, program_output=True)
 
+
 			
 				# calculate (Psi*gate_first_column).imag + (Psi_permuted*gate_second_column).imag
 				Psi_transformed_imag_st	= g.add( state__gate_first_column_imag_st,  state_permuted__gate_second_column_imag_st, alus=[14], output_streams=g.SG4_W[6] )
@@ -844,7 +841,7 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 	modified_qbits[0:320:16] = target_qbit[0]
 	"""
 	# map for mem_gather to select the permutation map for the given target qubit. Th epermutor is used only for target qubits smaller than small_qbit_num_limit
-	state_permute_map_selector = np.zeros( (2,320,), dtype=np.uint8 )
+	state_permute_map_selector = np.zeros( (len(target_qbit),320,), dtype=np.uint8 )
 	for i in range(len(target_qbit)):
 		if ( target_qbit[i] < small_qbit_num_limit ) :
 			state_permute_map_selector[i,0:320:16] = target_qbit[i]
@@ -917,14 +914,14 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 	# run the second program
 	index_of_gate_program = 2
 	pgm_3_output = invoke(device, iop, index_of_gate_program, 0, {})
-	print(20*"#")
-	print(pgm_3_output["tmp_mt"])
+	#print(pgm_3_output["tmp_imag_mt"] == pgm_3_output["tmp_imag_mt2"])
+	#print(pgm_3_output["tmp_real_mt"] == pgm_3_output["tmp_real_mt2"])
 	#print(pgm_3_output["gate_first_column_real"])
 	#print(pgm_3_output["gate_first_column_imag"])
 	#print(pgm_3_output["Psi_transformed_real"])
 	#print(pgm_3_output["Psi_transformed_imag"])
 
-	return pgm_3_output["Psi_transformed_real_0"], pgm_3_output["Psi_transformed_imag_0"]
+	return pgm_3_output[f"Psi_transformed_real_{len(target_qbit)-1}"], pgm_3_output[f"Psi_transformed_imag_{len(target_qbit)-1}"]
 
 
 

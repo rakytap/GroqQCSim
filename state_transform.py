@@ -11,7 +11,7 @@ import time
 
 qbit_num = 8
 
-target_qbit = [3, 2]
+target_qbit = [0, 1]
 
 # determine the soze of the unitary to be decomposed
 matrix_size = int(2**qbit_num)
