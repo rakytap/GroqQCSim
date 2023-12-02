@@ -26,6 +26,7 @@ qbit_num = 8
 
 # the number og qubits for which the gate operations need the permutor (need to reorganize the elements in a vector)
 small_qbit_num_limit = 8
+required_permute_map_number = int(small_qbit_num_limit*(small_qbit_num_limit+1)/2)
 
 # determine the soze of the unitary to be decomposed
 matrix_size = int(2**qbit_num)
@@ -44,7 +45,7 @@ layout_state_vector_imag_permuted = "H1(W), -1, S4(39-43)"
 
 
 # layout to gather map selecting the permutation map corresponding to the target qubit  -- the MT should be replaced by on chip determined gather map, currently it is uploaded from CPU
-layout_state_permute_map_selector ="H1(W), A2(320-321), S1(17)"
+layout_state_permute_map_selector ="H1(W), A6(320-325), S1(17)"
 layout_state_1_selector				="H1(E), A2(0-1), S1(19)" 
 layout_state_0_selector				="H1(E), A2(0-1), S1(21)"
 
@@ -78,7 +79,7 @@ layout_distribute_map_tensor_state0 = "H1(E), S1(18)"
 
 
 # permute maps at -- used to reorder the state vector elements according to the given target qubit
-layout_permute_maps = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(43)"
+layout_permute_maps = f"A{required_permute_map_number}(0-{required_permute_map_number-1}), H1(W), S1(43)"
 
 # gate count stored in a single packed vector 
 gate_count = 2
@@ -108,7 +109,7 @@ def compile() -> List[str]:
 		State_input_real_mt = g.input_tensor(shape=(matrix_size,), dtype=g.float32, name="State_input_real", layout=layout_State_input_real + f", A{memory_slices}(0-{memory_slices-1})")
 		State_input_imag_mt = g.input_tensor(shape=(matrix_size,), dtype=g.float32, name="State_input_imag", layout=layout_State_input_imag + f", A{memory_slices}(0-{memory_slices-1})")
 
-		state_permute_map_selector_mt 	= g.input_tensor(shape=(2,320,), dtype=g.uint8, name="state_permute_map_selector", layout=layout_state_permute_map_selector)
+		state_permute_map_selector_mt 	= g.input_tensor(shape=(6,320,), dtype=g.uint8, name="state_permute_map_selector", layout=layout_state_permute_map_selector)
 		state_1_selector_mt				= g.input_tensor(shape=(2,320,), dtype=g.uint8, name="state_1_selector", layout=layout_state_1_selector)
 		state_0_selector_mt				= g.input_tensor(shape=(2,320,), dtype=g.uint8, name="state_0_selector", layout=layout_state_0_selector)
 		print(state_permute_map_selector_mt.shape)
@@ -128,7 +129,7 @@ def compile() -> List[str]:
 
 
 		# generate permutation maps to reorder the state vector elements for qubits less than small_qbit_num_limit
-		permute_map = np.zeros( (int(small_qbit_num_limit*(small_qbit_num_limit+1)/2),320,), dtype=np.uint32 )
+		permute_map = np.zeros( (required_permute_map_number,320,), dtype=np.uint32 )
 
 		for target_qbit_loc in range(small_qbit_num_limit):
 
@@ -150,6 +151,7 @@ def compile() -> List[str]:
 			for target_qbit_loc2 in range(target_qbit_loc1+1, small_qbit_num_limit):
 				permute_map_np = np.zeros( (256,), dtype=np.uint32 )
 				target_qbit_pair_diff = (1 << target_qbit_loc1) + (1 << target_qbit_loc2)
+				print('target_qubit_pair_diff', target_qbit_pair_diff)
 				for idx in range(256):
 					if (idx < matrix_size):
 						permute_map_np[idx] = idx ^ target_qbit_pair_diff
