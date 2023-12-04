@@ -151,13 +151,13 @@ def compile() -> List[str]:
 			for target_qbit_loc2 in range(target_qbit_loc1+1, small_qbit_num_limit):
 				permute_map_np = np.zeros( (256,), dtype=np.uint32 )
 				target_qbit_pair_diff = (1 << target_qbit_loc1) + (1 << target_qbit_loc2)
-				print('target_qubit_pair_diff', target_qbit_pair_diff)
 				for idx in range(256):
 					if (idx < matrix_size):
 						permute_map_np[idx] = idx ^ target_qbit_pair_diff
 					else:
 						permute_map_np[idx] = idx
 				permute_map[int(small_qbit_num_limit-1+(13-target_qbit_loc1)*target_qbit_loc1/2+target_qbit_loc2),:] =  inst.encode_permute_map( permute_map_np.tolist() )
+				print('target_qubit_pair_diff', target_qbit_pair_diff)
 		permute_maps_mt = g.from_data( np.asarray(permute_map, dtype=np.uint8), layout=layout_permute_maps )
 		permute_maps_mt.is_static = True
 		print(permute_maps_mt.shape)
@@ -169,6 +169,10 @@ def compile() -> List[str]:
 		# if target_qubit_loc at the idx-th element is in state_0 |0> then all the 8 bits of the idx-th element is set to 1, thus state_0[idx] = 255
 		states_1_np = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint8 )
 		states_0_np = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint8 )
+		states_00_np = np.zeros( (required_permute_map_number-small_qbit_num_limit, 320,), dtype=np.uint8 )
+		states_01_np = np.zeros( (required_permute_map_number-small_qbit_num_limit, 320,), dtype=np.uint8 )
+		states_11_np = np.zeros( (required_permute_map_number-small_qbit_num_limit, 320,), dtype=np.uint8 )
+		states_10_np = np.zeros( (required_permute_map_number-small_qbit_num_limit, 320,), dtype=np.uint8 )
 		for target_qbit_loc in range(small_qbit_num_limit):
 			target_qbit_pair_diff = 1 << target_qbit_loc
 			for idx in range(256): # 256 = 2^8
@@ -180,6 +184,16 @@ def compile() -> List[str]:
 					states_0_np[target_qbit_loc, idx] = 255
 			print( "states |1> at target qubit ", target_qbit_loc, " is:" )
 			#print( states_1_np[target_qbit_loc, 0:256] )
+
+		for target_qbit_loc1 in range(small_qbit_num_limit):
+			for target_qbit_loc2 in range(target_qbit_loc1+1, small_qbit_num_limit):
+				states_00_np[int((13-target_qbit_loc1)*target_qbit_loc1/2+target_qbit_loc2-1)] = states_0_np[target_qbit_loc1] & states_0_np[target_qbit_loc2]
+				states_01_np[int((13-target_qbit_loc1)*target_qbit_loc1/2+target_qbit_loc2-1)] = states_0_np[target_qbit_loc1] & states_1_np[target_qbit_loc2]
+				states_11_np[int((13-target_qbit_loc1)*target_qbit_loc1/2+target_qbit_loc2-1)] = states_1_np[target_qbit_loc1] & states_1_np[target_qbit_loc2]
+				states_10_np[int((13-target_qbit_loc1)*target_qbit_loc1/2+target_qbit_loc2-1)] = states_1_np[target_qbit_loc1] & states_0_np[target_qbit_loc2]
+				print( "state |00> at target qbit ", target_qbit_loc1, target_qbit_loc2, " is:" )
+				#print( states_00_np[int((13-target_qbit_loc1)*target_qbit_loc1/2+target_qbit_loc2-1)] )
+
 
 		states_1_mt = g.from_data( np.asarray(states_1_np, dtype=np.uint8), layout=layout_states_1 )
 		states_1_mt.is_static = True
