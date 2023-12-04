@@ -74,7 +74,8 @@ layout_distribute_map_tensor    	= "H1(E), S1(17)"
 layout_distribute_map_tensor_state1 = "H1(E), S1(17)"
 layout_distribute_map_tensor_state0 = "H1(E), S1(18)"
 
-#layout_state_1_broadcasted			= 
+layout_state_1_broadcasted			= "H1(E), -1, S4(25-29)"
+layout_state_0_broadcasted			= "H1(E), -1, S4(19-23)"
 
 
 # permute maps at -- used to reorder the state vector elements according to the given target qubit
@@ -575,9 +576,9 @@ def compile() -> List[str]:
 
 			
 					state_1_broadcasted_st = g.reinterpret( state_1_broadcasted_st, g.uint32 )
-					state_1_broadcasted_mt = state_1_broadcasted_st.write(name=f"state_1_broadcasted_{gate_idx}", layout=f"H1(E), -1, S4", program_output=False) #TODO layout
+					state_1_broadcasted_mt = state_1_broadcasted_st.write(name=f"state_1_broadcasted_{gate_idx}", layout=layout_state_1_broadcasted, program_output=False) #TODO layout
 					state_0_broadcasted_st = g.reinterpret( state_0_broadcasted_st, g.uint32 )
-					state_0_broadcasted_mt = state_0_broadcasted_st.write(name=f"state_0_broadcasted_{gate_idx}", layout=f"H1(E), -1, S4", program_output=False) #TODO layout
+					state_0_broadcasted_mt = state_0_broadcasted_st.write(name=f"state_0_broadcasted_{gate_idx}", layout=layout_state_0_broadcasted, program_output=False) #TODO layout
 
 				# filter the elements in the vector according to the indices standig for output states |0> and |1> 
 
