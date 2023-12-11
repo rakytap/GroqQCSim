@@ -46,8 +46,8 @@ layout_state_vector_imag_permuted = "H1(W), -1, S4(39-43)"
 
 # layout to gather map selecting the permutation map corresponding to the target qubit  -- the MT should be replaced by on chip determined gather map, currently it is uploaded from CPU
 layout_state_permute_map_selector ="H1(W), A6(320-325), S1(17)"
-layout_state_1_selector				="H1(E), A2(0-1), S1(19)" 
-layout_state_0_selector				="H1(E), A2(0-1), S1(21)"
+layout_state_1_selector				="H1(E), A6(0-5), S1(19)" 
+layout_state_0_selector				="H1(E), A6(0-5), S1(21)"
 
 layout_gate_kernels_real_packed ="H1(E), S4(40-43)"
 layout_gate_kernels_imag_packed	="H1(E), S4(40-43)"
@@ -71,6 +71,15 @@ layout_gate_kernels_imag_EAST_copy	="H1(E), S4(4-7)"
 # addresses from 2*small_qbit_num_limit to 2*small_qbit_num_limit+3 	are occupied by distributor maps to used to broadcast elements 01,10,11 of the gate kernel
 layout_states_1						= f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(E), S1(17)"  
 layout_states_0						= f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(E), S1(18)"
+layout_states_00					= f"A{required_permute_map_number-small_qbit_num_limit}({small_qbit_num_limit+5}-{required_permute_map_number+4}), H1(E), S1(17)"
+layout_states_01					= f"A{required_permute_map_number-small_qbit_num_limit}({small_qbit_num_limit+5}-{required_permute_map_number+4}), H1(E), S1(18)"
+layout_states_10					= f"A{required_permute_map_number-small_qbit_num_limit}({required_permute_map_number+5}-{2*required_permute_map_number-small_qbit_num_limit+4}), H1(E), S1(17)"
+layout_states_11					= f"A{required_permute_map_number-small_qbit_num_limit}({required_permute_map_number+5}-{2*required_permute_map_number-small_qbit_num_limit+4}), H1(E), S1(18)"
+print(layout_states_00)
+print(layout_states_01)
+print(layout_states_10)
+print(layout_states_11)
+
 layout_distribute_map_tensor    	= "H1(E), S1(17)"
 layout_distribute_map_tensor_state1 = "H1(E), S1(17)"
 layout_distribute_map_tensor_state0 = "H1(E), S1(18)"
@@ -111,8 +120,8 @@ def compile() -> List[str]:
 		State_input_imag_mt = g.input_tensor(shape=(matrix_size,), dtype=g.float32, name="State_input_imag", layout=layout_State_input_imag + f", A{memory_slices}(0-{memory_slices-1})")
 
 		state_permute_map_selector_mt 	= g.input_tensor(shape=(6,320,), dtype=g.uint8, name="state_permute_map_selector", layout=layout_state_permute_map_selector)
-		state_1_selector_mt				= g.input_tensor(shape=(2,320,), dtype=g.uint8, name="state_1_selector", layout=layout_state_1_selector)
-		state_0_selector_mt				= g.input_tensor(shape=(2,320,), dtype=g.uint8, name="state_0_selector", layout=layout_state_0_selector)
+		state_1_selector_mt				= g.input_tensor(shape=(6,320,), dtype=g.uint8, name="state_1_selector", layout=layout_state_1_selector)
+		state_0_selector_mt				= g.input_tensor(shape=(6,320,), dtype=g.uint8, name="state_0_selector", layout=layout_state_0_selector)
 		print(state_permute_map_selector_mt.shape)
 		print(dir(state_permute_map_selector_mt))
 
@@ -136,7 +145,7 @@ def compile() -> List[str]:
 
 			permute_map_np = np.zeros( (256,), dtype=np.uint32 )
 			target_qbit_pair_diff = 1 << target_qbit_loc
-			print('target_qubit_pair_diff', target_qbit_pair_diff)
+			#print('target_qubit_pair_diff', target_qbit_pair_diff)
 			
 			for idx in range(256): # 256 = 2^8
 				if (idx < matrix_size):
@@ -158,7 +167,7 @@ def compile() -> List[str]:
 					else:
 						permute_map_np[idx] = idx
 				permute_map[int(small_qbit_num_limit-1+(13-target_qbit_loc1)*target_qbit_loc1/2+target_qbit_loc2),:] =  inst.encode_permute_map( permute_map_np.tolist() )
-				print('target_qubit_pair_diff', target_qbit_pair_diff)
+				#print('target_qubit_pair_diff', target_qbit_pair_diff)
 		permute_maps_mt = g.from_data( np.asarray(permute_map, dtype=np.uint8), layout=layout_permute_maps )
 		permute_maps_mt.is_static = True
 		print(permute_maps_mt.shape)
@@ -192,7 +201,7 @@ def compile() -> List[str]:
 				states_01_np[int((13-target_qbit_loc1)*target_qbit_loc1/2+target_qbit_loc2-1)] = states_0_np[target_qbit_loc1] & states_1_np[target_qbit_loc2]
 				states_11_np[int((13-target_qbit_loc1)*target_qbit_loc1/2+target_qbit_loc2-1)] = states_1_np[target_qbit_loc1] & states_1_np[target_qbit_loc2]
 				states_10_np[int((13-target_qbit_loc1)*target_qbit_loc1/2+target_qbit_loc2-1)] = states_1_np[target_qbit_loc1] & states_0_np[target_qbit_loc2]
-				print( "state |00> at target qbit ", target_qbit_loc1, target_qbit_loc2, " is:" )
+				#print( "state |00> at target qbit ", target_qbit_loc1, target_qbit_loc2, " is:" )
 				#print( states_00_np[int((13-target_qbit_loc1)*target_qbit_loc1/2+target_qbit_loc2-1)] )
 
 
@@ -201,6 +210,22 @@ def compile() -> List[str]:
 
 		states_0_mt = g.from_data( np.asarray(states_0_np, dtype=np.uint8), layout=layout_states_0 )
 		states_0_mt.is_static = True
+
+		states_00_mt = g.from_data( np.asarray(states_00_np, dtype=np.uint8), layout=layout_states_00 )
+		states_00_mt.is_static = True
+		print("states_00 done")
+
+		states_01_mt = g.from_data( np.asarray(states_01_np, dtype=np.uint8), layout=layout_states_01 )
+		states_01_mt.is_static = True
+		print("states_01 done")
+
+		states_10_mt = g.from_data( np.asarray(states_10_np, dtype=np.uint8), layout=layout_states_10 )
+		states_10_mt.is_static = True
+		print("states_10 done")
+
+		states_11_mt = g.from_data( np.asarray(states_11_np, dtype=np.uint8), layout=layout_states_11 )
+		states_11_mt.is_static = True
+		print("states_11 done")
 
 		pgm_pkg.compile_program_context(pgm1)
 
