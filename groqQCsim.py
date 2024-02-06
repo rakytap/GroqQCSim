@@ -71,10 +71,10 @@ layout_gate_kernels_imag_EAST_copy	="H1(E), S4(4-7)"
 # addresses from 2*small_qbit_num_limit to 2*small_qbit_num_limit+3 	are occupied by distributor maps to used to broadcast elements 01,10,11 of the gate kernel
 layout_states_1						= f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(E), S1(17)"  
 layout_states_0						= f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(E), S1(18)"
-layout_states_00					= f"A{required_permute_map_number-small_qbit_num_limit}({small_qbit_num_limit+5}-{required_permute_map_number+4}), H1(E), S1(17)"
-layout_states_01					= f"A{required_permute_map_number-small_qbit_num_limit}({small_qbit_num_limit+5}-{required_permute_map_number+4}), H1(E), S1(18)"
-layout_states_10					= f"A{required_permute_map_number-small_qbit_num_limit}({required_permute_map_number+5}-{2*required_permute_map_number-small_qbit_num_limit+4}), H1(E), S1(17)"
-layout_states_11					= f"A{required_permute_map_number-small_qbit_num_limit}({required_permute_map_number+5}-{2*required_permute_map_number-small_qbit_num_limit+4}), H1(E), S1(18)"
+layout_states_00					= f"A{required_permute_map_number-small_qbit_num_limit}({small_qbit_num_limit+1}-{required_permute_map_number}), H1(E), S1(17)"
+layout_states_01					= f"A{required_permute_map_number-small_qbit_num_limit}({small_qbit_num_limit+1}-{required_permute_map_number}), H1(E), S1(18)"
+layout_states_10					= f"A{required_permute_map_number-small_qbit_num_limit}({required_permute_map_number+1}-{2*required_permute_map_number-small_qbit_num_limit}), H1(E), S1(17)"
+layout_states_11					= f"A{required_permute_map_number-small_qbit_num_limit}({required_permute_map_number+1}-{2*required_permute_map_number-small_qbit_num_limit}), H1(E), S1(18)"
 print(layout_states_00)
 print(layout_states_01)
 print(layout_states_10)
@@ -95,7 +95,7 @@ layout_permute_maps = f"A{required_permute_map_number}(0-{required_permute_map_n
 gate_count = 2
 
 # label to indicate the 00, 01, 10, 11 elements of the gate kernel
-gate_kernel_element_labels = ["00", "01", "10", "11"]
+gate_kernel_element_labels = ["00", "01", "02", "03", "10", "11", "12", "13", "20", "21", "22", "23", "30", "31", "32", "33"]
 
 def compile() -> List[str]:
 	"""Compiles a program package with 2 programs.
@@ -299,22 +299,75 @@ def compile() -> List[str]:
 		# generate gate kernels to be applied on state |0> and resulting to alternating states |0> and |1> according to the periodicity of the current target qubit
 
 		# create distributo maps for the process to broadcast elements 00,01,10,11 of the gate kernel onto a 320 element vectors
+		distribute_map_tensor_list = []
 		distributor_00_np = np.zeros( (320,), dtype=np.uint8 )
-		distribute_map_tensor_mt_00 = g.from_data( np.asarray(distributor_00_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({small_qbit_num_limit})" )
+		distribute_map_tensor_mt_00 = g.from_data( np.asarray(distributor_00_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*required_permute_map_number-small_qbit_num_limit})" )
+		distribute_map_tensor_list.append(distribute_map_tensor_mt_00)
+
 		distributor_01_np = np.ones( (320,), dtype=np.uint8 )
-		distribute_map_tensor_mt_01 = g.from_data( np.asarray(distributor_01_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({small_qbit_num_limit+1})" )
-		distributor_10_np = np.ones( (320,), dtype=np.uint8 )*2
-		distribute_map_tensor_mt_10 = g.from_data( np.asarray(distributor_10_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({small_qbit_num_limit+2})" )
-		distributor_11_np = np.ones( (320,), dtype=np.uint8 )*3
-		distribute_map_tensor_mt_11 = g.from_data( np.asarray(distributor_11_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({small_qbit_num_limit+3})" )
+		distribute_map_tensor_mt_01 = g.from_data( np.asarray(distributor_01_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*required_permute_map_number-small_qbit_num_limit+1})" )
+		distribute_map_tensor_list.append(distribute_map_tensor_mt_01)
 
-		g.add_mem_constraints([distribute_map_tensor_mt_01, distribute_map_tensor_mt_10, distribute_map_tensor_mt_11], [distribute_map_tensor_mt_00], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
-		g.add_mem_constraints([distribute_map_tensor_mt_00, distribute_map_tensor_mt_10, distribute_map_tensor_mt_11], [distribute_map_tensor_mt_01], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
-		g.add_mem_constraints([distribute_map_tensor_mt_01, distribute_map_tensor_mt_00, distribute_map_tensor_mt_11], [distribute_map_tensor_mt_10], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
+		distributor_02_np = np.ones( (320,), dtype=np.uint8 )*2
+		distribute_map_tensor_mt_02 = g.from_data( np.asarray(distributor_02_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*required_permute_map_number-small_qbit_num_limit+2})" )
+		distribute_map_tensor_list.append(distribute_map_tensor_mt_02)
 
-		distribute_map_tensor_list = [distribute_map_tensor_mt_00, distribute_map_tensor_mt_01, distribute_map_tensor_mt_10, distribute_map_tensor_mt_11]
+		distributor_03_np = np.ones( (320,), dtype=np.uint8 )*3
+		distribute_map_tensor_mt_03 = g.from_data( np.asarray(distributor_03_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*required_permute_map_number-small_qbit_num_limit+3})" )
+		distribute_map_tensor_list.append(distribute_map_tensor_mt_03)
 
-  
+		distributor_10_np = np.ones( (320,), dtype=np.uint8 )*4
+		distribute_map_tensor_mt_10 = g.from_data( np.asarray(distributor_10_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*required_permute_map_number-small_qbit_num_limit+4})" )
+		distribute_map_tensor_list.append(distribute_map_tensor_mt_10)
+
+		distributor_11_np = np.ones( (320,), dtype=np.uint8 )*5
+		distribute_map_tensor_mt_11 = g.from_data( np.asarray(distributor_11_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*required_permute_map_number-small_qbit_num_limit+5})" )
+		distribute_map_tensor_list.append(distribute_map_tensor_mt_11)
+
+		distributor_12_np = np.ones( (320,), dtype=np.uint8 )*6
+		distribute_map_tensor_mt_12 = g.from_data( np.asarray(distributor_12_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*required_permute_map_number-small_qbit_num_limit+6})" )
+		distribute_map_tensor_list.append(distribute_map_tensor_mt_12)
+
+		distributor_13_np = np.ones( (320,), dtype=np.uint8 )*7
+		distribute_map_tensor_mt_13 = g.from_data( np.asarray(distributor_13_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*required_permute_map_number-small_qbit_num_limit+7})" )
+		distribute_map_tensor_list.append(distribute_map_tensor_mt_13)
+
+		distributor_20_np = np.ones( (320,), dtype=np.uint8 )*8
+		distribute_map_tensor_mt_20 = g.from_data( np.asarray(distributor_20_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*required_permute_map_number-small_qbit_num_limit+8})" )
+		distribute_map_tensor_list.append(distribute_map_tensor_mt_20)
+
+		distributor_21_np = np.ones( (320,), dtype=np.uint8 )*9
+		distribute_map_tensor_mt_21 = g.from_data( np.asarray(distributor_21_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*required_permute_map_number-small_qbit_num_limit+9})" )
+		distribute_map_tensor_list.append(distribute_map_tensor_mt_21)
+
+		distributor_22_np = np.ones( (320,), dtype=np.uint8 )*10
+		distribute_map_tensor_mt_22 = g.from_data( np.asarray(distributor_22_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*required_permute_map_number-small_qbit_num_limit+10})" )
+		distribute_map_tensor_list.append(distribute_map_tensor_mt_22)
+		
+		distributor_23_np = np.ones( (320,), dtype=np.uint8 )*11
+		distribute_map_tensor_mt_23 = g.from_data( np.asarray(distributor_23_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*required_permute_map_number-small_qbit_num_limit+11})" )
+		distribute_map_tensor_list.append(distribute_map_tensor_mt_23)
+
+		distributor_30_np = np.ones( (320,), dtype=np.uint8 )*12
+		distribute_map_tensor_mt_30 = g.from_data( np.asarray(distributor_30_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*required_permute_map_number-small_qbit_num_limit+12})" )
+		distribute_map_tensor_list.append(distribute_map_tensor_mt_30)
+
+		distributor_31_np = np.ones( (320,), dtype=np.uint8 )*13
+		distribute_map_tensor_mt_31 = g.from_data( np.asarray(distributor_31_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*required_permute_map_number-small_qbit_num_limit+13})" )
+		distribute_map_tensor_list.append(distribute_map_tensor_mt_31)
+
+		distributor_32_np = np.ones( (320,), dtype=np.uint8 )*14
+		distribute_map_tensor_mt_32 = g.from_data( np.asarray(distributor_32_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*required_permute_map_number-small_qbit_num_limit+14})" )
+		distribute_map_tensor_list.append(distribute_map_tensor_mt_32)
+
+		distributor_33_np = np.ones( (320,), dtype=np.uint8 )*15
+		distribute_map_tensor_mt_33 = g.from_data( np.asarray(distributor_33_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({2*required_permute_map_number-small_qbit_num_limit+15})" )
+		distribute_map_tensor_list.append(distribute_map_tensor_mt_33)
+
+		print("disribute maps done")
+
+		for i in range(len(distribute_map_tensor_list)):
+				 g.add_mem_constraints(distribute_map_tensor_list[:i], [distribute_map_tensor_list[i]], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)     
 
 		gate_kernels_broadcasted_imag_list = []
 		gate_kernels_broadcasted_real_list = []
@@ -337,8 +390,8 @@ def compile() -> List[str]:
 				label = gate_kernel_element_labels[idx]
 
 				# concat real and imag parts to pipeline them at once through a broadcaster
-				gate_kernel_real_st = gate_kernel_real_mt.read( streams=g.SG4[1], time=12 + 2*idx + ((gate_idx+1)//2)*loop_time_long_cycle + (gate_idx//2)*loop_time_short_cycle ) 
-				gate_kernel_imag_st = gate_kernel_imag_mt.read( streams=g.SG4[1], time=14 + 2*idx + ((gate_idx+1)//2)*loop_time_long_cycle + (gate_idx//2)*loop_time_short_cycle )		
+				gate_kernel_real_st = gate_kernel_real_mt.read( streams=g.SG4[1], time=12 + 2*idx + ((gate_idx+1)//2)*loop_time_long_cycle + (gate_idx//2)*loop_time_short_cycle + 60) 
+				gate_kernel_imag_st = gate_kernel_imag_mt.read( streams=g.SG4[1], time=14 + 2*idx + ((gate_idx+1)//2)*loop_time_long_cycle + (gate_idx//2)*loop_time_short_cycle + 60 )		
 				gate_kernel_st = g.concat_inner_splits( [gate_kernel_real_st, gate_kernel_imag_st] )
 				distributor_request = distributor_requests[(gate_idx+1) % 2]
 				gate_kernel_broadcasted_st = g.distribute_8( gate_kernel_st, 
@@ -374,7 +427,9 @@ def compile() -> List[str]:
 
 				layout_real = layout_real + f", A1({address_offset + gate_idx})"
 				layout_imag = layout_imag + f", A1({address_offset + gate_idx})"
+				#gate_kernels_broadcasted_real_mt = gate_kernel_broadcasted_real_st.write(name=f"gate_kernel_broadcasted_real_{gate_idx}_"+label, layout=layout_real)#, program_output=True)
 				gate_kernels_broadcasted_real_mt = gate_kernel_broadcasted_real_st.write(name=f"gate_kernel_broadcasted_real_{gate_idx}_"+label, layout=layout_real)#, program_output=True)
+				#gate_kernels_broadcasted_imag_mt = gate_kernel_broadcasted_imag_st.write(name=f"gate_kernel_broadcasted_imag_{gate_idx}_"+label, layout=layout_imag)#, program_output=True)
 				gate_kernels_broadcasted_imag_mt = gate_kernel_broadcasted_imag_st.write(name=f"gate_kernel_broadcasted_imag_{gate_idx}_"+label, layout=layout_imag)#, program_output=True)
 				
 				# copies of the gate elements to support read concurrency in forthcoming processeses
@@ -504,8 +559,8 @@ def compile() -> List[str]:
 		for idx in range(320):
 			distribute_map_np[idx] = idx % 16
 
-		distribute_map_tensor_state1_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state1 + f", A1({small_qbit_num_limit+4})" )
-		distribute_map_tensor_state0_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state0 + f", A1({small_qbit_num_limit+4})" )
+		distribute_map_tensor_state1_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state1 + f", A1({2*required_permute_map_number-small_qbit_num_limit+16})" )
+		distribute_map_tensor_state0_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state0 + f", A1({2*required_permute_map_number-small_qbit_num_limit+16})" )
 		g.add_mem_constraints([states_1_shared], [distribute_map_tensor_state1_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 		g.add_mem_constraints([states_0_shared], [distribute_map_tensor_state0_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 		pre = []

@@ -1,4 +1,4 @@
-from squander import N_Qubit_Decomposition_adaptive, Gates_Block, X
+from squander import N_Qubit_Decomposition_adaptive, Circuit, X
 import numpy as np
 import time
 
@@ -21,7 +21,7 @@ State_orig = Umtx[:, 0]
 
 
 # define quantum circuit
-circuit = Gates_Block(qbit_num)
+circuit = Circuit(qbit_num)
 print(dir(circuit))
 print(circuit.add_SX(target_qbit[0]))
 circuit.add_Y(target_qbit[1])
@@ -40,6 +40,7 @@ State_transformed_oracle = State_orig.copy()
 start_time = time.time()
 circuit.apply_to( parameters, State_transformed_oracle )
 time_Cpp = time.time()-start_time
+
 
 
 #####################################################
