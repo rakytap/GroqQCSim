@@ -504,8 +504,9 @@ def compile() -> List[str]:
 		#state_permute_map_selector_st = state_permute_map_selector_shared.read(streams=g.SG1_W[24])
 		print(state_permute_map_selector_shared.physical_shape)
 		print(dir(state_permute_map_selector_shared.physical_shape))
+		print(state_permute_map_selector_shared.shape)
 		#state_permute_map_selector_list = g.split_inner_splits(state_permute_map_selector_st)
-		state_permute_map_selector_list = g.split_vectors(input=state_permute_map_selector_shared, splits=[1, 1])
+		state_permute_map_selector_list = g.split_vectors(input=state_permute_map_selector_shared, splits=[1, 1, 1, 1, 1, 1])
 		print(state_permute_map_selector_list)
 		print(state_permute_map_selector_list[1].shape)
 		permute_maps_mt_shared = g.shared_memory_tensor(permute_maps_mt, name=f"permute_maps_shared")
@@ -948,39 +949,21 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 	modified_qbits[0:320:16] = target_qbit[0]
 	"""
 	# map for mem_gather to select the permutation map for the given target qubit. Th epermutor is used only for target qubits smaller than small_qbit_num_limit
-	state_permut_map_selector_amount = 0
-	for i in target_qbit:
-		if type(i) != tuple:
-			state_permut_map_selector_amount += 1
-		else:
-			state_permut_map_selector_amount += 3
-		
-	print(state_permut_map_selector_amount)
-	state_permute_map_selector = np.zeros( (state_permut_map_selector_amount,320,), dtype=np.uint8 )
+	state_permute_map_selector = np.zeros( (gate_count,320*3,), dtype=np.uint8 )
 	step = 0
 	for i in range(len(target_qbit)):
-		if type(target_qbit[i]) != tuple:
-			if ( target_qbit[i] < small_qbit_num_limit ) :
-				state_permute_map_selector[step,0:320:16] = target_qbit[i]
-			else :
+		for j in range(2):
+			if ( target_qbit[i][j] < small_qbit_num_limit ) :
+				state_permute_map_selector[step,0:320:16] = target_qbit[i][j]
+			else:
 				state_permute_map_selector[step,0:320:16] = 0
 			step += 1
-		else:
-			for j in range(len(target_qbit[i])):
-				if ( target_qbit[i][j] < small_qbit_num_limit ) :
-					state_permute_map_selector[step,0:320:16] = target_qbit[i][j]
-				else:
-					state_permute_map_selector[step,0:320:16] = 0
-				step += 1
-			tmp = 0
-			for j in range(len(target_qbit[i])):
-				tmp += (10**(len(target_qbit[i])-j-1))*target_qbit[i][j]
-			state_permute_map_selector[step,0:320:16] = tmp
-			step += 1
+		target_qbit_copy = list(target_qbit[:])
+		target_qbit_copy = sorted(target_qbit_copy)
+		state_permute_map_selector[step,0:320:16] = int(small_qbit_num_limit-1+(13-target_qbit_copy[i][0])*target_qbit_copy[i][0]/2+target_qbit_copy[i][1])
+		step += 1
 
 	print("state_permute_map_selector: ", state_permute_map_selector)
-	
-
 
 	# maps for mem_gather to select the correct state_1 indices according to the target qubit
 	state_1_selector = state_permute_map_selector#np.zeros( (2,320,), dtype=np.uint8 )

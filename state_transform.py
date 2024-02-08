@@ -9,7 +9,7 @@ import groqQCsim
 
 qbit_num = 8
 
-target_qbit = [1, 3]
+target_qbit = [(1, 2), (65, 5)]
 
 # determine the soze of the unitary to be decomposed
 matrix_size = int(2**qbit_num)
@@ -23,8 +23,7 @@ State_orig = Umtx[:, 0]
 # define quantum circuit
 circuit = Circuit(qbit_num)
 print(dir(circuit))
-print(circuit.add_SX(target_qbit[0]))
-circuit.add_Y(target_qbit[1])
+print(circuit.add_CNOT(target_qbit[0][0], target_qbit[0][1]))
 
 # get the number of free parameters in the circuit
 parameter_num = circuit.get_Parameter_Num()
