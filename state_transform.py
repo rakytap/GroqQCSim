@@ -9,7 +9,7 @@ import groqQCsim
 
 qbit_num = 8
 
-target_qbit = [(1, 2), (6, 5)]
+target_qbit = [(1, 2)]
 
 # determine the soze of the unitary to be decomposed
 matrix_size = int(2**qbit_num)
@@ -45,14 +45,16 @@ time_Cpp = time.time()-start_time
 #####################################################
 # get the gate kernel
 
-gate_kernel_single = np.array([[0+0j,1+0j],[1+0j,0+0j]], dtype = np.complex64)
+gate_kernel_single = np.eye( 4, 4, dtype = np.complex64)
 
-gate_kernels = np.zeros((80, 2, 2,), dtype=np.complex64) #np.array([[[0,1],[1,0]]])
-for idx in range(80):
+gate_kernels = np.zeros((20, 4, 4,), dtype=np.complex64) #np.array([[[0,1],[1,0]]])
+for idx in range(20):
 	gate_kernels[idx] = gate_kernel_single
 
-gate_kernels[0] = np.array([[0.5+0.5j,0.5-0.5j],[0.5-0.5j,0.5+0.5j]], dtype = np.complex64)
-gate_kernels[1] = np.array([[0+0j,1+0j],[1+0j,0+0j]], dtype = np.complex64)
+gate_kernels[0] = np.array([[0.11+0.51j,0.12-0.52j,0.13-0.53j,0.14-0.54j],
+                            [0.15-0.55j,0.16+0.56j,0.17+0.57j,0.18+0.58j],
+                            [0.19-0.59j,0.20+0.60j,0.21+0.61j,0.22+0.62j],
+                            [0.23+0.63j,0.24+0.64j,0.25+0.65j,0.26+0.66j]], dtype = np.complex64)
 print( "gate kernel shape: ", gate_kernels.shape )
 
 
