@@ -1,4 +1,4 @@
-from squander import N_Qubit_Decomposition_adaptive, Gates_Block
+from squander import N_Qubit_Decomposition_adaptive, Circuit
 import numpy as np
 import time
 import sys
@@ -9,7 +9,7 @@ import groqQCsim
 import time
 
 
-qbit_num = 8
+qbit_num = 9
 
 target_qbit = [0, 1]
 
@@ -24,10 +24,10 @@ State_orig = Umtx[:,0]
 
 
 # define quantum circuit
-circuit = Gates_Block(qbit_num)
+circuit = Circuit(qbit_num)
 print(dir(circuit))
-print(circuit.add_X( target_qbit[0] ))
-circuit.add_X(target_qbit[1])
+circuit.add_X( target_qbit[0] )
+#circuit.add_X( target_qbit[1] )
 
 # get the number of free parameters in the circuit
 parameter_num = circuit.get_Parameter_Num()
