@@ -39,7 +39,7 @@ print('Number of parameters in the circuit: ', parameter_num, flush=True)
 
 #create an array of random parameters
 parameters = np.random.rand( parameter_num )*2*np.pi
-parameters[2] = -parameters[1]
+#parameters[2] = -parameters[1]
 
 
 
