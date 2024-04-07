@@ -9,7 +9,7 @@ import groqQCsim
 import time
 
 
-qbit_num = 10
+qbit_num = 14
 
 # initialize setting for the Groq API specific to the supported number of qubits
 groqQCsim.initialize_qbit_num( qbit_num )
@@ -19,10 +19,11 @@ target_qbit = [0]
 # determine the soze of the unitary to be decomposed
 matrix_size = 1 << qbit_num
    
-# creating a random unitary to be decomposed
-Umtx = unitary_group.rvs(matrix_size)
+State_orig_real = np.random.rand( matrix_size )
+State_orig_imag = np.random.rand( matrix_size )
+State_orig = State_orig_real + 1j*State_orig_imag
+State_orig = State_orig/np.linalg.norm(State_orig)
 
-State_orig = Umtx[:,0]
 
 
 
