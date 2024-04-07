@@ -738,7 +738,7 @@ def compile() -> List[str]:
 				#state_real__gate_first_column_real_st = g.mul( state_real_st, gate_first_column_real_st, alus=alu_rq_12, output_streams=g.SG4_E[0], time=150 )
 				
 				gate_first_column_real_mt_256.latch(alus=alu_rq_12, time=0)
-				state_real__gate_first_column_real_st = g.mul( None, state_real_st, alus=alu_rq_12, output_streams=g.SG4_E[0], time=150 )				
+				state_real__gate_first_column_real_st = g.mul( None, state_real_st, alus=alu_rq_12, output_streams=g.SG4_E[0], time=2 )				
 
 											
 				
