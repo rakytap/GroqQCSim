@@ -706,10 +706,12 @@ def compile() -> List[str]:
 				# calculate Psi_real * gate_first_column_real				
 				state_real_st 			              = Psi_transformed_real_mt.read( streams=[g.SG4[0]] )	
 				gate_first_column_real_mt_256         = g.constant_tensor((1,256,), g.float32, storage_req=storage_req_real_first_column, name="gate_first_column_real_mt_256", initialized=False)	
-				gate_first_column_real_st 		      = gate_first_column_real_mt_256.read( streams=[g.SG4_W[1]] )
-				state_real__gate_first_column_real_st = g.mul( state_real_st, gate_first_column_real_st, alus=[12], output_streams=g.SG4_E[0], time=0 )
+				#gate_first_column_real_st 		      = gate_first_column_real_mt_256.read( streams=[g.SG4_W[1]] )
+				#state_real__gate_first_column_real_st = g.mul( state_real_st, gate_first_column_real_st, alus=alu_rq_12, output_streams=g.SG4_E[0], time=150 )
 				
-		
+				gate_first_column_real_mt_256.latch(alus=alu_rq_12, time=0)
+				state_real__gate_first_column_real_st = g.mul( None, state_real_st, alus=alu_rq_12, output_streams=g.SG4_E[0], time=150 )				
+
 											
 				
 				# calculate Psi_imag * gate_first_column_imag
@@ -720,25 +722,28 @@ def compile() -> List[str]:
 
 				# calculate Psi_real * gate_first_column_real - Psi_imag * gate_first_column_imag
 				state__gate_first_column_real_st	= g.sub( state_real__gate_first_column_real_st, state_imag__gate_first_column_imag_st, alus=[2], output_streams=g.SG4_E[2] )
+				
+				
 				#res_mt = state__gate_first_column_real_st.write(name=f"test", layout="H1(E), -1, S4", program_output=True)
 
 				
 				
 				
 				# calculate Psi_imag * gate_first_column_real
-				state_imag__gate_first_column_real_st	= g.mul( state_imag_st, gate_first_column_real_st, alus=[1], output_streams=g.SG4_E[1] )
-				
+				#state_imag__gate_first_column_real_st	= g.mul( state_imag_st, gate_first_column_real_st, alus=alu_rq_1, output_streams=g.SG4_E[1] )
+				gate_first_column_real_mt_256.latch(alus=alu_rq_1, time=1)
+				state_imag__gate_first_column_real_st	= g.mul( None, state_imag_st, alus=alu_rq_1, output_streams=g.SG4_E[3] )				
 				
 				# calculate Psi_real * gate_first_column_imag
-				state_real__gate_first_column_imag_st	= g.mul( state_real_st, gate_first_column_imag_st, alus=[0], output_streams=g.SG4_E[3] )
+				state_real__gate_first_column_imag_st	= g.mul( state_real_st, gate_first_column_imag_st, alus=[0], output_streams=g.SG4_E[1] )
 
 				# calculate Psi_real * gate_first_column_imag + Psi_imag * gate_first_column_real
 				state__gate_first_column_imag_st	= g.add( state_imag__gate_first_column_real_st, state_real__gate_first_column_imag_st, alus=[3], output_streams=g.SG4_W[1]  )
 			
-				#res3_mt = state__gate_first_column_imag_st.write(name=f"test3", layout="H1, -1, S4", program_output=True)
+				res3_mt = state__gate_first_column_imag_st.write(name=f"test3", layout="H1, -1, S4", program_output=True)
 				
 				
-
+				
 				
 				# calculate Psi_permuted_real * gate_second_column_real
 				state_permuted_real_st 			            	= permuted_state_real_mt.read( streams=[g.SG4[7]] )
