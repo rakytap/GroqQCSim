@@ -9,12 +9,15 @@ import groqQCsim
 import time
 
 
-qbit_num = 9
+qbit_num = 10
+
+# initialize setting for the Groq API specific to the supported number of qubits
+groqQCsim.initialize_qbit_num( qbit_num )
 
 target_qbit = [0, 1]
 
 # determine the soze of the unitary to be decomposed
-matrix_size = int(2**qbit_num)
+matrix_size = 1 << qbit_num
    
 # creating a random unitary to be decomposed
 Umtx = unitary_group.rvs(matrix_size)
@@ -25,9 +28,10 @@ State_orig = Umtx[:,0]
 
 # define quantum circuit
 circuit = Circuit(qbit_num)
-print(dir(circuit))
-circuit.add_X( target_qbit[0] )
-#circuit.add_X( target_qbit[1] )
+circuit.add_U3( target_qbit[0] )
+
+circuit_1 = Circuit( 1 )
+circuit_1.add_U3( 0 )
 
 # get the number of free parameters in the circuit
 parameter_num = circuit.get_Parameter_Num()
@@ -35,6 +39,9 @@ print('Number of parameters in the circuit: ', parameter_num, flush=True)
 
 #create an array of random parameters
 parameters = np.random.rand( parameter_num )*2*np.pi
+parameters[2] = -parameters[1]
+
+
 
 
 # apply the circuit to a quantum state
@@ -45,18 +52,17 @@ circuit.apply_to( parameters, State_transformed_oracle )
 time_Cpp = time.time()-start_time
 
 
-
 #####################################################
 # get the gate kernel
 
-gate_kernel_single = np.array([[0+0j,1+0j],[1+0j,0+0j]], dtype = np.complex64)
+gate_kernel_single = circuit_1.get_Matrix( parameters )
+print( 'The singla qubit gate kernel is:')
+print( gate_kernel_single )
 
 gate_kernels = np.zeros((80, 2, 2,), dtype=np.complex64) #np.array([[[0,1],[1,0]]])
 for idx in range(80):
 	gate_kernels[idx] = gate_kernel_single
 
-gate_kernels[0] = np.array([[0+0j,1+0j],[1+0j,0+0j]], dtype = np.complex64)
-gate_kernels[1] = np.array([[0+0j,1+0j],[1+0j,0+0j]], dtype = np.complex64)
 print( "gate kernel shape: ", gate_kernels.shape )
 
 
@@ -73,12 +79,20 @@ real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_f
 print(' ')
 print( 'difference between CPU oracle and Groq chip (real part): ', scipy.linalg.norm( real_part - np.real( State_transformed_oracle ) , 2), '(imag part): ', scipy.linalg.norm( imag_part - np.imag( State_transformed_oracle ) , 2) )
 
+print( 'difference between CPU oracle and Groq chip (overlap integral): ', np.abs( (real_part + imag_part*1j) @ State_transformed_oracle.T.conj() ) )
+
 
 print("time elapsed with C++: ", time_Cpp )
-'''
-print( np.real( State_transformed_oracle ) )
-print(' ')
-print( real_part )
+
+
+print( 'The singla qubit gate kernel is:')
+print( gate_kernel_single )
 print(' ' )
-print( State_orig_real_float32 )
-'''
+
+print( State_orig_real_float32[0:10] )
+print(' ' )
+print( np.real( State_transformed_oracle[0:10] ) )
+print(' ')
+print( real_part[0:10] )
+
+

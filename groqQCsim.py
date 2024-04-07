@@ -24,25 +24,26 @@ print("Python packages imported successfully")
 # gate count stored in a single packed vector 
 gate_count = 2
 
-qbit_num = 9
-
 # the number og qubits for which the gate operations need the permutor (need to reorganize the elements in a vector)
 small_qbit_num_limit = 8
 
-# determine the soze of the unitary to be decomposed
-matrix_size   = int(2**small_qbit_num_limit)
-memory_slices = 1 << (qbit_num-small_qbit_num_limit)
+# the number of supported qubits
+qbit_num = None
+
+# determine the size of the part of the state vector handled in the inner split of the LPU tensors
+matrix_size   = None
+memory_slices = None
 
 
 # putting the state onto the WEST hemisphere and the gate data on the EAST hemisphere
 
-# memory layout to store the quantum state
-layout_State_input_real 	=f"H1(W), A{memory_slices}(0-{memory_slices-1}), S4(0-3)"
-layout_State_input_imag 	=f"H1(W), A{memory_slices}(0-{memory_slices-1}), S4(4-7)"
+# memory layout to store the quantum state --- initialized in method  initialize_qbit_num
+layout_State_input_real 	= None
+layout_State_input_imag 	= None
 
 # memory layout to temporary store the permuted state vector
-layout_state_vector_real_permuted = f"H1(W), A{memory_slices}(0-{memory_slices-1}), S4(34-37)"
-layout_state_vector_imag_permuted = f"H1(W), A{memory_slices}(0-{memory_slices-1}), S4(39-42)"
+layout_state_vector_real_permuted = None
+layout_state_vector_imag_permuted = None
 
 
 
@@ -88,6 +89,35 @@ layout_permute_maps = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(
 
 # label to indicate the 00, 01, 10, 11 elements of the gate kernel
 gate_kernel_element_labels = ["00", "01", "10", "11"]
+
+
+def initialize_qbit_num( qbit_num_in ):
+
+	global qbit_num
+	global matrix_size
+	global memory_slices
+	global layout_State_input_real
+	global layout_State_input_imag
+	global layout_state_vector_real_permuted
+	global layout_state_vector_imag_permuted	
+
+	# the number of supported qubits
+	qbit_num = qbit_num_in
+
+	# determine the size of the part of the state vector handled in the inner split of the LPU tensors
+	matrix_size   = int(2**small_qbit_num_limit)
+	memory_slices = 1 << (qbit_num-small_qbit_num_limit)
+	
+	
+	# memory layout to store the quantum state
+	layout_State_input_real 	=f"H1(W), A{memory_slices}(0-{memory_slices-1}), S4(0-3)"
+	layout_State_input_imag 	=f"H1(W), A{memory_slices}(0-{memory_slices-1}), S4(4-7)"
+
+	# memory layout to temporary store the permuted state vector
+	layout_state_vector_real_permuted = f"H1(W), A{memory_slices}(0-{memory_slices-1}), S4(34-37)"
+	layout_state_vector_imag_permuted = f"H1(W), A{memory_slices}(0-{memory_slices-1}), S4(39-42)"
+	
+
 
 def compile() -> List[str]:
 	"""Compiles a program package with 2 programs.
@@ -740,13 +770,13 @@ def compile() -> List[str]:
 				# calculate Psi_real * gate_first_column_imag + Psi_imag * gate_first_column_real
 				state__gate_first_column_imag_st	= g.add( state_imag__gate_first_column_real_st, state_real__gate_first_column_imag_st, alus=[3], output_streams=g.SG4_W[1]  )
 			
-				res3_mt = state__gate_first_column_imag_st.write(name=f"test3", layout="H1, -1, S4", program_output=True)
+				#res3_mt = state__gate_first_column_imag_st.write(name=f"test3", layout="H1, -1, S4", program_output=True)
 				
-				
+	# alus 8, 13			
 				
 				
 				# calculate Psi_permuted_real * gate_second_column_real
-				state_permuted_real_st 			            	= permuted_state_real_mt.read( streams=[g.SG4[7]] )
+				state_permuted_real_st 			            	= permuted_state_real_mt.read( streams=[g.SG4[6]] )
 				gate_second_column_real_mt_256                  = g.constant_tensor((1,256,), g.float32, storage_req=storage_req_real_second_column, name="gate_second_column_real_mt_256", initialized=False)					
 				gate_second_column_real_st 			         	= gate_second_column_real_mt_256.read( streams=[g.SG4[6]] )
 				state_permuted_real__gate_second_column_real_st	= g.mul( state_permuted_real_st, gate_second_column_real_st, alus=[13], output_streams=g.SG4_E[6] )
@@ -758,7 +788,7 @@ def compile() -> List[str]:
 				state_permuted_imag__gate_second_column_imag_st	= g.mul( state_permuted_imag_st, gate_second_column_imag_st, alus=[5], output_streams=g.SG4_E[5] )			
 
 				# calculate Psi_permuted_real * gate_second_column_real - Psi_permuted_imag * gate_second_column_imag
-				state_permuted__gate_second_column_real_st	= g.sub( state_permuted_real__gate_second_column_real_st, state_permuted_imag__gate_second_column_imag_st, alus=[10], output_streams=g.SG4_E[4]  )
+				state_permuted__gate_second_column_real_st	= g.sub( state_permuted_real__gate_second_column_real_st, state_permuted_imag__gate_second_column_imag_st, alus=[10], output_streams=g.SG4_E[5]  )
 				#res_mt = state_permuted__gate_second_column_real_st.write(name=f"test2", layout="H1(E), -1, S4", program_output=True)
 
 				
@@ -959,6 +989,9 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 
 def main( State_orig_real_float32, State_orig_imag_float32, target_qbit, gate_kernels ):
 	"""Compiles and runs the example programs."""
+	
+	if qbit_num is None:
+		raise "qbit_num must be set with method initialize_qbit_num( qbit_num ) with a value greater or equal to 8"
 
 	iop_files = compile()
 	print(f"Program compiled to IOP file: {iop_files}")
