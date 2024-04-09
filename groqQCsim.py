@@ -110,8 +110,8 @@ def initialize_qbit_num( qbit_num_in ):
 	
 	
 	# memory layout to store the quantum state
-	layout_State_input_real 	=f"H1(W), A{memory_slices}(0-{memory_slices-1}), S4(0-3)"
-	layout_State_input_imag 	=f"H1(W), A{memory_slices}(0-{memory_slices-1}), S4(4-7)"
+	layout_State_input_real 	=f"H1(W), A{memory_slices/2}(0-{memory_slices/2-1}), B2, S4(0-3)"
+	layout_State_input_imag 	=f"H1(W), A{memory_slices/2}(0-{memory_slices/2-1}), B2, S4(4-7)"
 
 	# memory layout to temporary store the permuted state vector
 	layout_state_vector_real_permuted = f"H1(W), A{memory_slices}(0-{memory_slices-1}), S4(34-37)"
@@ -481,6 +481,10 @@ def compile() -> List[str]:
 		Psi_transformed_real_mt = State_input_real_shared
 		Psi_transformed_imag_mt = State_input_imag_shared
 
+		# list of tensors for mutual memory exclusions
+		Psi_transformed_real_list = [Psi_transformed_real_mt]
+		Psi_transformed_imag_list = [Psi_transformed_imag_mt]
+
 		# distribute maps to broadcast teh gate kernel elements over a vector
 		distribute_map_np = np.zeros( (320,), dtype=np.uint8 )
 		for idx in range(320):
@@ -732,7 +736,7 @@ def compile() -> List[str]:
 			with g.ResourceScope(name=f"apply_gate_scope_{gate_idx}", is_buffered=True, predecessors=[prepare_state_pair_scope], time=None) as apply_gate_scope :
 
 				# calculate Psi_real * gate_first_column_real				
-				state_real_st 			              = Psi_transformed_real_mt.read( streams=[g.SG4[0]] )	
+				state_real_st 			      = Psi_transformed_real_mt.read( streams=[g.SG4[0]] )	
 				gate_first_column_real_mt_256         = g.constant_tensor((1,256,), g.float32, storage_req=storage_req_real_first_column, name="gate_first_column_real_mt_256", initialized=False)	
 				#gate_first_column_real_st 		      = gate_first_column_real_mt_256.read( streams=[g.SG4_W[1]] )
 				#state_real__gate_first_column_real_st = g.mul( state_real_st, gate_first_column_real_st, alus=alu_rq_12, output_streams=g.SG4_E[0], time=150 )
@@ -810,22 +814,32 @@ def compile() -> List[str]:
 				#slice_offset  = ((gate_idx+1) % 2) * 4096
 	
 
-				layout_transformed_state_real = f"H1(W), A{memory_slices}, S4(12-15)"#layout_State_input_real + f", A{memory_slices}({slice_offset}-{slice_offset+memory_slices-1})"
-				layout_transformed_state_imag = f"H1(W), A{memory_slices}, S4(8-11)"#layout_State_input_imag + f", A{memory_slices}({slice_offset}-{slice_offset+memory_slices-1})"
+				layout_transformed_state_real = layout_State_input_real#f"H1(W), A{memory_slices}, S4(12-15)"#
+				layout_transformed_state_imag = layout_State_input_imag#f"H1(W), A{memory_slices}, S4(8-11)"#layout_State_input_imag + f", A{memory_slices}({slice_offset}-{slice_offset+memory_slices-1})"
+
+				print( g.vxm_identity.__doc__ )
 
 				# calculate (Psi*gate_first_column).real + (Psi_permuted*gate_second_column).real
 				Psi_transformed_real_st	= g.add( state__gate_first_column_real_st,  state_permuted__gate_second_column_real_st, alus=[7], output_streams=g.SG4_W[2] )
+				Psi_transformed_real_st = g.vxm_identity( Psi_transformed_real_st, alus=[6], output_streams=g.SG4_W[2] )
+
 				Psi_transformed_real_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real_{gate_idx}", layout=layout_transformed_state_real, program_output=True)
 
-				
+				g.add_mem_constraints(Psi_transformed_real_list, [Psi_transformed_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
+				Psi_transformed_real_list.append( Psi_transformed_real_mt )
 			
 				# calculate (Psi*gate_first_column).imag + (Psi_permuted*gate_second_column).imag
-				Psi_transformed_imag_st	    = g.add( state__gate_first_column_imag_st,  state_permuted__gate_second_column_imag_st, alus=[14], output_streams=g.SG4_W[6] )
-				Psi_transformed_imag_mt_tmp = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag_{gate_idx}", layout=layout_transformed_state_imag, program_output=True)
+				Psi_transformed_imag_st	    = g.add( state__gate_first_column_imag_st,  state_permuted__gate_second_column_imag_st, alus=[14], output_streams=g.SG4_E[6] )
+				Psi_transformed_imag_st = g.vxm_identity( Psi_transformed_imag_st, alus=[15], output_streams=g.SG4_W[6] )
+
+				Psi_transformed_imag_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag_{gate_idx}", layout=layout_transformed_state_imag, program_output=True)
+
+				g.add_mem_constraints(Psi_transformed_imag_list, [Psi_transformed_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
+				Psi_transformed_imag_list.append( Psi_transformed_imag_mt )
 				
 				#g.add_mem_constraints([Psi_transformed_imag_mt], [Psi_transformed_imag_mt_tmp], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
 				#Psi_transformed_imag_mt = Psi_transformed_imag_mt_tmp
-				
+				#unused ALUS 6,15
 				
 		pgm_pkg.compile_program_context(pgm3)
 		

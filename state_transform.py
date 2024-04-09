@@ -14,7 +14,7 @@ qbit_num = 14
 # initialize setting for the Groq API specific to the supported number of qubits
 groqQCsim.initialize_qbit_num( qbit_num )
 
-target_qbit = [0]
+target_qbit = [4]
 
 # determine the soze of the unitary to be decomposed
 matrix_size = 1 << qbit_num
