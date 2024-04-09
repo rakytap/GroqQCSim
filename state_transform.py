@@ -7,12 +7,8 @@ from scipy.stats import unitary_group
 import scipy
 import groqQCsim
 import time
+from memory_layouts import qbit_num
 
-
-qbit_num = 14
-
-# initialize setting for the Groq API specific to the supported number of qubits
-groqQCsim.initialize_qbit_num( qbit_num )
 
 target_qbit = [4]
 
@@ -24,15 +20,12 @@ State_orig_imag = np.random.rand( matrix_size )
 State_orig = State_orig_real + 1j*State_orig_imag
 State_orig = State_orig/np.linalg.norm(State_orig)
 
-
-
-
 # define quantum circuit
 circuit = Circuit(qbit_num)
-circuit.add_U3( target_qbit[0] )
+circuit.add_U3( target_qbit[0], 0, 0, 0 )
 
 circuit_1 = Circuit( 1 )
-circuit_1.add_U3( 0 )
+circuit_1.add_U3( 0, 0, 0, 0 )
 
 # get the number of free parameters in the circuit
 parameter_num = circuit.get_Parameter_Num()
