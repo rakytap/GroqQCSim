@@ -59,7 +59,8 @@ layout_state_0_broadcasted			= f"H1(E), A{gate_count}(320-{320+gate_count-1}), S
 
 
 # permute maps at -- used to reorder the state vector elements according to the given target qubit
-layout_permute_maps = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(43)"
+layout_permute_maps_west = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(43)"
+layout_permute_maps_east = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(E), S1(43)"
 
 # determine the size of the part of the state vector handled in the inner split of the LPU tensors
 matrix_size   = int(2**small_qbit_num_limit)

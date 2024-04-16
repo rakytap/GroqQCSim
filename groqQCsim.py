@@ -85,10 +85,12 @@ def compile() -> List[str]:
 			print(' ')
 			print(permute_map[target_qbit_loc,:])
 
-		permute_maps_mt = g.from_data( np.asarray(permute_map, dtype=np.uint8), layout=layout_permute_maps )
-		permute_maps_mt.is_static = True
-		print(permute_maps_mt.shape)
-		print(dir(permute_maps_mt))
+		permute_maps_mt_west = g.from_data( np.asarray(permute_map, dtype=np.uint8), layout=layout_permute_maps_west )
+		permute_maps_mt_east = g.from_data( np.asarray(permute_map, dtype=np.uint8), layout=layout_permute_maps_east )
+		permute_maps_mt_west.is_static = True
+		permute_maps_mt_east.is_static = True
+		print(permute_maps_mt_west.shape)
+		print(dir(permute_maps_mt_west))
 		
 		
 		# generate vectors to indicate which elements in a 320 vector correspond to state |1> of target qubit less than small_qbit_num_limit 
@@ -326,7 +328,9 @@ def compile() -> List[str]:
 		# create reusable permutor requests
 		permutor_requests = []
 		permutor_requests.append( g.tensor.create_permutor_request( [0], 1 ) )
+		permutor_requests.append( g.tensor.create_permutor_request( [1], 1 ) )
 		permutor_requests.append( g.tensor.create_permutor_request( [0], 1 ) )
+		permutor_requests.append( g.tensor.create_permutor_request( [1], 1 ) )
 
 		# Creates a shared tensor to reuse the memory allocation made by program pgm1
 		State_input_real_shared = g.shared_memory_tensor(State_input_real_mt, name="State_input_real_shared")
@@ -341,7 +345,8 @@ def compile() -> List[str]:
 		#state_permute_map_selector_list = g.split_inner_splits(state_permute_map_selector_st)		
 		state_permute_map_selector_list = g.split_vectors(input=state_permute_map_selector_shared, splits=[1]*gate_count)
 		
-		permute_maps_mt_shared = g.shared_memory_tensor(permute_maps_mt, name=f"permute_maps_shared")
+		permute_maps_mt_west_shared = g.shared_memory_tensor(permute_maps_mt_west, name=f"permute_maps_west_shared")
+		permute_maps_mt_east_shared = g.shared_memory_tensor(permute_maps_mt_east, name=f"permute_maps_east_shared")
 
 		# state_1_mt: if target_qubit_loc at the idx-th element is in state_1 |1> then all the 8 bits of the idx-th element is set to 1, thus state_1[idx] = 255
 		# state_0_mt: if target_qubit_loc at the idx-th element is in state_0 |0> then all the 8 bits of the idx-th element is set to 1, thus state_0[idx] = 255
@@ -431,40 +436,31 @@ def compile() -> List[str]:
 				#target_qbit = 0
 
 				print( g.mem_gather.__doc__ )
-				print( permute_maps_mt_shared.physical_shape )
+				print( permute_maps_mt_west_shared.physical_shape )
+				print( permute_maps_mt_east_shared.physical_shape )
 				print( state_permute_map_selector_shared.physical_shape )
 				#state_permute_map_selector_st = state_permute_map_selector_shared.read(streams=[g.SG1_W[24]])
 				print(state_permute_map_selector_list[0].shape)
 				
 				
-				state_permute_map_selector_st = state_permute_map_selector_list[gate_idx].read(streams=[g.SG1_W[24]])
-				permute_map_st                = g.mem_gather(permute_maps_mt_shared, state_permute_map_selector_st, output_streams=[g.SG1_W[24]])
+				state_permute_map_selector_west_st = state_permute_map_selector_list[gate_idx].read(streams=[g.SG1_W[24]])
+				state_permute_map_selector_east_st = state_permute_map_selector_list[gate_idx].read(streams=[g.SG1_E[24]])
+				permute_map_west_st                = g.mem_gather(permute_maps_mt_west_shared, state_permute_map_selector_west_st, output_streams=[g.SG1_W[24]])
+				permute_map_east_st                = g.mem_gather(permute_maps_mt_east_shared, state_permute_map_selector_east_st, output_streams=[g.SG1_E[24]])
 
 				state_real_mt_8 = g.reinterpret(Psi_transformed_real_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
 				state_imag_mt_8 = g.reinterpret(Psi_transformed_imag_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
 
-				# real and imaginary parts of the state concatenated into a unified tensor
-				state_mt_8 = g.concat( [state_real_mt_8, state_imag_mt_8], dim=0 )
-
-
-
-				state_st_8 = state_mt_8.read( streams=g.SG1[0] )
+				state_real_st_8 = state_real_mt_8.read( streams=g.SG1_W[0] )
+				state_imag_st_8 = state_imag_mt_8.read( streams=g.SG1_E[0] )
 
 			
-				#state_mt_8 = g.reinterpret(state_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
-				permuted_state_st_8 = g.permute_inner(state_st_8, permute_map_st, permutor_req=permutor_requests[gate_idx], input_streams=[g.SG1[0], g.SG1[24]], output_streams=g.SG1[0], time=0 )
+				permuted_state_real_st_8 = g.permute_inner(state_real_st_8, permute_map_west_st, permutor_req=permutor_requests[gate_idx*2], input_streams=[g.SG1_W[0], g.SG1_W[24]], output_streams=g.SG1[0], time=0 )
+				permuted_state_imag_st_8 = g.permute_inner(state_imag_st_8, permute_map_east_st, permutor_req=permutor_requests[gate_idx*2+1], input_streams=[g.SG1_E[0], g.SG1_E[24]], output_streams=g.SG1[0], time=0 )
 				print(10*"#" + " permuted")
-				permuted_state_st_8 = g.reshape( permuted_state_st_8, [memory_slices*2,4, matrix_size] )
-				print( permuted_state_st_8.physical_shape )
 
-				# split unified tensor into real and imaginary perts
-				permuted_state_st_8_list = g.split( permuted_state_st_8, num_splits=2, dim=0 )
-
-				print( permuted_state_st_8_list )
-				print( permuted_state_st_8_list[0].physical_shape )
-				permuted_state_real_st_8 = g.reshape(permuted_state_st_8_list[0], [memory_slices, 4, matrix_size] )
-				permuted_state_imag_st_8 = g.reshape(permuted_state_st_8_list[1], [memory_slices, 4, matrix_size] )
-				#state_real_st = g.reinterpret(state_st_8_list[0], g.float32 )
+				permuted_state_real_st_8 = g.reshape(permuted_state_real_st_8, [memory_slices, 4, matrix_size] )
+				permuted_state_imag_st_8 = g.reshape(permuted_state_imag_st_8, [memory_slices, 4, matrix_size] )
 			
 				permuted_state_real_st = g.reinterpret(permuted_state_real_st_8, g.float32 )
 				permuted_state_imag_st = g.reinterpret(permuted_state_imag_st_8, g.float32 )
