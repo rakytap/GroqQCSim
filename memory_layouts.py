@@ -1,4 +1,4 @@
-qbit_num = 14
+from state_transform import qbit_num
 
 # gate count stored in a single packed vector 
 gate_count = 1
