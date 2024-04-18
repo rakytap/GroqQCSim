@@ -115,6 +115,73 @@ def compile() -> List[str]:
 
 		states_0_mt = g.from_data( np.asarray(states_0_np, dtype=np.uint8), layout=layout_states_0 )
 		states_0_mt.is_static = True
+
+		# create reusable distributor requests
+		distributor_requests = []
+		distributor_requests.append(  g.tensor.create_distributor_request( [4], 1 ) ) # EAST
+		distributor_requests.append(  g.tensor.create_distributor_request( [7], 1 ) ) # EAST	
+
+		# distribute maps to broadcast teh gate kernel elements over a vector
+		distribute_map_np = np.zeros( (320,), dtype=np.uint8 )
+		for idx in range(320):
+			distribute_map_np[idx] = idx % 16
+
+		distribute_map_tensor_state1_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state1 + f", A1({small_qbit_num_limit+4})" )
+		distribute_map_tensor_state0_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state0 + f", A1({small_qbit_num_limit+4})" )
+		g.add_mem_constraints([states_1_mt], [distribute_map_tensor_state1_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+		g.add_mem_constraints([states_0_mt], [distribute_map_tensor_state0_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+
+		with g.ResourceScope(name="distribute_state_indices_scope", is_buffered=True, time=0) as distribute_state_indices_scope :
+
+			#state_1_st = state_1_mt.read( streams=g.SG1[0], time=0 )
+			#state_0_st = state_0_mt.read( streams=g.SG1[24], time=0 )
+
+			state_1_selector_st = state_1_selector_mt.read(streams=[g.SG1[0]])
+			state_1_st = g.mem_gather(states_1_mt, state_1_selector_st, output_streams=[g.SG1[0]], time=0)
+
+			state_0_selector_st = state_0_selector_mt.read(streams=[g.SG1[24]])
+			state_0_st = g.mem_gather(states_0_mt, state_0_selector_st, output_streams=[g.SG1[24]], time=0)
+
+
+			distributor_request = distributor_requests[0]
+			state_1_broadcasted_st = g.distribute_lowest( state_1_st, 
+					distribute_map_tensor_state1_mt,
+					distributor_req=distributor_request,
+					map_stream_req=g.SG1[12],
+					bypass8=0b00001111,
+			)
+
+			state_1_broadcasted_st = g.transpose_null(
+				state_1_broadcasted_st,
+				transposer_req=2,
+				stream_order=[4,5,6,7],
+			)
+
+	
+			distributor_request = distributor_requests[1]
+			state_0_broadcasted_st = g.distribute_lowest( state_0_st, 
+					distribute_map_tensor_state0_mt,
+					distributor_req=distributor_request,
+					map_stream_req=g.SG1[31],
+					bypass8=0b00001111,
+			)
+
+			state_0_broadcasted_st = g.transpose_null(
+				state_0_broadcasted_st,
+				transposer_req=3,
+				stream_order=[12,13,14,15],
+			)
+
+	
+			state_1_broadcasted_st = g.reinterpret( state_1_broadcasted_st, g.uint32 )
+			state_1_broadcasted_mt = state_1_broadcasted_st.write(name="state_1_broadcasted", layout=layout_state_1_broadcasted , program_output=False)
+			state_0_broadcasted_st = g.reinterpret( state_0_broadcasted_st, g.uint32 )
+			state_0_broadcasted_mt = state_0_broadcasted_st.write(name="state_0_broadcasted", layout=layout_state_0_broadcasted, program_output=False)
+
+			state_1_broadcasted_mt.is_static = True
+			state_0_broadcasted_mt.is_static = True
+
+			g.add_mem_constraints([states_1_mt, states_0_mt, distribute_map_tensor_state1_mt, distribute_map_tensor_state0_mt, state_1_selector_mt, state_0_selector_mt], [state_0_broadcasted_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 		
 		pgm_pkg.compile_program_context(pgm1)
 		
@@ -320,10 +387,6 @@ def compile() -> List[str]:
 
 		#g.reserve_tensor(pgm1, pgm2, State_input_real_mt)
 
-		# create reusable distributor requests
-		distributor_requests = []
-		distributor_requests.append(  g.tensor.create_distributor_request( [4], 1 ) ) # EAST
-		distributor_requests.append(  g.tensor.create_distributor_request( [7], 1 ) ) # EAST	
 		
 		# create reusable permutor requests
 		permutor_requests = []
@@ -337,8 +400,6 @@ def compile() -> List[str]:
 		State_input_imag_shared = g.shared_memory_tensor(State_input_imag_mt, name="State_input_imag_shared")
 
 		state_permute_map_selector_shared 	= g.shared_memory_tensor(state_permute_map_selector_mt, name="state_permute_map_selector_shared")
-		state_1_selector_shared 			= g.shared_memory_tensor(state_1_selector_mt, name="state_1_selector_shared")
-		state_0_selector_shared 			= g.shared_memory_tensor(state_0_selector_mt, name="state_0_selector_shared")
 		
 		#state_permute_map_selector_st = state_permute_map_selector_shared.read(streams=g.SG1_W[24])
 		
@@ -354,8 +415,9 @@ def compile() -> List[str]:
 		states_0_shared = g.shared_memory_tensor(states_0_mt, name="states_0_shared")
 		#target_qbit = 3
 
-
-
+		# Creates a shared tensor to reuse the memory allocation made by program pgm1
+		state_1_broadcasted_shared = g.shared_memory_tensor(state_1_broadcasted_mt, name="state_1_broadcasted_shared")
+		state_0_broadcasted_shared = g.shared_memory_tensor(state_0_broadcasted_mt, name="state_0_broadcasted_shared")
 
 		# Creates a shared tensor to reuse the memory allocation made by program pgm2
 
@@ -396,15 +458,6 @@ def compile() -> List[str]:
 		Psi_transformed_real_list = [Psi_transformed_real_mt]
 		Psi_transformed_imag_list = [Psi_transformed_imag_mt]
 
-		# distribute maps to broadcast teh gate kernel elements over a vector
-		distribute_map_np = np.zeros( (320,), dtype=np.uint8 )
-		for idx in range(320):
-			distribute_map_np[idx] = idx % 16
-
-		distribute_map_tensor_state1_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state1 + f", A1({small_qbit_num_limit+4})" )
-		distribute_map_tensor_state0_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state0 + f", A1({small_qbit_num_limit+4})" )
-		g.add_mem_constraints([states_1_shared], [distribute_map_tensor_state1_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
-		g.add_mem_constraints([states_0_shared], [distribute_map_tensor_state0_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 		pre = []
 		tm = [0, 118]
 
@@ -456,7 +509,7 @@ def compile() -> List[str]:
 
 			
 				permuted_state_real_st_8 = g.permute_inner(state_real_st_8, permute_map_west_st, permutor_req=permutor_requests[gate_idx*2], input_streams=[g.SG1_W[0], g.SG1_W[24]], output_streams=g.SG1[0], time=0 )
-				permuted_state_imag_st_8 = g.permute_inner(state_imag_st_8, permute_map_east_st, permutor_req=permutor_requests[gate_idx*2+1], input_streams=[g.SG1_E[0], g.SG1_E[24]], output_streams=g.SG1[12], time=15 )
+				permuted_state_imag_st_8 = g.permute_inner(state_imag_st_8, permute_map_east_st, permutor_req=permutor_requests[gate_idx*2+1], input_streams=[g.SG1_E[0], g.SG1_E[24]], output_streams=g.SG1[12], time=0 )
 				print(10*"#" + " permuted")
 
 				permuted_state_real_st_8 = g.reshape(permuted_state_real_st_8, [memory_slices, 4, matrix_size] )
@@ -481,67 +534,13 @@ def compile() -> List[str]:
 				#state_1_mt = states_1_mt_list[target_qbit] #TODO: do with gather map
 				#state_0_mt = states_0_mt_list[target_qbit] #TODO: do with gather map
 				
-				with g.ResourceScope(name="distribute_state_indices_scope", is_buffered=True, time=0) as distribute_state_indices_scope :
-
-					#state_1_st = state_1_mt.read( streams=g.SG1[0], time=0 )
-					#state_0_st = state_0_mt.read( streams=g.SG1[24], time=0 )
-
-					state_1_selector_st = state_1_selector_shared.read(streams=[g.SG1[0]])
-					state_1_st = g.mem_gather(states_1_shared, state_1_selector_st, output_streams=[g.SG1[0]], time=0)
-
-					state_0_selector_st = state_0_selector_shared.read(streams=[g.SG1[24]])
-					state_0_st = g.mem_gather(states_0_shared, state_0_selector_st, output_streams=[g.SG1[24]], time=0)
-						
-
-
-
-
-
-
-					distributor_request = distributor_requests[0]
-					state_1_broadcasted_st = g.distribute_lowest( state_1_st, 
-				        	distribute_map_tensor_state1_mt,
-				        	distributor_req=distributor_request,
-				       		map_stream_req=g.SG1[12],
-				        	bypass8=0b00001111,
-					)
-
-					state_1_broadcasted_st = g.transpose_null(
-						state_1_broadcasted_st,
-						transposer_req=2,
-						stream_order=[4,5,6,7],
-					)
-
-			
-					distributor_request = distributor_requests[1]
-					state_0_broadcasted_st = g.distribute_lowest( state_0_st, 
-				        	distribute_map_tensor_state0_mt,
-				        	distributor_req=distributor_request,
-				        	map_stream_req=g.SG1[31],
-				        	bypass8=0b00001111,
-					)
-
-					state_0_broadcasted_st = g.transpose_null(
-						state_0_broadcasted_st,
-						transposer_req=3,
-						stream_order=[12,13,14,15],
-					)
-
-			
-					state_1_broadcasted_st = g.reinterpret( state_1_broadcasted_st, g.uint32 )
-					state_1_broadcasted_mt = state_1_broadcasted_st.write(name=f"state_1_broadcasted_{gate_idx}", layout=layout_state_1_broadcasted , program_output=False)
-					state_0_broadcasted_st = g.reinterpret( state_0_broadcasted_st, g.uint32 )
-					state_0_broadcasted_mt = state_0_broadcasted_st.write(name=f"state_0_broadcasted_{gate_idx}", layout=layout_state_0_broadcasted, program_output=False)
-
-
-					g.add_mem_constraints([states_1_shared, states_0_shared, distribute_map_tensor_state1_mt, distribute_map_tensor_state0_mt, state_1_selector_shared, state_0_selector_shared], [state_0_broadcasted_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 				
 				# filter the elements in the vector according to the indices standig for output states |0> and |1> 
 				
-				with g.ResourceScope(name=f"prepare_fileterd_gate_elements_scope_{gate_idx}", is_buffered=True, predecessors=[distribute_state_indices_scope], time=None) as prepare_fileterd_gate_elements_scope :
+				with g.ResourceScope(name=f"prepare_fileterd_gate_elements_scope_{gate_idx}", is_buffered=True,  time=0) as prepare_fileterd_gate_elements_scope :
 
-					state_1_broadcasted_st = state_1_broadcasted_mt.read( streams=g.SG4[1] )
-					state_0_broadcasted_st = state_0_broadcasted_mt.read( streams=g.SG4[7] )
+					state_1_broadcasted_st = state_1_broadcasted_shared.read( streams=g.SG4[1] )
+					state_0_broadcasted_st = state_0_broadcasted_shared.read( streams=g.SG4[7] )
 			
 					# real and imaginary parts of the state concatenated into a unified tensor
 					gate_00_real_st = gate_kernels_broadcasted_real_shared_dict[f"{gate_idx}_00"].read( streams=g.SG4[6], time=0 )
@@ -589,8 +588,8 @@ def compile() -> List[str]:
 
 			#with g.ResourceScope(name="prepare_gate_elements_output_state_1_scope", is_buffered=True, predecessors=[prepare_gate_elements_output_state_0_scope], time=None) as prepare_gate_elements_output_state_1_scope :
 
-					state_1_broadcasted_st = state_1_broadcasted_mt.read( streams=g.SG4[1] )
-					state_0_broadcasted_st = state_0_broadcasted_mt.read( streams=g.SG4[7] )
+					state_1_broadcasted_st = state_1_broadcasted_shared.read( streams=g.SG4[1] )
+					state_0_broadcasted_st = state_0_broadcasted_shared.read( streams=g.SG4[7] )
 			
 					# real and imaginary parts of the state concatenated into a unified tensor
 					gate_01_real_st = gate_kernels_broadcasted_real_shared_dict[f"{gate_idx}_01"].read( streams=g.SG4[6])#, time=5 )

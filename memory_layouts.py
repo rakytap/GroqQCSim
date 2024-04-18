@@ -6,23 +6,6 @@ gate_count = 1
 # the number og qubits for which the gate operations need the permutor (need to reorganize the elements in a vector)
 small_qbit_num_limit = 8
 
-# determine the size of the part of the state vector handled in the inner split of the LPU tensors
-matrix_size   = None
-memory_slices = None
-
-
-# putting the state onto the WEST hemisphere and the gate data on the EAST hemisphere
-
-# memory layout to store the quantum state --- initialized in method  initialize_qbit_num
-layout_State_input_real 	= None
-layout_State_input_imag 	= None
-
-# memory layout to temporary store the permuted state vector
-layout_state_vector_real_permuted = None
-layout_state_vector_imag_permuted = None
-
-
-
 # layout to gather map selecting the permutation map corresponding to the target qubit  -- the MT should be replaced by on chip determined gather map, currently it is uploaded from CPU
 layout_state_permute_map_selector   = f"H1(W), A{gate_count}(320-{320+gate_count-1}), S1(17)"
 layout_state_1_selector				= f"H1(E), A{gate_count}(0-{gate_count-1}), S1(19)" 
