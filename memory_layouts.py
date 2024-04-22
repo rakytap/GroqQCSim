@@ -1,5 +1,8 @@
 from state_transform import qbit_num
 
+# label to indicate the 00, 01, 10, 11 elements of the gate kernel
+gate_kernel_element_labels = ["00", "01", "10", "11"]
+
 # gate count stored in a single packed vector 
 gate_count = 1
 
