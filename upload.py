@@ -10,6 +10,8 @@ class Upload:
 		self.gate_kernels_imag_packed_mt = None
 		self.State_input_real_mt = None
 		self.State_input_imag_mt = None
+		self.State_input_real_copy_mt = None
+		self.State_input_imag_copy_mt = None
 		self.state_permute_map_selector_mt = None
 		self.permute_maps_west = None
 		self.permute_maps_east = None
@@ -23,6 +25,9 @@ class Upload:
 
 			self.State_input_real_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_real", layout=layout_State_input_real)
 			self.State_input_imag_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_imag", layout=layout_State_input_imag)
+
+			self.State_input_real_copy_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_real_copy", layout=layout_State_input_real_copy)
+			self.State_input_imag_copy_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_imag_copy", layout=layout_State_input_imag_copy)
 							
 			
 			self.state_permute_map_selector_mt 	= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="state_permute_map_selector", layout=layout_state_permute_map_selector)
@@ -37,6 +42,8 @@ class Upload:
 
 			self.State_input_real_mt.is_static 			= True
 			self.State_input_imag_mt.is_static 			= True
+			self.State_input_real_copy_mt.is_static 			= True
+			self.State_input_imag_copy_mt.is_static 			= True
 			self.state_permute_map_selector_mt.is_static = True
 			self.gate_kernels_real_packed_mt.is_static 	= True
 			self.gate_kernels_imag_packed_mt.is_static 	= True

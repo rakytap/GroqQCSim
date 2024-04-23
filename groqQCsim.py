@@ -38,13 +38,12 @@ def compile() -> List[str]:
 	print( pgm_pkg.create_program_context.__doc__ )
 
 	program = Gate(pgm_pkg)
+	# Defines a program to upload the inputs
 	program.upload_program()
 	program.split_gates_program()
+	# program to perform gate operation in a target qubit less than small_qbit_num_limit
 	program.gate_program()
 	
-	
-	
-		
 	iops = pgm_pkg.assemble()
 
 	return iops
@@ -142,7 +141,7 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 
 
 	# run the first program
-	pgm_1_output = invoke(device, iop, 0, 0, {"State_input_real": input_real, "State_input_imag": input_imag, "state_permute_map_selector": state_permute_map_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector})
+	pgm_1_output = invoke(device, iop, 0, 0, {"State_input_real": input_real, "State_input_imag": input_imag, "State_input_real_copy": input_real, "State_input_imag_copy": input_imag, "state_permute_map_selector": state_permute_map_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector})
 	
 	# run the gate split program
 	index_of_split_program = 1

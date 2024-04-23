@@ -26,6 +26,8 @@ class Gate(Split_gates):
 			# Creates a shared tensor to reuse the memory allocation made by program pgm1
 			State_input_real_shared = g.shared_memory_tensor(self.State_input_real_mt, name="State_input_real_shared")
 			State_input_imag_shared = g.shared_memory_tensor(self.State_input_imag_mt, name="State_input_imag_shared")
+			State_input_real_copy_shared = g.shared_memory_tensor(self.State_input_real_copy_mt, name="State_input_real_copy_shared")
+			State_input_imag_copy_shared = g.shared_memory_tensor(self.State_input_imag_copy_mt, name="State_input_imag_copy_shared")
 
 			state_permute_map_selector_shared 	= g.shared_memory_tensor(self.state_permute_map_selector_mt, name="state_permute_map_selector_shared")
 			
@@ -77,10 +79,14 @@ class Gate(Split_gates):
 			# the transformed states are interated further from gate to gate, but for the first gate they are set to the initial state
 			Psi_transformed_real_mt = State_input_real_shared
 			Psi_transformed_imag_mt = State_input_imag_shared
+			Psi_transformed_real_copy_mt = State_input_real_copy_shared
+			Psi_transformed_imag_copy_mt = State_input_imag_copy_shared
 
 			# list of tensors for mutual memory exclusions
 			Psi_transformed_real_list = [Psi_transformed_real_mt]
 			Psi_transformed_imag_list = [Psi_transformed_imag_mt]
+			Psi_transformed_real_copy_list = [Psi_transformed_real_copy_mt]
+			Psi_transformed_imag_copy_list = [Psi_transformed_imag_copy_mt]
 
 			pre = []
 			tm = [0, 118]
@@ -144,6 +150,13 @@ class Gate(Split_gates):
 
 					permuted_state_real_mt = permuted_state_real_st.write(name=f"permuted_result_real", layout=layout_state_vector_real_permuted)
 					permuted_state_imag_mt = permuted_state_imag_st.write(name=f"permuted_result_imag", layout=layout_state_vector_imag_permuted)
+
+					g.add_mem_constraints(Psi_transformed_real_copy_list, [permuted_state_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
+					Psi_transformed_real_copy_list.append( permuted_state_real_mt )
+
+					g.add_mem_constraints(Psi_transformed_imag_copy_list, [permuted_state_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
+					Psi_transformed_imag_copy_list.append( permuted_state_imag_mt )
+
 				
 				#################################################################################
 				# component to perform the gate operation
@@ -342,6 +355,9 @@ class Gate(Split_gates):
 					layout_transformed_state_real = layout_State_input_real#f"H1(W), A{memory_slices}, S4(12-15)"#
 					layout_transformed_state_imag = layout_State_input_imag#f"H1(W), A{memory_slices}, S4(8-11)"#layout_State_input_imag + f", A{memory_slices}({slice_offset}-{slice_offset+memory_slices-1})"
 
+					layout_transformed_state_real_copy = layout_State_input_real_copy
+					layout_transformed_state_imag_copy = layout_State_input_imag_copy
+
 					print( g.vxm_identity.__doc__ )
 
 					# calculate (Psi*gate_first_column).real + (Psi_permuted*gate_second_column).real
@@ -349,19 +365,26 @@ class Gate(Split_gates):
 					Psi_transformed_real_st = g.vxm_identity( Psi_transformed_real_st, alus=[6], output_streams=g.SG4_W[2] )
 
 					Psi_transformed_real_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real_{gate_idx}", layout=layout_transformed_state_real, program_output=True)
+					Psi_transformed_real_copy_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real_copy_{gate_idx}", layout=layout_transformed_state_real_copy)
 
 					g.add_mem_constraints(Psi_transformed_real_list, [Psi_transformed_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
 					Psi_transformed_real_list.append( Psi_transformed_real_mt )
 				
+					g.add_mem_constraints(Psi_transformed_real_copy_list, [Psi_transformed_real_copy_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
+					Psi_transformed_real_copy_list.append( Psi_transformed_real_copy_mt )
+
 					# calculate (Psi*gate_first_column).imag + (Psi_permuted*gate_second_column).imag
 					Psi_transformed_imag_st	    = g.add( state__gate_first_column_imag_st,  state_permuted__gate_second_column_imag_st, alus=[14], output_streams=g.SG4_E[6] )
 					Psi_transformed_imag_st = g.vxm_identity( Psi_transformed_imag_st, alus=[15], output_streams=g.SG4_W[6] )
 
 					Psi_transformed_imag_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag_{gate_idx}", layout=layout_transformed_state_imag, program_output=True)
+					Psi_transformed_imag_copy_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag_copy_{gate_idx}", layout=layout_transformed_state_imag_copy)
 
 					g.add_mem_constraints(Psi_transformed_imag_list, [Psi_transformed_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
 					Psi_transformed_imag_list.append( Psi_transformed_imag_mt )
 					
+					g.add_mem_constraints(Psi_transformed_imag_copy_list, [Psi_transformed_imag_copy_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
+					Psi_transformed_imag_copy_list.append( Psi_transformed_imag_copy_mt )
 					#g.add_mem_constraints([Psi_transformed_imag_mt], [Psi_transformed_imag_mt_tmp], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
 					#Psi_transformed_imag_mt = Psi_transformed_imag_mt_tmp
 					#unused ALUS 6,15
