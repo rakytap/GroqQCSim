@@ -58,5 +58,5 @@ layout_State_input_real 	=f"H1(W), A{memory_slices/2}(0-{memory_slices/2-1}), B2
 layout_State_input_imag 	=f"H1(W), A{memory_slices/2}(0-{memory_slices/2-1}), B2, S4(4-7)"
 
 # memory layout to temporary store the permuted state vector
-layout_state_vector_real_permuted = f"H1(W), A{memory_slices}(0-{memory_slices-1}), S4(34-37)"
-layout_state_vector_imag_permuted = f"H1(W), A{memory_slices}(0-{memory_slices-1}), S4(39-42)"
+layout_state_vector_real_permuted = f"H1(W), A{memory_slices}(0-{memory_slices-1}), S4(8-11)"
+layout_state_vector_imag_permuted = f"H1(W), A{memory_slices}(0-{memory_slices-1}), S4(12-15)"
