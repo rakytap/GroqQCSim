@@ -138,8 +138,8 @@ class Gate(Split_gates):
 					state_imag_st_8 = state_imag_mt_8.read( streams=g.SG1_W[0] )
 
 				
-					permuted_state_real_st_8 = g.permute_inner(state_real_st_8, permute_map_east_st, permutor_req=permutor_requests[gate_idx*2+1], input_streams=[g.SG1_E[0], g.SG1_E[24]], output_streams=g.SG1[12], time=0 )
-					permuted_state_imag_st_8 = g.permute_inner(state_imag_st_8, permute_map_west_st, permutor_req=permutor_requests[gate_idx*2], input_streams=[g.SG1_W[0], g.SG1_W[24]], output_streams=g.SG1[0], time=0 )
+					permuted_state_real_st_8 = g.permute_inner(state_real_st_8, permute_map_west_st, permutor_req=permutor_requests[gate_idx*2+1], input_streams=[g.SG1_E[0], g.SG1_E[24]], output_streams=g.SG1[12], time=0 )
+					permuted_state_imag_st_8 = g.permute_inner(state_imag_st_8, permute_map_east_st, permutor_req=permutor_requests[gate_idx*2], input_streams=[g.SG1_W[0], g.SG1_W[24]], output_streams=g.SG1[0], time=0 )
 					print(10*"#" + " permuted")
 
 					permuted_state_real_st_8 = g.reshape(permuted_state_real_st_8, [memory_slices, 4, matrix_size] )
@@ -273,21 +273,19 @@ class Gate(Split_gates):
 				
 				with g.ResourceScope(name=f"apply_gate_scope_{gate_idx}", is_buffered=True, predecessors=[prepare_state_pair_scope], time=None) as apply_gate_scope :
 
+
 					# calculate Psi_real * gate_first_column_real				
 					state_real_st 			      = Psi_transformed_real_mt.read( streams=[g.SG4[0]] )	
 					gate_first_column_real_mt_256         = g.constant_tensor((1,256,), g.float32, storage_req=storage_req_real_first_column, name="gate_first_column_real_mt_256", initialized=False)	
-					#gate_first_column_real_st 		      = gate_first_column_real_mt_256.read( streams=[g.SG4_W[1]] )
-					#state_real__gate_first_column_real_st = g.mul( state_real_st, gate_first_column_real_st, alus=alu_rq_12, output_streams=g.SG4_E[0], time=150 )
+					gate_first_column_real_st 		      = gate_first_column_real_mt_256.read( streams=[g.SG4_W[0]] )
+					state_real__gate_first_column_real_st = g.mul( state_real_st, gate_first_column_real_st, alus=alu_rq_12, output_streams=g.SG4_E[0], time=150 )
 					
-					gate_first_column_real_mt_256.latch(alus=alu_rq_12, time=0)
-					state_real__gate_first_column_real_st = g.mul( None, state_real_st, alus=alu_rq_12, output_streams=g.SG4_E[0], time=2 )				
 
-												
-					
+
 					# calculate Psi_imag * gate_first_column_imag
 					state_imag_st 			                = Psi_transformed_imag_mt.read( streams=[g.SG4[3]] )
 					gate_first_column_imag_mt_256         = g.constant_tensor((1,256,), g.float32, storage_req=storage_req_imag_first_column, name="gate_first_column_imag_mt_256", initialized=False)	
-					gate_first_column_imag_st 		        = gate_first_column_imag_mt_256.read( streams=[g.SG4[2]] )
+					gate_first_column_imag_st 		        = gate_first_column_imag_mt_256.read( streams=[g.SG4_W[3]] )
 					state_imag__gate_first_column_imag_st	= g.mul( state_imag_st, gate_first_column_imag_st, alus=[4], output_streams=g.SG4_E[2] )			
 
 					# calculate Psi_real * gate_first_column_real - Psi_imag * gate_first_column_imag
@@ -300,9 +298,7 @@ class Gate(Split_gates):
 					
 					
 					# calculate Psi_imag * gate_first_column_real
-					#state_imag__gate_first_column_real_st	= g.mul( state_imag_st, gate_first_column_real_st, alus=alu_rq_1, output_streams=g.SG4_E[1] )
-					gate_first_column_real_mt_256.latch(alus=alu_rq_1, time=1)
-					state_imag__gate_first_column_real_st	= g.mul( None, state_imag_st, alus=alu_rq_1, output_streams=g.SG4_E[3] )				
+					state_imag__gate_first_column_real_st	= g.mul( state_imag_st, gate_first_column_real_st, alus=alu_rq_1, output_streams=g.SG4_E[3] )			
 					
 					# calculate Psi_real * gate_first_column_imag
 					state_real__gate_first_column_imag_st	= g.mul( state_real_st, gate_first_column_imag_st, alus=[0], output_streams=g.SG4_E[1] )
@@ -316,9 +312,9 @@ class Gate(Split_gates):
 					
 					
 					# calculate Psi_permuted_real * gate_second_column_real
-					state_permuted_real_st 			            	= permuted_state_real_mt.read( streams=[g.SG4[6]] )
+					state_permuted_real_st 			            	= permuted_state_real_mt.read( streams=[g.SG4_E[6]] )
 					gate_second_column_real_mt_256                  = g.constant_tensor((1,256,), g.float32, storage_req=storage_req_real_second_column, name="gate_second_column_real_mt_256", initialized=False)					
-					gate_second_column_real_st 			         	= gate_second_column_real_mt_256.read( streams=[g.SG4[6]] )
+					gate_second_column_real_st 			         	= gate_second_column_real_mt_256.read( streams=[g.SG4_W[6]] )
 					state_permuted_real__gate_second_column_real_st	= g.mul( state_permuted_real_st, gate_second_column_real_st, alus=[13], output_streams=g.SG4_E[6] )
 
 					# calculate Psi_permuted_imag * gate_second_column_imag
@@ -365,29 +361,29 @@ class Gate(Split_gates):
 					Psi_transformed_real_st = g.vxm_identity( Psi_transformed_real_st, alus=[6], output_streams=g.SG4_W[2] )
 
 					Psi_transformed_real_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real_{gate_idx}", layout=layout_transformed_state_real, program_output=True)
-					Psi_transformed_real_copy_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real_copy_{gate_idx}", layout=layout_transformed_state_real_copy)
+					#Psi_transformed_real_copy_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real_copy_{gate_idx}", layout=layout_transformed_state_real_copy)
 
 					g.add_mem_constraints(Psi_transformed_real_list, [Psi_transformed_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
 					Psi_transformed_real_list.append( Psi_transformed_real_mt )
 				
-					g.add_mem_constraints(Psi_transformed_real_copy_list, [Psi_transformed_real_copy_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
-					Psi_transformed_real_copy_list.append( Psi_transformed_real_copy_mt )
+					#g.add_mem_constraints(Psi_transformed_real_copy_list, [Psi_transformed_real_copy_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
+					#Psi_transformed_real_copy_list.append( Psi_transformed_real_copy_mt )
 
 					# calculate (Psi*gate_first_column).imag + (Psi_permuted*gate_second_column).imag
 					Psi_transformed_imag_st	    = g.add( state__gate_first_column_imag_st,  state_permuted__gate_second_column_imag_st, alus=[14], output_streams=g.SG4_E[6] )
-					Psi_transformed_imag_st = g.vxm_identity( Psi_transformed_imag_st, alus=[15], output_streams=g.SG4_W[6] )
+					Psi_transformed_imag_st = g.vxm_identity( Psi_transformed_imag_st, alus=[15], output_streams=g.SG4_W[0] )
+
+
 
 					Psi_transformed_imag_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag_{gate_idx}", layout=layout_transformed_state_imag, program_output=True)
-					Psi_transformed_imag_copy_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag_copy_{gate_idx}", layout=layout_transformed_state_imag_copy)
-
+					#Psi_transformed_imag_copy_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag_copy_{gate_idx}", layout=layout_transformed_state_imag_copy)
+					
 					g.add_mem_constraints(Psi_transformed_imag_list, [Psi_transformed_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
 					Psi_transformed_imag_list.append( Psi_transformed_imag_mt )
 					
-					g.add_mem_constraints(Psi_transformed_imag_copy_list, [Psi_transformed_imag_copy_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
-					Psi_transformed_imag_copy_list.append( Psi_transformed_imag_copy_mt )
-					#g.add_mem_constraints([Psi_transformed_imag_mt], [Psi_transformed_imag_mt_tmp], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
-					#Psi_transformed_imag_mt = Psi_transformed_imag_mt_tmp
-					#unused ALUS 6,15
+					#g.add_mem_constraints(Psi_transformed_imag_copy_list, [Psi_transformed_imag_copy_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
+					#Psi_transformed_imag_copy_list.append( Psi_transformed_imag_copy_mt )
+					
 					
 			self.pgm_pkg.compile_program_context(pgm3)
 			
