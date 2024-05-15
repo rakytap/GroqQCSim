@@ -18,16 +18,25 @@ class Upload:
 		self.state_1_broadcasted_mt = None
 		self.state_0_broadcasted_mt = None
 
+
+
+		# create reusable memory requests
+		self.state_imag_request = g.tensor.create_storage_request( layout=layout_State_input_imag )
+		self.state_real_request = g.tensor.create_storage_request( layout=layout_State_input_real )
+
+		self.state_imag_copy_request = g.tensor.create_storage_request( layout=layout_State_input_imag_copy )
+		self.state_real_copy_request = g.tensor.create_storage_request( layout=layout_State_input_real_copy )
+
 	def upload_program(self):
 		# Defines a program to upload the inputs
 		name = "upload"
 		with self.pgm_pkg.create_program_context(name) as pgm1:
 
-			self.State_input_real_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_real", layout=layout_State_input_real)
-			self.State_input_imag_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_imag", layout=layout_State_input_imag)
+			self.State_input_real_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_real", storage_req=self.state_real_request)
+			self.State_input_imag_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_imag", storage_req=self.state_imag_request)
 
-			self.State_input_real_copy_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_real_copy", layout=layout_State_input_real_copy)
-			self.State_input_imag_copy_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_imag_copy", layout=layout_State_input_imag_copy)
+			self.State_input_real_copy_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_real_copy", storage_req=self.state_real_copy_request)
+			self.State_input_imag_copy_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_imag_copy", storage_req=self.state_imag_copy_request)
 							
 			
 			self.state_permute_map_selector_mt 	= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="state_permute_map_selector", layout=layout_state_permute_map_selector)

@@ -1,4 +1,4 @@
-from state_transform import qbit_num
+qbit_num = 14
 
 # label to indicate the 00, 01, 10, 11 elements of the gate kernel
 gate_kernel_element_labels = ["00", "01", "10", "11"]
@@ -54,11 +54,8 @@ memory_slices = 1 << (qbit_num-small_qbit_num_limit)
 
 
 # memory layout to store the quantum state
-layout_State_input_real 	=f"H1(W), A{memory_slices/2}(0-{memory_slices/2-1}), B2, S4(0-3)"
-layout_State_input_imag 	=f"H1(W), A{memory_slices/2}(0-{memory_slices/2-1}), B2, S4(4-7)"
-layout_State_input_real_copy 	=f"H1(W), A{memory_slices/2}(0-{memory_slices/2-1}), B2, S4(8-11)"
-layout_State_input_imag_copy 	=f"H1(W), A{memory_slices/2}(0-{memory_slices/2-1}), B2, S4(12-15)"
+layout_State_input_real 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)-1}), B2, S4(0-3)"
+layout_State_input_imag 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)-1}), B2, S4(4-7)"
+layout_State_input_real_copy 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)-1}), B2, S4(8-11)"
+layout_State_input_imag_copy 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)-1}), B2, S4(12-15)"
 
-# memory layout to temporary store the permuted state vector
-layout_state_vector_real_permuted = f"H1(W), A{memory_slices/2}(0-{memory_slices/2-1}), B2, S4(8-11)"
-layout_state_vector_imag_permuted = f"H1(W), A{memory_slices/2}(0-{memory_slices/2-1}), B2, S4(12-15)"

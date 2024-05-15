@@ -8,7 +8,7 @@ import scipy
 import groqQCsim
 import time
 
-qbit_num = 14
+qbit_num = groqQCsim.qbit_num
 
 if __name__ == "__main__":
 	target_qbit = [4]

@@ -16,6 +16,8 @@ class Gate(Split_gates):
 			#g.reserve_tensor(pgm1, pgm2, State_input_real_mt)
 
 			
+
+			
 			# create reusable permutor requests
 			permutor_requests = []
 			permutor_requests.append( g.tensor.create_permutor_request( [0], 1 ) )
@@ -148,14 +150,19 @@ class Gate(Split_gates):
 					permuted_state_real_st = g.reinterpret(permuted_state_real_st_8, g.float32 )
 					permuted_state_imag_st = g.reinterpret(permuted_state_imag_st_8, g.float32 )
 
-					permuted_state_real_mt = permuted_state_real_st.write(name=f"permuted_result_real", layout=layout_state_vector_real_permuted)
-					permuted_state_imag_mt = permuted_state_imag_st.write(name=f"permuted_result_imag", layout=layout_state_vector_imag_permuted)
+					permuted_state_real_mt = permuted_state_real_st.write(name=f"permuted_result_real", storage_req=self.state_real_copy_request)
+					permuted_state_imag_mt = permuted_state_imag_st.write(name=f"permuted_result_imag", storage_req=self.state_imag_copy_request)
+
 
 					g.add_mem_constraints(Psi_transformed_real_copy_list, [permuted_state_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
 					Psi_transformed_real_copy_list.append( permuted_state_real_mt )
 
 					g.add_mem_constraints(Psi_transformed_imag_copy_list, [permuted_state_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
 					Psi_transformed_imag_copy_list.append( permuted_state_imag_mt )
+
+
+
+
 
 				
 				#################################################################################
@@ -320,7 +327,7 @@ class Gate(Split_gates):
 					# calculate Psi_permuted_imag * gate_second_column_imag
 					state_permuted_imag_st 				            = permuted_state_imag_mt.read( streams=[g.SG4[4]] )
 					gate_second_column_imag_mt_256                  = g.constant_tensor((1,256,), g.float32, storage_req=storage_req_imag_second_column, name="gate_second_column_imag_mt_256", initialized=False)					
-					gate_second_column_imag_st                      = gate_second_column_imag_mt_256.read( streams=[g.SG4[5]] )
+					gate_second_column_imag_st                      = gate_second_column_imag_mt_256.read( streams=[g.SG4_W[5]] )
 					state_permuted_imag__gate_second_column_imag_st	= g.mul( state_permuted_imag_st, gate_second_column_imag_st, alus=[5], output_streams=g.SG4_E[5] )			
 
 					# calculate Psi_permuted_real * gate_second_column_real - Psi_permuted_imag * gate_second_column_imag
@@ -348,9 +355,6 @@ class Gate(Split_gates):
 					#slice_offset  = ((gate_idx+1) % 2) * 4096
 		
 
-					layout_transformed_state_real = layout_State_input_real#f"H1(W), A{memory_slices}, S4(12-15)"#
-					layout_transformed_state_imag = layout_State_input_imag#f"H1(W), A{memory_slices}, S4(8-11)"#layout_State_input_imag + f", A{memory_slices}({slice_offset}-{slice_offset+memory_slices-1})"
-
 					layout_transformed_state_real_copy = layout_State_input_real_copy
 					layout_transformed_state_imag_copy = layout_State_input_imag_copy
 
@@ -360,29 +364,28 @@ class Gate(Split_gates):
 					Psi_transformed_real_st	= g.add( state__gate_first_column_real_st,  state_permuted__gate_second_column_real_st, alus=[7], output_streams=g.SG4_W[2] )
 					Psi_transformed_real_st = g.vxm_identity( Psi_transformed_real_st, alus=[6], output_streams=g.SG4_W[2] )
 
-					Psi_transformed_real_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real_{gate_idx}", layout=layout_transformed_state_real, program_output=True)
-					#Psi_transformed_real_copy_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real_copy_{gate_idx}", layout=layout_transformed_state_real_copy)
+					Psi_transformed_real_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real_{gate_idx}", storage_req=self.state_real_request, program_output=True)
+					Psi_transformed_real_copy_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real_copy_{gate_idx}", storage_req=self.state_real_copy_request)
 
 					g.add_mem_constraints(Psi_transformed_real_list, [Psi_transformed_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
 					Psi_transformed_real_list.append( Psi_transformed_real_mt )
 				
-					#g.add_mem_constraints(Psi_transformed_real_copy_list, [Psi_transformed_real_copy_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
-					#Psi_transformed_real_copy_list.append( Psi_transformed_real_copy_mt )
+					g.add_mem_constraints(Psi_transformed_real_copy_list, [Psi_transformed_real_copy_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
+					Psi_transformed_real_copy_list.append( Psi_transformed_real_copy_mt )
 
 					# calculate (Psi*gate_first_column).imag + (Psi_permuted*gate_second_column).imag
 					Psi_transformed_imag_st	    = g.add( state__gate_first_column_imag_st,  state_permuted__gate_second_column_imag_st, alus=[14], output_streams=g.SG4_E[6] )
 					Psi_transformed_imag_st = g.vxm_identity( Psi_transformed_imag_st, alus=[15], output_streams=g.SG4_W[0] )
 
 
-
-					Psi_transformed_imag_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag_{gate_idx}", layout=layout_transformed_state_imag, program_output=True)
-					#Psi_transformed_imag_copy_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag_copy_{gate_idx}", layout=layout_transformed_state_imag_copy)
+					Psi_transformed_imag_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag_{gate_idx}", storage_req=self.state_imag_request, program_output=True)
+					Psi_transformed_imag_copy_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag_copy_{gate_idx}", storage_req=self.state_imag_copy_request)
 					
 					g.add_mem_constraints(Psi_transformed_imag_list, [Psi_transformed_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
 					Psi_transformed_imag_list.append( Psi_transformed_imag_mt )
 					
-					#g.add_mem_constraints(Psi_transformed_imag_copy_list, [Psi_transformed_imag_copy_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
-					#Psi_transformed_imag_copy_list.append( Psi_transformed_imag_copy_mt )
+					g.add_mem_constraints(Psi_transformed_imag_copy_list, [Psi_transformed_imag_copy_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
+					Psi_transformed_imag_copy_list.append( Psi_transformed_imag_copy_mt )
 					
 					
 			self.pgm_pkg.compile_program_context(pgm3)
