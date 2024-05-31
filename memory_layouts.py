@@ -1,4 +1,4 @@
-qbit_num = 16
+qbit_num = 10
 
 # label to indicate the 00, 01, 10, 11 elements of the gate kernel
 gate_kernel_element_labels = ["00", "01", "10", "11"]
@@ -50,12 +50,12 @@ layout_permute_maps_east = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1})
 
 # determine the size of the part of the state vector handled in the inner split of the LPU tensors
 matrix_size   = int(2**small_qbit_num_limit)
-memory_slices = 1 << (qbit_num-small_qbit_num_limit)
+memory_addresses = 1 << (qbit_num-small_qbit_num_limit)
 
 
 # memory layout to store the quantum state
-layout_State_input_real 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)-1}), B2, S4(0-3)"
-layout_State_input_imag 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)-1}), B2, S4(4-7)"
-layout_State_input_real_copy 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)-1}), B2, S4(8-11)"
-layout_State_input_imag_copy 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)-1}), B2, S4(12-15)"
+layout_State_input_real 	=f"H1(W), A{memory_addresses >> 1}(0-{(memory_addresses >> 1)-1}), B2, S4(0-3)"
+layout_State_input_imag 	=f"H1(W), A{memory_addresses >> 1}(0-{(memory_addresses >> 1)-1}), B2, S4(4-7)"
+layout_State_input_real_copy 	=f"H1(W), A{memory_addresses >> 1}(0-{(memory_addresses >> 1)-1}), B2, S4(8-11)"
+layout_State_input_imag_copy 	=f"H1(W), A{memory_addresses >> 1}(0-{(memory_addresses >> 1)-1}), B2, S4(12-15)"
 

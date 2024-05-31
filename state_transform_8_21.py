@@ -11,7 +11,7 @@ import time
 qbit_num = groqQCsim_8_21.qbit_num
 
 if __name__ == "__main__":
-	target_qbit = [14]
+	target_qbit = [9]
 
 	# determine the soze of the unitary to be decomposed
 	matrix_size = 1 << qbit_num
@@ -87,8 +87,10 @@ if __name__ == "__main__":
 
 	print( State_orig_real_float32[0:10] )
 	print(' ' )
-	print( np.real( State_transformed_oracle[0:10] ) )
+	print( [np.real(State_transformed_oracle[i*256:i*256+10]) for i in range(4)])
+	print( [np.imag(State_transformed_oracle[i*256:i*256+10]) for i in range(4)]) 
 	print(' ')
-	print( real_part[0:10] )
+	print( [real_part[i*256:i*256+10] for i in range(4)] )
+	print( [imag_part[i*256:i*256+10] for i in range(4)])
 
 

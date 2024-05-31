@@ -1,0 +1,250 @@
+// GPP[release]
+// DEVICE 0
+
+.output "gate_kernel_real_0" float32 320 strided
+.logical_shape 320
+.split 320
+East 8 @ 4, East 9 @ 4, East 10 @ 4, East 11 @ 4
+.output "gate_kernel_imag_0" float32 320 strided
+.logical_shape 320
+.split 320
+East 12 @ 4, East 13 @ 4, East 14 @ 4, East 15 @ 4
+
+.unit Mem East 7
+.write 0
+48:    write 0, S_11_w // gate_kernel_broadcasted_imag_0_00
+50:    write 1, S_11_w // gate_kernel_broadcasted_imag_0_01
+52:    write 2, S_11_w // gate_kernel_broadcasted_imag_0_10
+54:    write 3, S_11_w // gate_kernel_broadcasted_imag_0_11
+
+.unit Mem East 3
+.write 0
+48:    write 0, S_11_w // gate_kernel_broadcasted_real_0_00
+50:    write 1, S_11_w // gate_kernel_broadcasted_real_0_01
+52:    write 2, S_11_w // gate_kernel_broadcasted_real_0_10
+54:    write 3, S_11_w // gate_kernel_broadcasted_real_0_11
+
+.unit Mem East 2
+.write 0
+48:    write 0, S_10_w // gate_kernel_broadcasted_real_0_00
+50:    write 1, S_10_w // gate_kernel_broadcasted_real_0_01
+52:    write 2, S_10_w // gate_kernel_broadcasted_real_0_10
+54:    write 3, S_10_w // gate_kernel_broadcasted_real_0_11
+
+.unit Selector East
+.dp 0
+31:    bcast S_8_w, 0b0000
+32:    bcast S_8_w, 0b0000
+33:    bcast S_8_w, 0b0000
+34:    bcast S_8_w, 0b0000
+35:    bcast S_8_w, 0b0000
+36:    bcast S_8_w, 0b0000
+37:    bcast S_8_w, 0b0000
+38:    bcast S_8_w, 0b0000
+
+.unit Permutor East
+.up 0
+27:    bcast SG4_1, NEW, NEW, NEW, NEW
+28:    bcast SG4_1, NEW, NEW, NEW, NEW
+29:    bcast SG4_1, NEW, NEW, NEW, NEW
+30:    bcast SG4_1, NEW, NEW, NEW, NEW
+31:    bcast SG4_1, NEW, NEW, NEW, NEW
+32:    bcast SG4_1, NEW, NEW, NEW, NEW
+33:    bcast SG4_1, NEW, NEW, NEW, NEW
+34:    bcast SG4_1, NEW, NEW, NEW, NEW
+
+.unit Distributor East
+.dp 0
+26:    dist S_12, 0b00001111
+27:    dist reuse, 15
+28:    dist S_12, 0b00001111
+29:    dist reuse, 15
+30:    dist S_12, 0b00001111
+31:    dist reuse, 15
+32:    dist S_12, 0b00001111
+33:    dist reuse, 15
+
+.unit Mem East 15
+.read 0
+14:    read 4, S_7_e // gate_kernel_imag_0.read
+16:    read 4, S_7_e // gate_kernel_imag_0.read
+18:    read 4, S_7_e // gate_kernel_imag_0.read
+20:    read 4, S_7_e // gate_kernel_imag_0.read
+
+.write 0
+11:    write 4, S_3_w // gate_kernel_imag_0
+46:    write 0, S_11_w // gate_kernel_broadcasted_imag_0_00
+48:    write 1, S_11_w // gate_kernel_broadcasted_imag_0_01
+50:    write 2, S_11_w // gate_kernel_broadcasted_imag_0_10
+52:    write 3, S_11_w // gate_kernel_broadcasted_imag_0_11
+
+.unit Mem East 10
+.read 0
+12:    read 4, S_6_e // gate_kernel_real_0.read
+14:    read 4, S_6_e // gate_kernel_real_0.read
+16:    read 4, S_6_e // gate_kernel_real_0.read
+18:    read 4, S_6_e // gate_kernel_real_0.read
+
+.write 0
+11:    write 4, S_2_w // gate_kernel_real_0
+46:    write 0, S_10_w // gate_kernel_broadcasted_real_0_00
+48:    write 1, S_10_w // gate_kernel_broadcasted_real_0_01
+50:    write 2, S_10_w // gate_kernel_broadcasted_real_0_10
+52:    write 3, S_10_w // gate_kernel_broadcasted_real_0_11
+
+.unit Mem East 6
+.write 0
+48:    write 0, S_10_w // gate_kernel_broadcasted_imag_0_00
+50:    write 1, S_10_w // gate_kernel_broadcasted_imag_0_01
+52:    write 2, S_10_w // gate_kernel_broadcasted_imag_0_10
+54:    write 3, S_10_w // gate_kernel_broadcasted_imag_0_11
+
+.unit Mem East 41
+.read 0
+0:    read 320, S_1_w // <mt>.read
+1:    read 321, S_1_w // <mt>.read
+
+.unit Mem East 0
+.write 0
+48:    write 0, S_8_w // gate_kernel_broadcasted_real_0_00
+50:    write 1, S_8_w // gate_kernel_broadcasted_real_0_01
+52:    write 2, S_8_w // gate_kernel_broadcasted_real_0_10
+54:    write 3, S_8_w // gate_kernel_broadcasted_real_0_11
+
+.unit Mem East 11
+.read 0
+12:    read 4, S_7_e // gate_kernel_real_0.read
+14:    read 4, S_7_e // gate_kernel_real_0.read
+16:    read 4, S_7_e // gate_kernel_real_0.read
+18:    read 4, S_7_e // gate_kernel_real_0.read
+
+.write 0
+11:    write 4, S_3_w // gate_kernel_real_0
+46:    write 0, S_11_w // gate_kernel_broadcasted_real_0_00
+48:    write 1, S_11_w // gate_kernel_broadcasted_real_0_01
+50:    write 2, S_11_w // gate_kernel_broadcasted_real_0_10
+52:    write 3, S_11_w // gate_kernel_broadcasted_real_0_11
+
+.unit Mem East 4
+.write 0
+48:    write 0, S_8_w // gate_kernel_broadcasted_imag_0_00
+50:    write 1, S_8_w // gate_kernel_broadcasted_imag_0_01
+52:    write 2, S_8_w // gate_kernel_broadcasted_imag_0_10
+54:    write 3, S_8_w // gate_kernel_broadcasted_imag_0_11
+
+.unit Mem East 42
+.read 0
+0:    read 320, S_2_w // <mt>.read
+1:    read 321, S_2_w // <mt>.read
+
+.unit Mem East 9
+.read 0
+12:    read 4, S_5_e // gate_kernel_real_0.read
+14:    read 4, S_5_e // gate_kernel_real_0.read
+16:    read 4, S_5_e // gate_kernel_real_0.read
+18:    read 4, S_5_e // gate_kernel_real_0.read
+
+.write 0
+11:    write 4, S_1_w // gate_kernel_real_0
+46:    write 0, S_9_w // gate_kernel_broadcasted_real_0_00
+48:    write 1, S_9_w // gate_kernel_broadcasted_real_0_01
+50:    write 2, S_9_w // gate_kernel_broadcasted_real_0_10
+52:    write 3, S_9_w // gate_kernel_broadcasted_real_0_11
+
+.unit Mem East 5
+.write 0
+48:    write 0, S_9_w // gate_kernel_broadcasted_imag_0_00
+50:    write 1, S_9_w // gate_kernel_broadcasted_imag_0_01
+52:    write 2, S_9_w // gate_kernel_broadcasted_imag_0_10
+54:    write 3, S_9_w // gate_kernel_broadcasted_imag_0_11
+
+.unit Mem East 43
+.read 0
+0:    read 320, S_3_w // <mt>.read
+1:    read 321, S_3_w // <mt>.read
+
+.unit Mem East 1
+.write 0
+48:    write 0, S_9_w // gate_kernel_broadcasted_real_0_00
+50:    write 1, S_9_w // gate_kernel_broadcasted_real_0_01
+52:    write 2, S_9_w // gate_kernel_broadcasted_real_0_10
+54:    write 3, S_9_w // gate_kernel_broadcasted_real_0_11
+
+.unit Mem East 12
+.read 0
+14:    read 4, S_4_e // gate_kernel_imag_0.read
+16:    read 4, S_4_e // gate_kernel_imag_0.read
+18:    read 4, S_4_e // gate_kernel_imag_0.read
+20:    read 4, S_4_e // gate_kernel_imag_0.read
+
+.write 0
+11:    write 4, S_0_w // gate_kernel_imag_0
+46:    write 0, S_8_w // gate_kernel_broadcasted_imag_0_00
+48:    write 1, S_8_w // gate_kernel_broadcasted_imag_0_01
+50:    write 2, S_8_w // gate_kernel_broadcasted_imag_0_10
+52:    write 3, S_8_w // gate_kernel_broadcasted_imag_0_11
+
+.unit Mem East 17
+.data
+//memory_tensor
+ 0x0008: [ b64 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= ]
+//memory_tensor
+ 0x0009: [ b64 AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE= ]
+//memory_tensor
+ 0x000a: [ b64 AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI= ]
+//memory_tensor
+ 0x000b: [ b64 AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM= ]
+
+.read 0
+13:    read 8, S_12_e // <ct>.read
+15:    read 9, S_12_e // <ct>.read
+17:    read 10, S_12_e // <ct>.read
+19:    read 11, S_12_e // <ct>.read
+
+.unit Mem East 40
+.read 0
+0:    read 320, S_0_w // <mt>.read
+1:    read 321, S_0_w // <mt>.read
+
+.unit Mem East 13
+.read 0
+14:    read 4, S_5_e // gate_kernel_imag_0.read
+16:    read 4, S_5_e // gate_kernel_imag_0.read
+18:    read 4, S_5_e // gate_kernel_imag_0.read
+20:    read 4, S_5_e // gate_kernel_imag_0.read
+
+.write 0
+11:    write 4, S_1_w // gate_kernel_imag_0
+46:    write 0, S_9_w // gate_kernel_broadcasted_imag_0_00
+48:    write 1, S_9_w // gate_kernel_broadcasted_imag_0_01
+50:    write 2, S_9_w // gate_kernel_broadcasted_imag_0_10
+52:    write 3, S_9_w // gate_kernel_broadcasted_imag_0_11
+
+.unit Mem East 14
+.read 0
+14:    read 4, S_6_e // gate_kernel_imag_0.read
+16:    read 4, S_6_e // gate_kernel_imag_0.read
+18:    read 4, S_6_e // gate_kernel_imag_0.read
+20:    read 4, S_6_e // gate_kernel_imag_0.read
+
+.write 0
+11:    write 4, S_2_w // gate_kernel_imag_0
+46:    write 0, S_10_w // gate_kernel_broadcasted_imag_0_00
+48:    write 1, S_10_w // gate_kernel_broadcasted_imag_0_01
+50:    write 2, S_10_w // gate_kernel_broadcasted_imag_0_10
+52:    write 3, S_10_w // gate_kernel_broadcasted_imag_0_11
+
+.unit Mem East 8
+.read 0
+12:    read 4, S_4_e // gate_kernel_real_0.read
+14:    read 4, S_4_e // gate_kernel_real_0.read
+16:    read 4, S_4_e // gate_kernel_real_0.read
+18:    read 4, S_4_e // gate_kernel_real_0.read
+
+.write 0
+11:    write 4, S_0_w // gate_kernel_real_0
+46:    write 0, S_8_w // gate_kernel_broadcasted_real_0_00
+48:    write 1, S_8_w // gate_kernel_broadcasted_real_0_01
+50:    write 2, S_8_w // gate_kernel_broadcasted_real_0_10
+52:    write 3, S_8_w // gate_kernel_broadcasted_real_0_11
+
