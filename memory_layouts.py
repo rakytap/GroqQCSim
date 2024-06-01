@@ -59,3 +59,5 @@ layout_State_input_imag 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)
 layout_State_input_real_copy 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)-1}), B2, S4(8-11)"
 layout_State_input_imag_copy 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)-1}), B2, S4(12-15)"
 
+layout_control_state_1_selector = f"H1(E), A{gate_count}({gate_count}-{2*gate_count-1}), S1(19)"
+layout_control_state_0_selector = f"H1(E), A{gate_count}({gate_count}-{2*gate_count-1}), S1(21)"
