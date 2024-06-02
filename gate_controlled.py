@@ -47,8 +47,6 @@ class Gate(Split_gates):
 			state_1_broadcasted_shared = g.shared_memory_tensor(self.state_1_broadcasted_mt, name="state_1_broadcasted_shared")
 			state_0_broadcasted_shared = g.shared_memory_tensor(self.state_0_broadcasted_mt, name="state_0_broadcasted_shared")
 
-			control_state_1_selector = g.shared_memory_tensor(self.control_state_1_selector_mt, name="control_state_1_selector_shared")
-			control_state_0_selector = g.shared_memory_tensor(self.control_state_0_selector_mt, name="control_state_0_selector_shared")
 
 			# Creates a shared tensor to reuse the memory allocation made by program pgm2
 

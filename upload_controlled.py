@@ -17,8 +17,8 @@ class Upload:
 		self.permute_maps_east = None
 		self.state_1_broadcasted_mt = None
 		self.state_0_broadcasted_mt = None
-		self.control_state_1_selector_mt = None
-		self.control_state_0_selector_mt = None
+		self.control_state_1_broadcasted_mt = None
+		self.control_state_0_broadcasted_mt = None
 
 
 
@@ -47,8 +47,8 @@ class Upload:
 			print(self.state_permute_map_selector_mt.shape)
 			print(dir(self.state_permute_map_selector_mt))
 
-			self.control_state_1_selector_mt = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="control_state_1_selector", layout=layout_control_state_1_selector)
-			self.control_state_0_selector_mt = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="control_state_0_selector", layout=layout_control_state_0_selector)
+			control_state_1_selector_mt = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="control_state_1_selector", layout=layout_control_state_1_selector)
+			control_state_0_selector_mt = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="control_state_0_selector", layout=layout_control_state_0_selector)
 
 			self.gate_kernels_real_packed_mt = g.input_tensor(shape=(320,), dtype=g.float32, name="gate_kernels_real_packed", layout=layout_gate_kernels_real_packed)
 			self.gate_kernels_imag_packed_mt = g.input_tensor(shape=(320,), dtype=g.float32, name="gate_kernels_imag_packed", layout=layout_gate_kernels_imag_packed)
@@ -63,8 +63,8 @@ class Upload:
 			self.gate_kernels_imag_packed_mt.is_static 	= True
 			state_1_selector_mt.is_static			= True
 			state_0_selector_mt.is_static			= True
-			self.control_state_1_selector_mt.is_static = True
-			self.control_state_0_selector_mt.is_static = True
+			control_state_1_selector_mt.is_static = True
+			control_state_0_selector_mt.is_static = True
 
 			
 			# generate permutation maps to reorder the state vector elements for qubits less than small_qbit_num_limit
@@ -123,6 +123,11 @@ class Upload:
 			distributor_requests.append(  g.tensor.create_distributor_request( [4], 1 ) ) # EAST
 			distributor_requests.append(  g.tensor.create_distributor_request( [7], 1 ) ) # EAST	
 
+			# create reusable transposer requests
+			transposer_requests = []
+			transposer_requests.append(  g.tensor.create_transposer_request( [2], 1 ) ) # EAST
+			transposer_requests.append(  g.tensor.create_transposer_request( [3], 1 ) ) # EAST	
+
 			# distribute maps to broadcast teh gate kernel elements over a vector
 			distribute_map_np = np.zeros( (320,), dtype=np.uint8 )
 			for idx in range(320):
@@ -132,6 +137,8 @@ class Upload:
 			distribute_map_tensor_state0_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state0 + f", A1({small_qbit_num_limit+4})" )
 			g.add_mem_constraints([states_1_mt], [distribute_map_tensor_state1_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 			g.add_mem_constraints([states_0_mt], [distribute_map_tensor_state0_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+			g.add_mem_constraints([state_1_selector_mt], [control_state_1_selector_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+			g.add_mem_constraints([state_0_selector_mt], [control_state_0_selector_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 
 			with g.ResourceScope(name="distribute_state_indices_scope", is_buffered=True, time=0) as distribute_state_indices_scope :
 
@@ -155,7 +162,7 @@ class Upload:
 
 				state_1_broadcasted_st = g.transpose_null(
 					state_1_broadcasted_st,
-					transposer_req=2,
+					transposer_req=transposer_requests[0],
 					stream_order=[4,5,6,7],
 				)
 
@@ -170,7 +177,7 @@ class Upload:
 
 				state_0_broadcasted_st = g.transpose_null(
 					state_0_broadcasted_st,
-					transposer_req=3,
+					transposer_req=transposer_requests[1],
 					stream_order=[12,13,14,15],
 				)
 
@@ -183,7 +190,54 @@ class Upload:
 				self.state_1_broadcasted_mt.is_static = True
 				self.state_0_broadcasted_mt.is_static = True
 
+				control_state_1_selector_st = control_state_1_selector_mt.read(streams=[g.SG1[0]])
+				control_state_1_st = g.mem_gather(states_1_mt, control_state_1_selector_st, output_streams=[g.SG1[0]], time=3)
+				
+				control_state_0_selector_st = control_state_0_selector_mt.read(streams=[g.SG1[24]])
+				control_state_0_st = g.mem_gather(states_0_mt, control_state_0_selector_st, output_streams=[g.SG1[24]], time=3)
+				
+				
+				distributor_request = distributor_requests[0]
+				control_state_1_broadcasted_st = g.distribute_lowest( control_state_1_st, 
+						distribute_map_tensor_state1_mt,
+						distributor_req=distributor_request,
+						map_stream_req=g.SG1[12],
+						bypass8=0b00001111,
+				)
+				
+				control_state_1_broadcasted_st = g.transpose_null(
+					control_state_1_broadcasted_st,
+					transposer_req=transposer_requests[0],
+					stream_order=[4,5,6,7],
+				)
+				
+					
+				distributor_request = distributor_requests[1]
+				control_state_0_broadcasted_st = g.distribute_lowest( control_state_0_st, 
+						distribute_map_tensor_state0_mt,
+						distributor_req=distributor_request,
+						map_stream_req=g.SG1[31],
+						bypass8=0b00001111,
+				)
+				
+				control_state_0_broadcasted_st = g.transpose_null(
+					control_state_0_broadcasted_st,
+					transposer_req=transposer_requests[1],
+					stream_order=[12,13,14,15],
+				)
+				
+					
+				control_state_1_broadcasted_st = g.reinterpret( control_state_1_broadcasted_st, g.uint32 )
+				self.control_state_1_broadcasted_mt = control_state_1_broadcasted_st.write(name="control_state_1_broadcasted", layout=layout_control_state_1_broadcasted, program_output=False)
+				control_state_0_broadcasted_st = g.reinterpret( control_state_0_broadcasted_st, g.uint32 )
+				self.control_state_0_broadcasted_mt = control_state_0_broadcasted_st.write(name="control_state_0_broadcasted", layout=layout_control_state_0_broadcasted, program_output=False)
+				
+				self.control_state_1_broadcasted_mt.is_static = True
+				self.control_state_0_broadcasted_mt.is_static = True
 				g.add_mem_constraints([states_1_mt, states_0_mt, distribute_map_tensor_state1_mt, distribute_map_tensor_state0_mt, state_1_selector_mt, state_0_selector_mt], [self.state_0_broadcasted_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+				g.add_mem_constraints([self.control_state_0_broadcasted_mt], [self.state_0_broadcasted_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+				g.add_mem_constraints([self.control_state_1_broadcasted_mt], [self.state_1_broadcasted_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+
 			
 			self.pgm_pkg.compile_program_context(pgm1)
 			

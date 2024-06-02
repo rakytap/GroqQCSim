@@ -24,7 +24,8 @@ if __name__ == "__main__":
 
 	# define quantum circuit
 	circuit = Circuit(qbit_num)
-	circuit.add_CZ( target_qbit[0], control_qbit[0] )
+	# circuit.add_CZ( target_qbit[0], control_qbit[0] )
+	circuit.add_U3( target_qbit[0] )
 
 	circuit_1 = Circuit( 1 )
 	circuit_1.add_U3( 0 )
@@ -51,9 +52,9 @@ if __name__ == "__main__":
 	#####################################################
 	# get the gate kernel
 
-	# gate_kernel_single = circuit_1.get_Matrix( parameters )
-	gate_kernel_single = np.array([[1.0+0.0j, 0.0+0.0j],
-								[0.0+0.0j, -1.0+0.0j]], dtype=np.complex64)
+	gate_kernel_single = circuit_1.get_Matrix( parameters )
+	# gate_kernel_single = np.array([[1.0+0.0j, 0.0+0.0j],
+	# 							[0.0+0.0j, -1.0+0.0j]], dtype=np.complex64)
 	print( 'The singla qubit gate kernel is:')
 	print( gate_kernel_single )
 
