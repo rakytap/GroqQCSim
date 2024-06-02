@@ -14,6 +14,9 @@ layout_state_permute_map_selector   = f"H1(W), A{gate_count}(320-{320+gate_count
 layout_state_1_selector				= f"H1(E), A{gate_count}(0-{gate_count-1}), S1(19)" 
 layout_state_0_selector				= f"H1(E), A{gate_count}(0-{gate_count-1}), S1(21)"
 
+layout_control_state_1_selector = f"H1(E), A{gate_count}({gate_count}-{2*gate_count-1}), S1(19)"
+layout_control_state_0_selector = f"H1(E), A{gate_count}({gate_count}-{2*gate_count-1}), S1(21)"
+
 layout_gate_kernels_real_packed ="H1(E), A1(320), S4(40-43)"
 layout_gate_kernels_imag_packed	="H1(E), A1(321), S4(40-43)"
 
@@ -42,6 +45,8 @@ layout_distribute_map_tensor_state0 = "H1(E), S1(18)"
 
 layout_state_1_broadcasted			= f"H1(E), A{gate_count}(320-{320+gate_count-1}), S4(22-26)" # slice 24 is reserved
 layout_state_0_broadcasted			= f"H1(E), A{gate_count}(320-{320+gate_count-1}), S4(27-31)" # slice 28 is reserved
+layout_control_state_1_broadcasted			= f"H1(E), A{gate_count}({320+gate_count}-{320+2*gate_count-1}), S4(22-26)" # slice 24 is reserved
+layout_control_state_0_broadcasted			= f"H1(E), A{gate_count}({320+gate_count}-{320+2*gate_count-1}), S4(27-31)" # slice 28 is reserved
 
 
 # permute maps at -- used to reorder the state vector elements according to the given target qubit
@@ -59,5 +64,3 @@ layout_State_input_imag 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)
 layout_State_input_real_copy 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)-1}), B2, S4(8-11)"
 layout_State_input_imag_copy 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)-1}), B2, S4(12-15)"
 
-layout_control_state_1_selector = f"H1(E), A{gate_count}({gate_count}-{2*gate_count-1}), S1(19)"
-layout_control_state_0_selector = f"H1(E), A{gate_count}({gate_count}-{2*gate_count-1}), S1(21)"
