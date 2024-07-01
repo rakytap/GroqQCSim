@@ -47,6 +47,13 @@ class Gate(Split_gates):
 			state_1_broadcasted_shared = g.shared_memory_tensor(self.state_1_broadcasted_mt, name="state_1_broadcasted_shared")
 			state_0_broadcasted_shared = g.shared_memory_tensor(self.state_0_broadcasted_mt, name="state_0_broadcasted_shared")
 
+			control_state_1_broadcasted_shared = g.shared_memory_tensor(self.control_state_1_broadcasted_mt, name="control_state_1_broadcasted_shared")
+			control_state_0_broadcasted_shared = g.shared_memory_tensor(self.control_state_0_broadcasted_mt, name="control_state_0_broadcasted_shared")
+
+			ones_shared = g.shared_memory_tensor(self.ones_mt, name="ones_shared")
+			zeros_shared = g.shared_memory_tensor(self.zeros_mt, name="zeros_shared")
+			ones_zeros_mt = g.concat([ones_shared, zeros_shared], dim=0, name="ones_zeros_mt")
+
 
 			# Creates a shared tensor to reuse the memory allocation made by program pgm2
 
@@ -181,12 +188,23 @@ class Gate(Split_gates):
 					
 					
 					# filter the elements in the vector according to the indices standig for output states |0> and |1> 
+
+					# create_reusable_alu_requests
+					alu_requests = []
+					alu_requests.append(  g.tensor.create_alu_request( [0], 1 ) ) 
+					alu_requests.append(  g.tensor.create_alu_request( [8], 1 ) ) 
+					alu_requests.append(  g.tensor.create_alu_request( [5], 1 ) )
+					alu_requests.append(  g.tensor.create_alu_request( [2], 1 ) )
 					
 					with g.ResourceScope(name=f"prepare_fileterd_gate_elements_scope_{gate_idx}", is_buffered=True,  time=0) as prepare_fileterd_gate_elements_scope :
 
 						state_1_broadcasted_st = state_1_broadcasted_shared.read( streams=g.SG4[1] )
 						state_0_broadcasted_st = state_0_broadcasted_shared.read( streams=g.SG4[7] )
-				
+						control_state_1_broadcasted_st = control_state_1_broadcasted_shared.read( streams=g.SG4[2] )
+						control_state_0_broadcasted_st = control_state_0_broadcasted_shared.read( streams=g.SG4[5] )
+						ones_zeros_st = ones_zeros_mt.read( streams=g.SG4[3])
+
+						
 						# real and imaginary parts of the state concatenated into a unified tensor
 						gate_00_real_st = gate_kernels_broadcasted_real_shared_dict[f"{gate_idx}_00"].read( streams=g.SG4[6], time=0 )
 						gate_00_imag_st = gate_kernels_broadcasted_imag_shared_dict[f"{gate_idx}_00"].read( streams=g.SG4[6], time=0 )
@@ -194,10 +212,8 @@ class Gate(Split_gates):
 
 						#gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[6] )
 						gate_00_st = g.reinterpret( gate_00_st, g.uint32 )
-						gate_00_st = g.bitwise_and( gate_00_st, state_0_broadcasted_st, alus=[8], output_streams=g.SG4[4] )
+						gate_00_st = g.bitwise_and( gate_00_st, state_0_broadcasted_st, alus=alu_requests[1], output_streams=g.SG4[4] )
 						gate_00_st = g.reinterpret( gate_00_st, g.float32 )
-
-
 
 
 						# real and imaginary parts of the state concatenated into a unified tensor
@@ -206,19 +222,31 @@ class Gate(Split_gates):
 						gate_11_st 	= g.stack( [gate_11_real_st, gate_11_imag_st], dim=0 )
 
 						gate_11_st = g.reinterpret( gate_11_st, g.uint32 )
-						gate_11_st = g.bitwise_and( gate_11_st, state_1_broadcasted_st, alus=[0], output_streams=g.SG4[3] )
+						gate_11_st = g.bitwise_and( gate_11_st, state_1_broadcasted_st, alus=alu_requests[0], output_streams=g.SG4[3] )
 						gate_11_st = g.reinterpret( gate_11_st, g.float32 )
 
 				
 						# combine the filtered gate element vectors
-						gate_diag_st = g.add(gate_00_st, gate_11_st, alus=[5], output_streams=g.SG4[3])
-				
+						gate_diag_st = g.add(gate_00_st, gate_11_st, alus=alu_requests[2], output_streams=g.SG4[3])
+
+						# we want to apply the gate only if the control qbit is |1>
+						gate_diag_st = g.reinterpret( gate_diag_st, g.uint32 )
+						gate_diag_st = g.bitwise_and( gate_diag_st, control_state_1_broadcasted_st, alus=alu_requests[3], output_streams=g.SG4[3])
+						gate_diag_st = g.reinterpret( gate_diag_st, g.float32 )
+
+						# we need to 'normalize' the control_state_0_broadcasted tensor
+						control_state_0_broadcasted_st = g.reinterpret( control_state_0_broadcasted_st, g.uint32 )
+						control_state_0_broadcasted_st = g.bitwise_and(control_state_0_broadcasted_st, ones_zeros_st, alus=[4], output_streams=g.SG4[5])
+						control_state_0_broadcasted_st = g.reinterpret( control_state_0_broadcasted_st, g.float32)
+
+						# when the control qbit is |0> we want dont want to change the state
+						gate_diag_st = g.add(gate_diag_st, control_state_0_broadcasted_st, alus=[7], output_streams=g.SG4[3])
 							
 						print("layout: ", layout_imag_diag)
 					
-						gate_diag_st_list	= g.split( gate_diag_st, num_splits=2, dim=0 )
-						gate_diag_real_mt 	= gate_diag_st_list[0].write(name=f"gate_diag_real_{gate_idx}", storage_req=storage_req_real_diag, program_output=True)
-						gate_diag_imag_mt 	= gate_diag_st_list[1].write(name=f"gate_diag_imag_{gate_idx}", storage_req=storage_req_imag_diag, program_output=True)
+						gate_diag_real_st, gate_diag_imag_st	= g.split( gate_diag_st, num_splits=2, dim=0 )
+						gate_diag_real_mt 	= gate_diag_real_st.write(name=f"gate_diag_real_{gate_idx}", storage_req=storage_req_real_diag, program_output=True)
+						gate_diag_imag_mt 	= gate_diag_imag_st.write(name=f"gate_diag_imag_{gate_idx}", storage_req=storage_req_imag_diag, program_output=True)
 						#if gate_idx > 0:
 						#	g.add_mem_constraints(gate_diag_real_list, [gate_diag_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 						#	g.add_mem_constraints(gate_diag_imag_list, [gate_diag_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
@@ -235,6 +263,7 @@ class Gate(Split_gates):
 
 						state_1_broadcasted_st = state_1_broadcasted_shared.read( streams=g.SG4[1] )
 						state_0_broadcasted_st = state_0_broadcasted_shared.read( streams=g.SG4[7] )
+						control_state_1_broadcasted_st = control_state_1_broadcasted_shared.read( streams=g.SG4[2] )
 				
 						# real and imaginary parts of the state concatenated into a unified tensor
 						gate_01_real_st = gate_kernels_broadcasted_real_shared_dict[f"{gate_idx}_01"].read( streams=g.SG4[6])#, time=5 )
@@ -243,7 +272,7 @@ class Gate(Split_gates):
 
 						#gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[6] )
 						gate_01_st = g.reinterpret( gate_01_st, g.uint32 )
-						gate_01_st = g.bitwise_and( gate_01_st, state_0_broadcasted_st, alus=[10], output_streams=g.SG4[4] )
+						gate_01_st = g.bitwise_and( gate_01_st, state_0_broadcasted_st, alus=alu_requests[1], output_streams=g.SG4[4] )
 						gate_01_st = g.reinterpret( gate_01_st, g.float32 )
 
 						# real and imaginary parts of the state concatenated into a unified tensor
@@ -252,13 +281,15 @@ class Gate(Split_gates):
 						gate_10_st 	= g.stack( [gate_10_real_st, gate_10_imag_st], dim=0 )
 
 						gate_10_st = g.reinterpret( gate_10_st, g.uint32 )
-						gate_10_st = g.bitwise_and( gate_10_st, state_1_broadcasted_st, alus=[2], output_streams=g.SG4[3] )
+						gate_10_st = g.bitwise_and( gate_10_st, state_1_broadcasted_st, alus=alu_requests[0], output_streams=g.SG4[3] )
 						gate_10_st = g.reinterpret( gate_10_st, g.float32 )
 					
 						# combine the filtered gate element vectors
-						gate_off_diag_st = g.add(gate_01_st, gate_10_st, alus=[7], output_streams=g.SG4[3])
+						gate_off_diag_st = g.add(gate_01_st, gate_10_st, alus=alu_requests[2], output_streams=g.SG4[3])
 				
-							
+						gate_off_diag_st = g.reinterpret( gate_off_diag_st, g.uint32 )
+						gate_off_diag_st = g.bitwise_and( gate_off_diag_st, control_state_1_broadcasted_st, alus=alu_requests[3], output_streams=g.SG4[3])
+						gate_off_diag_st = g.reinterpret( gate_off_diag_st, g.float32 )
 					
 						gate_off_diag_st_list	= g.split( gate_off_diag_st, num_splits=2, dim=0 )
 						gate_off_diag_real_mt 	= gate_off_diag_st_list[0].write(name=f"gate_off_diag_real_{gate_idx}", storage_req=storage_req_real_off_diag, program_output=True)
