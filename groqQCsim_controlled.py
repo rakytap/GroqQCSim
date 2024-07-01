@@ -151,6 +151,10 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 
 	# run the first program
 	pgm_1_output = invoke(device, iop, 0, 0, {"State_input_real": input_real, "State_input_imag": input_imag, "State_input_real_copy": input_real, "State_input_imag_copy": input_imag, "state_permute_map_selector": state_permute_map_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector})
+	# print( "c0>", pgm_1_output["control_state_0_broadcasted"])
+	# print( "c1>", pgm_1_output["control_state_1_broadcasted"])
+	# print( "1>", pgm_1_output["state_1_broadcasted"])
+	# print( "0>", pgm_1_output["state_0_broadcasted"])
 	
 	# run the gate split program
 	index_of_split_program = 1
@@ -192,6 +196,8 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	#print(pgm_3_output["tmp_real_mt"] == pgm_3_output["tmp_real_mt2"])
 	# print(pgm_3_output["gate_diag_real_0"])
 	# print(pgm_3_output["gate_off_diag_real_0"])
+	# print(pgm_3_output["gate_diag_imag_0"])
+	# print(pgm_3_output["gate_off_diag_imag_0"])
 	#print(pgm_3_output["Psi_transformed_real"])
 	#print(pgm_3_output["Psi_transformed_imag"])
 

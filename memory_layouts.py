@@ -64,3 +64,7 @@ layout_State_input_imag 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)
 layout_State_input_real_copy 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)-1}), B2, S4(8-11)"
 layout_State_input_imag_copy 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)-1}), B2, S4(12-15)"
 
+# memory layout for the tensors full of ones and zeros
+layout_zeros = f"H1(E), A1({320+2*gate_count}), S4(27-31)"
+layout_ones = f"H1(E), A1({320+2*gate_count}), S4(32-35)"
+

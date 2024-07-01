@@ -19,8 +19,8 @@ class Upload:
 		self.state_0_broadcasted_mt = None
 		self.control_state_1_broadcasted_mt = None
 		self.control_state_0_broadcasted_mt = None
-
-
+		self.ones_mt = None
+		self.zeros_mt = None
 
 		# create reusable memory requests
 		self.state_imag_request = g.tensor.create_storage_request( layout=layout_State_input_imag )
@@ -44,8 +44,6 @@ class Upload:
 			self.state_permute_map_selector_mt 	= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="state_permute_map_selector", layout=layout_state_permute_map_selector)
 			state_1_selector_mt				= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="state_1_selector", layout=layout_state_1_selector)
 			state_0_selector_mt				= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="state_0_selector", layout=layout_state_0_selector)
-			print(self.state_permute_map_selector_mt.shape)
-			print(dir(self.state_permute_map_selector_mt))
 
 			control_state_1_selector_mt = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="control_state_1_selector", layout=layout_control_state_1_selector)
 			control_state_0_selector_mt = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="control_state_0_selector", layout=layout_control_state_0_selector)
@@ -66,7 +64,6 @@ class Upload:
 			control_state_1_selector_mt.is_static = True
 			control_state_0_selector_mt.is_static = True
 
-			
 			# generate permutation maps to reorder the state vector elements for qubits less than small_qbit_num_limit
 			permute_map = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint32 )
 
@@ -110,13 +107,14 @@ class Upload:
 						states_1_np[target_qbit_loc, idx] = 0
 						states_0_np[target_qbit_loc, idx] = 255
 				print( "states |1> at target qubit ", target_qbit_loc, " is:" )
-				print( states_1_np[target_qbit_loc, 0:256] )
+				print( states_0_np[target_qbit_loc, 0:256] )
 
 			states_1_mt = g.from_data( np.asarray(states_1_np, dtype=np.uint8), layout=layout_states_1 )
 			states_1_mt.is_static = True
 
 			states_0_mt = g.from_data( np.asarray(states_0_np, dtype=np.uint8), layout=layout_states_0 )
 			states_0_mt.is_static = True
+
 
 			# create reusable distributor requests
 			distributor_requests = []
@@ -139,6 +137,14 @@ class Upload:
 			g.add_mem_constraints([states_0_mt], [distribute_map_tensor_state0_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 			g.add_mem_constraints([state_1_selector_mt], [control_state_1_selector_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 			g.add_mem_constraints([state_0_selector_mt], [control_state_0_selector_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+
+			# generate tensors full with float32 ones and zeros
+			self.ones_mt = g.full((1, 1, 320), 1.0, dtype=g.float32, name="ones_mt", layout=layout_ones)
+			self.zeros_mt = g.full((1, 1, 320), 0.0, dtype=g.float32, name="zeros_mt", layout=layout_zeros)
+			self.ones_mt = g.reinterpret( self.ones_mt, dtype=g.uint32)
+			self.zeros_mt = g.reinterpret( self.zeros_mt, dtype=g.uint32)
+			self.ones_mt.is_static = True
+			self.zeros_mt.is_static = True
 
 			with g.ResourceScope(name="distribute_state_indices_scope", is_buffered=True, time=0) as distribute_state_indices_scope :
 
@@ -190,6 +196,7 @@ class Upload:
 				self.state_1_broadcasted_mt.is_static = True
 				self.state_0_broadcasted_mt.is_static = True
 
+				# same as before but now for the control qbit
 				control_state_1_selector_st = control_state_1_selector_mt.read(streams=[g.SG1[0]])
 				control_state_1_st = g.mem_gather(states_1_mt, control_state_1_selector_st, output_streams=[g.SG1[0]], time=3)
 				
@@ -226,17 +233,16 @@ class Upload:
 					stream_order=[12,13,14,15],
 				)
 				
-					
+				control_state_0_broadcasted_st = g.reinterpret( control_state_0_broadcasted_st, g.uint32 )
 				control_state_1_broadcasted_st = g.reinterpret( control_state_1_broadcasted_st, g.uint32 )
 				self.control_state_1_broadcasted_mt = control_state_1_broadcasted_st.write(name="control_state_1_broadcasted", layout=layout_control_state_1_broadcasted, program_output=False)
-				control_state_0_broadcasted_st = g.reinterpret( control_state_0_broadcasted_st, g.uint32 )
 				self.control_state_0_broadcasted_mt = control_state_0_broadcasted_st.write(name="control_state_0_broadcasted", layout=layout_control_state_0_broadcasted, program_output=False)
 				
 				self.control_state_1_broadcasted_mt.is_static = True
 				self.control_state_0_broadcasted_mt.is_static = True
-				g.add_mem_constraints([states_1_mt, states_0_mt, distribute_map_tensor_state1_mt, distribute_map_tensor_state0_mt, state_1_selector_mt, state_0_selector_mt], [self.state_0_broadcasted_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 				g.add_mem_constraints([self.control_state_0_broadcasted_mt], [self.state_0_broadcasted_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 				g.add_mem_constraints([self.control_state_1_broadcasted_mt], [self.state_1_broadcasted_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+				g.add_mem_constraints([self.state_0_broadcasted_mt, self.control_state_0_broadcasted_mt], [self.zeros_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 
 			
 			self.pgm_pkg.compile_program_context(pgm1)
