@@ -8,7 +8,7 @@ from gate_8_21 import Gate_8_21
 import os
 import shutil
 from typing import List
-import utils
+# import utils
 from memory_layouts import *
 
 try:
@@ -192,6 +192,11 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 	
 	Psi_transformed_imag = pgm_3_output[f"Psi_transformed_imag_0"]
 	Psi_transformed_imag = np.reshape( Psi_transformed_imag, (Psi_transformed_imag.size,) )	
+	print([sum(x)  for y in pgm_3_output["gr0"] for x in y])
+	print([sum(x)  for y in pgm_3_output["gi0"] for x in y])
+	print("____________________________________________")
+	print([sum(x)  for y in pgm_3_output["gr1"] for x in y])
+	print([sum(x)  for y in pgm_3_output["gi1"] for x in y])
 	return Psi_transformed_real, Psi_transformed_imag
 
 
