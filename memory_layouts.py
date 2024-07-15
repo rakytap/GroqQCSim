@@ -1,5 +1,5 @@
 
-qbit_num = 10
+qbit_num = 13
 
 # label to indicate the 00, 01, 10, 11 elements of the gate kernel
 gate_kernel_element_labels = ["00", "01", "10", "11"]

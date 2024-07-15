@@ -3,7 +3,7 @@ from memory_layouts import *
 import groq.api as g
 
 class Gate_8_21(Split_gates):
-  def __init__(self, pgm_pkg, target_qubit=9):
+  def __init__(self, pgm_pkg, target_qubit):
         super().__init__(pgm_pkg)
         self.target_qubit = target_qubit
 
@@ -139,23 +139,36 @@ class Gate_8_21(Split_gates):
                       ) for label in ["01", "11"]
                   ], dim=0 )
           #g (2, memory_addresses//2, matrix_size)
-          print(pairs0[0].physical_shape, pairs0[0].shape)
-          print(gr0.physical_shape,gr0.shape)
-     
+          
+          #switch to row pair order (memory_addresses//2, matrix_size) so we can write result and copy without overwriting future needed values (cannot implicit latch gates, but saves double memory if crossing VXM or extra copy operations)
+          if memory_addresses > 8: #8 memory addresses does not exhaust the ALU pipeline, only at 16 does this issue occur
+              new_shape = (2, memory_addresses//4, 2, 320) #maintain bank alternation for target_qubit>=9
+              gr0, gi0, gr1, gi1 = gr0.reshape(*new_shape).transpose(1, 0, 2, 3), gi0.reshape(*new_shape).transpose(1, 0, 2, 3), gr1.reshape(*new_shape).transpose(1, 0, 2, 3), gi1.reshape(*new_shape).transpose(1, 0, 2, 3)
+              new_shape = (2, memory_addresses//4, 2, matrix_size)
+              pairs0[0], pairs0[1], pairs1[0], pairs1[1] = pairs0[0].reshape(*new_shape).transpose(1, 0, 2, 3), pairs0[1].reshape(*new_shape).transpose(1, 0, 2, 3), pairs1[0].reshape(*new_shape).transpose(1, 0, 2, 3), pairs1[1].reshape(*new_shape).transpose(1, 0, 2, 3)
+                            
           pairs0[0], pairs0[1], pairs1[0], pairs1[1] = Gate_8_21.two_complex_dot_product(
                   pairs1[0], pairs1[1], pairs0[0], pairs0[1], gr0, gi0, gr1, gi1)
+
 
           pairs_to_store0 = g.stack([pairs_to_concat0_0, pairs_to_concat0_1], dim=0)
           pairs_to_store1 = g.stack([pairs_to_concat1_0, pairs_to_concat1_1], dim=0)
           #pairs_to_store (2, memory_addresses//2, 2, matrix_size)
-          print(pairs_to_store0.shape)
 
           pairs0_0, pairs0_1 = g.split(pairs_to_store0, num_splits=2, dim=2)
           pairs1_0, pairs1_1 = g.split(pairs_to_store1, num_splits=2, dim=2)
           #pairs (2, memory_addresses//2, 1, matrix_size)
+          print(memory_addresses)
+          if memory_addresses > 8:
+              pairs0_0, pairs0_1, pairs1_0, pairs1_1 = pairs0_0.reshape(*new_shape).transpose(1, 0, 2, 3), pairs0_1.reshape(*new_shape).transpose(1, 0, 2, 3), pairs1_0.reshape(*new_shape).transpose(1, 0, 2, 3), pairs1_1.reshape(*new_shape).transpose(1, 0, 2, 3)
 
-          pairs0[0].write(storage_req=pairs0_0.storage_request, name="pairs0_0")
-          pairs0[1].write(storage_req=pairs0_1.storage_request, name="pairs0_1")
+          #for target_qbit >= 9, bank alternation works by utilizing the VXM identity delayed output as it passes through even ALUs (compute graph has depth of 4 ALUs)
+          #for target_qbit == 8, first pair is even bank, second of each pair is odd bank  
+          #if self.target_qubit == 8:
+          #    pairs1 = (g.concat([g.split(pairs1[0], num_splits=2, dim=0)[0], g.split(pairs0[0], num_splits=2, dim=0)[1]], dim=0),
+          #                g.concat([g.split(pairs1[1], num_splits=2, dim=0)[0], g.split(pairs0[1], num_splits=2, dim=0)[1]], dim=0)) 
+          pairs1[0].write(storage_req=pairs0_0.storage_request, name="pairs0_0")
+          pairs1[1].write(storage_req=pairs0_1.storage_request, name="pairs0_1")
           pairs1[0].write(storage_req=pairs1_0.storage_request, name="pairs1_0")
           pairs1[1].write(storage_req=pairs1_1.storage_request, name="pairs1_1")
 
