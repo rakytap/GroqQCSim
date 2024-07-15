@@ -112,9 +112,9 @@ class Gate_8_21(Split_gates):
           pairs_to_concat1_1 = g.stack(pairs_to_concat1_1, dim=0)
           #pairs_to_concat (memory_addresses//2, 2, matrix_size)
 
-          pairs0 = g.stack([pairs_to_concat0_0, pairs_to_concat0_0], dim=0)
+          pairs0 = g.stack([pairs_to_concat0_0, pairs_to_concat1_0 if self.target_qubit==8 else pairs_to_concat0_0], dim=0)
           pairs0 = [x.reshape(2, memory_addresses//2, matrix_size) for x in pairs0.split(num_splits=2, dim=2)]
-          pairs1 = g.stack([pairs_to_concat1_1, pairs_to_concat1_1], dim=0)
+          pairs1 = g.stack([pairs_to_concat1_1, pairs_to_concat0_1 if self.target_qubit==8 else pairs_to_concat1_1], dim=0)
           pairs1 = [x.reshape(2, memory_addresses//2, matrix_size) for x in pairs1.split(num_splits=2, dim=2)]
           #pairs (2, memory_addresses//2, 2, matrix_size) -> [(2, memory_addresses//2, matrix_size)]*2
 
@@ -141,10 +141,10 @@ class Gate_8_21(Split_gates):
           #g (2, memory_addresses//2, matrix_size)
           
           #switch to row pair order (memory_addresses//2, matrix_size) so we can write result and copy without overwriting future needed values (cannot implicit latch gates, but saves double memory if crossing VXM or extra copy operations)
-          if memory_addresses > 8: #8 memory addresses does not exhaust the ALU pipeline, only at 16 does this issue occur
-              new_shape = (2, memory_addresses//4, 2, 320) #maintain bank alternation for target_qubit>=9
+          if memory_addresses > 8: #8 memory addresses does not exhaust the ALU pipeline depth (3*3=9 or 3*4=12 with identity), only at 16 does this issue occur              
+              new_shape = (2, memory_addresses//2, 1, 320) if self.target_qubit==8 else (2, memory_addresses//4, 2, 320) #maintain bank alternation for target_qubit>=9
               gr0, gi0, gr1, gi1 = gr0.reshape(*new_shape).transpose(1, 0, 2, 3), gi0.reshape(*new_shape).transpose(1, 0, 2, 3), gr1.reshape(*new_shape).transpose(1, 0, 2, 3), gi1.reshape(*new_shape).transpose(1, 0, 2, 3)
-              new_shape = (2, memory_addresses//4, 2, matrix_size)
+              new_shape = (2, memory_addresses//2, 1, matrix_size) if self.target_qubit==8 else (2, memory_addresses//4, 2, matrix_size)
               pairs0[0], pairs0[1], pairs1[0], pairs1[1] = pairs0[0].reshape(*new_shape).transpose(1, 0, 2, 3), pairs0[1].reshape(*new_shape).transpose(1, 0, 2, 3), pairs1[0].reshape(*new_shape).transpose(1, 0, 2, 3), pairs1[1].reshape(*new_shape).transpose(1, 0, 2, 3)
                             
           pairs0[0], pairs0[1], pairs1[0], pairs1[1] = Gate_8_21.two_complex_dot_product(
@@ -161,14 +161,13 @@ class Gate_8_21(Split_gates):
           print(memory_addresses)
           if memory_addresses > 8:
               pairs0_0, pairs0_1, pairs1_0, pairs1_1 = pairs0_0.reshape(*new_shape).transpose(1, 0, 2, 3), pairs0_1.reshape(*new_shape).transpose(1, 0, 2, 3), pairs1_0.reshape(*new_shape).transpose(1, 0, 2, 3), pairs1_1.reshape(*new_shape).transpose(1, 0, 2, 3)
+              #for target_qbit >= 9, bank alternation works by utilizing the VXM identity delayed output as it passes through even ALUs (compute graph has depth of 4 ALUs)
+              #for target_qbit == 8, original is even/odd bank, copy is odd/even bank  
+              if self.target_qubit == 8: pairs1, pairs0 = pairs0, pairs1
+              else: pairs0 = pairs1 #use only delayed tensors
 
-          #for target_qbit >= 9, bank alternation works by utilizing the VXM identity delayed output as it passes through even ALUs (compute graph has depth of 4 ALUs)
-          #for target_qbit == 8, first pair is even bank, second of each pair is odd bank  
-          #if self.target_qubit == 8:
-          #    pairs1 = (g.concat([g.split(pairs1[0], num_splits=2, dim=0)[0], g.split(pairs0[0], num_splits=2, dim=0)[1]], dim=0),
-          #                g.concat([g.split(pairs1[1], num_splits=2, dim=0)[0], g.split(pairs0[1], num_splits=2, dim=0)[1]], dim=0)) 
-          pairs1[0].write(storage_req=pairs0_0.storage_request, name="pairs0_0")
-          pairs1[1].write(storage_req=pairs0_1.storage_request, name="pairs0_1")
+          pairs0[0].write(storage_req=pairs0_0.storage_request, name="pairs0_0")
+          pairs0[1].write(storage_req=pairs0_1.storage_request, name="pairs0_1")
           pairs1[0].write(storage_req=pairs1_0.storage_request, name="pairs1_0")
           pairs1[1].write(storage_req=pairs1_1.storage_request, name="pairs1_1")
 
