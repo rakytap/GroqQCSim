@@ -50,7 +50,7 @@ layout_permute_maps_west = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1})
 layout_permute_maps_east = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(E), S1(39)"
 
 # determine the size of the part of the state vector handled in the inner split of the LPU tensors
-matrix_size   = int(2**small_qbit_num_limit)
+matrix_size   = 1<<small_qbit_num_limit
 memory_addresses = 1 << (qbit_num-small_qbit_num_limit)
 
 

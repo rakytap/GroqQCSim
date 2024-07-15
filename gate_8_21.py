@@ -84,16 +84,17 @@ class Gate_8_21(Split_gates):
 
         with g.ResourceScope(name=f"apply_gate_scope_{gate_idx}", is_buffered=True, predecessors=[], time=0) as apply_gate_scope :
           pairs = [
-              [x,x^(2**(self.target_qubit-8))] for x in range(memory_addresses) if x < x^(2**(self.target_qubit-8))
+              [x,x^(1<<(self.target_qubit-8))] for x in range(memory_addresses) if x < x^(1<<(self.target_qubit-8))
                 ]
           # print("=============================>", pairs)
           # print(len(inner_dims))
           # print(Psi_transformed_real_mt.physical_shape, Psi_transformed_real_mt.shape)
-          inner_dims = g.stack(
-                  [Psi_transformed_real_mt, Psi_transformed_imag_mt], dim=0).split(dim=1, num_splits=memory_addresses)
-          inner_dims_copy = g.stack(
-                  [Psi_transformed_real_copy_mt, Psi_transformed_imag_copy_mt], dim=0).split(dim=1, num_splits=memory_addresses)
-
+          #Psi_transformed_mt (memory_addresses, matrix_size)
+          inner_dims = [x.reshape(2, matrix_size) for x in g.stack(
+                  [Psi_transformed_real_mt, Psi_transformed_imag_mt], dim=0).split(dim=1, num_splits=memory_addresses)]
+          inner_dims_copy = [x.reshape(2, matrix_size) for x in g.stack(
+                  [Psi_transformed_real_copy_mt, Psi_transformed_imag_copy_mt], dim=0).split(dim=1, num_splits=memory_addresses)]
+          #inner_dims (2, memory_addresses, matrix_size) -> [(2, matrix_size)]*memory_addresses 
           pairs_to_concat0_0 = []
           pairs_to_concat0_1 = []
           pairs_to_concat1_0 = []
@@ -104,52 +105,59 @@ class Gate_8_21(Split_gates):
             pairs_to_concat1_0.append(inner_dims_copy[i[0]])
             pairs_to_concat1_1.append(inner_dims_copy[i[1]])
 
+          #pairs_to_concat [(2, 1<<small_qbit_num_limit)]*(memory_addresses//2)
           pairs_to_concat0_0 = g.stack(pairs_to_concat0_0, dim=0)
           pairs_to_concat0_1 = g.stack(pairs_to_concat0_1, dim=0)
           pairs_to_concat1_0 = g.stack(pairs_to_concat1_0, dim=0)
           pairs_to_concat1_1 = g.stack(pairs_to_concat1_1, dim=0)
+          #pairs_to_concat (memory_addresses//2, 2, matrix_size)
 
           pairs0 = g.stack([pairs_to_concat0_0, pairs_to_concat0_0], dim=0)
           pairs0 = [x.reshape(2, memory_addresses//2, matrix_size) for x in pairs0.split(num_splits=2, dim=2)]
           pairs1 = g.stack([pairs_to_concat1_1, pairs_to_concat1_1], dim=0)
           pairs1 = [x.reshape(2, memory_addresses//2, matrix_size) for x in pairs1.split(num_splits=2, dim=2)]
+          #pairs (2, memory_addresses//2, 2, matrix_size) -> [(2, memory_addresses//2, matrix_size)]*2
 
           gr0 = g.stack(
                 [g.stack(
                       [gate_kernels_broadcasted_real_shared_dict[f"{gate_idx}_"+label] for _ in range(memory_addresses//2)], dim=0
                       ) for label in ["00", "10"]
-                  ], dim=1 )
+                  ], dim=0 )
           gi0 = g.stack(
                 [g.stack(
                       [gate_kernels_broadcasted_imag_shared_dict[f"{gate_idx}_"+label] for _ in range(memory_addresses//2)], dim=0
                       ) for label in ["00", "10"]
-                  ], dim=1 )
+                  ], dim=0 )
           gr1 = g.stack(
                 [g.stack(
                       [gate_kernels_broadcasted_real_shared_copy_dict[f"{gate_idx}_"+label] for _ in range(memory_addresses//2)], dim=0
                       ) for label in ["01", "11"]
-                  ], dim=1 )
+                  ], dim=0 )
           gi1 = g.stack(
                 [g.stack(
                       [gate_kernels_broadcasted_imag_shared_copy_dict[f"{gate_idx}_"+label] for _ in range(memory_addresses//2)], dim=0
                       ) for label in ["01", "11"]
-                  ], dim=1 )
+                  ], dim=0 )
+          #g (2, memory_addresses//2, matrix_size)
           print(pairs0[0].physical_shape, pairs0[0].shape)
           print(gr0.physical_shape,gr0.shape)
      
           pairs0[0], pairs0[1], pairs1[0], pairs1[1] = Gate_8_21.two_complex_dot_product(
                   pairs1[0], pairs1[1], pairs0[0], pairs0[1], gr0, gi0, gr1, gi1)
 
-          # pairs0 = g.concat(pairs0, dim=1)
-          # pairs1 = g.concat(pairs1, dim=1)
+          pairs_to_store0 = g.stack([pairs_to_concat0_0, pairs_to_concat0_1], dim=0)
+          pairs_to_store1 = g.stack([pairs_to_concat1_0, pairs_to_concat1_1], dim=0)
+          #pairs_to_store (2, memory_addresses//2, 2, matrix_size)
+          print(pairs_to_store0.shape)
 
-          # pairs0_0, pairs0_1 = g.split(pairs0, num_splits=2, dim=0)
-          # pairs1_0, pairs1_1 = g.split(pairs1, num_splits=2, dim=0)
+          pairs0_0, pairs0_1 = g.split(pairs_to_store0, num_splits=2, dim=2)
+          pairs1_0, pairs1_1 = g.split(pairs_to_store1, num_splits=2, dim=2)
+          #pairs (2, memory_addresses//2, 1, matrix_size)
 
-          pairs0[0].write(storage_req=pairs_to_concat0_0.storage_request, name="pairs0_0")
-          pairs0[1].write(storage_req=pairs_to_concat1_1.storage_request, name="pairs0_1")
-          pairs1[0].write(storage_req=pairs_to_concat1_0.storage_request, name="pairs1_0")
-          pairs1[1].write(storage_req=pairs_to_concat0_1.storage_request, name="pairs1_1")
+          pairs0[0].write(storage_req=pairs0_0.storage_request, name="pairs0_0")
+          pairs0[1].write(storage_req=pairs0_1.storage_request, name="pairs0_1")
+          pairs1[0].write(storage_req=pairs1_0.storage_request, name="pairs1_0")
+          pairs1[1].write(storage_req=pairs1_1.storage_request, name="pairs1_1")
 
 
           Psi_transformed_real_mt_output = g.constant_tensor(
