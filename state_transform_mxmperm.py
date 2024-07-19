@@ -11,7 +11,7 @@ import time
 qbit_num = groqQCsim_mxmperm.qbit_num
 
 if __name__ == "__main__":
-	target_qbit = [4]
+	target_qbit = [2]
 
 	# determine the soze of the unitary to be decomposed
 	matrix_size = 1 << qbit_num
