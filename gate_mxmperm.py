@@ -85,7 +85,8 @@ class Gate(Split_gates):
 
 			pre = []
 			tm = [0, 118]
-			tm_pgk = [50, 168]
+			# we can only start the prepare_gate_kernel_scope after the weights have been install because of stream limitations
+			tm_pgk = [25, 143]
 
 			gate_first_column_real_list = []
 			gate_first_column_imag_list = []
@@ -156,6 +157,7 @@ class Gate(Split_gates):
 					Psi_transformed_imag_copy_mt_list = g.split(Psi_transformed_imag_copy_mt, dim=-2, num_splits=g.float32.size)
 					
 
+					# 20 cycles to read the permute matrix, 8 for installing the weights and each matmul operation takes "memory_slices" cycles
 					time_list = [8, 28, 8+memory_slices, 28+memory_slices]
 					weights_list = []
 					weights_list.append(g.install_weights(permute_matrix_west_mt, planes=mxm_requests[0], time=0))
@@ -166,12 +168,14 @@ class Gate(Split_gates):
 						# Real part
 						permuted_state_real_st = Psi_transformed_real_mt_list[byte_idx].matmul(weights_list[byte_idx%2+2], planes=mxm_requests[byte_idx%2+2], time=time_list[byte_idx])
 						permuted_state_real_st = g.reinterpret(permuted_state_real_st, dtype=g.int8)
+						# we only need the last byte
 						permuted_state_real_st = g.split(permuted_state_real_st, dim=-2, num_splits=g.int32.size)[0]
 						permuted_state_real_st.write(storage_req=Psi_transformed_real_copy_mt_list[byte_idx].storage_request)
 
 						# Imag part
 						permuted_state_imag_st = Psi_transformed_imag_mt_list[byte_idx].matmul(weights_list[byte_idx%2], planes=mxm_requests[byte_idx%2], time=time_list[byte_idx])
 						permuted_state_imag_st = g.reinterpret(permuted_state_imag_st, dtype=g.int8)
+						# we only need the last byte
 						permuted_state_imag_st = g.split(permuted_state_imag_st, dim=-2, num_splits=g.int32.size)[0]
 						permuted_state_imag_st.write(storage_req=Psi_transformed_imag_copy_mt_list[byte_idx].storage_request)
 
