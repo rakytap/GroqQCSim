@@ -17,6 +17,8 @@ class Upload:
 		self.permute_maps_east = None
 		self.state_1_broadcasted_mt = None
 		self.state_0_broadcasted_mt = None
+		self.identity_west_mt = None
+		self.identity_east_mt = None
 
 
 
@@ -32,11 +34,11 @@ class Upload:
 		name = "upload"
 		with self.pgm_pkg.create_program_context(name) as pgm1:
 
-			self.State_input_real_mt = g.input_tensor(shape=(memory_addresses, matrix_size,), dtype=g.float32, name="State_input_real", storage_req=self.state_real_request)
-			self.State_input_imag_mt = g.input_tensor(shape=(memory_addresses, matrix_size,), dtype=g.float32, name="State_input_imag", storage_req=self.state_imag_request)
+			self.State_input_real_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_real", storage_req=self.state_real_request)
+			self.State_input_imag_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_imag", storage_req=self.state_imag_request)
 
-			self.State_input_real_copy_mt = g.input_tensor(shape=(memory_addresses, matrix_size,), dtype=g.float32, name="State_input_real_copy", storage_req=self.state_real_copy_request)
-			self.State_input_imag_copy_mt = g.input_tensor(shape=(memory_addresses, matrix_size,), dtype=g.float32, name="State_input_imag_copy", storage_req=self.state_imag_copy_request)
+			self.State_input_real_copy_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_real_copy", storage_req=self.state_real_copy_request)
+			self.State_input_imag_copy_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_imag_copy", storage_req=self.state_imag_copy_request)
 							
 			
 			self.state_permute_map_selector_mt 	= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="state_permute_map_selector", layout=layout_state_permute_map_selector)
@@ -59,6 +61,10 @@ class Upload:
 			state_1_selector_mt.is_static			= True
 			state_0_selector_mt.is_static			= True
 
+			identity = np.identity(320, dtype=np.int8)
+			self.identity_west_mt = g.from_data(identity, layout=layout_identity_west)
+			self.identity_east_mt = g.from_data(identity, layout=layout_identity_east)
+			
 			
 			# generate permutation maps to reorder the state vector elements for qubits less than small_qbit_num_limit
 			permute_map = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint32 )

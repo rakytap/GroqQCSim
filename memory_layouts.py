@@ -68,3 +68,6 @@ layout_State_input_imag_copy 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices 
 layout_zeros = f"H1(E), A1({320+2*gate_count}), S4(27-31)"
 layout_ones = f"H1(E), A1({320+2*gate_count}), S4(32-35)"
 
+# memory layout for the identity tensors
+layout_identity_west = "H1(W), A20(0-19), S16(17-35)" 
+layout_identity_east = f"H1(E), A20({(len(gate_kernel_element_labels)+1)*gate_count}-{(len(gate_kernel_element_labels)+1)*gate_count+19}), S16(0-15)"
