@@ -17,6 +17,8 @@ class Upload:
 		self.permute_maps_east = None
 		self.state_1_broadcasted_mt = None
 		self.state_0_broadcasted_mt = None
+		self.identity_west_mt = None
+		self.identity_east_mt = None
 
 
 
@@ -59,6 +61,10 @@ class Upload:
 			state_1_selector_mt.is_static			= True
 			state_0_selector_mt.is_static			= True
 
+			identity = np.identity(320, dtype=np.int8)
+			self.identity_west_mt = g.from_data(identity, layout=layout_identity_west)
+			self.identity_east_mt = g.from_data(identity, layout=layout_identity_east)
+			
 			
 			# generate permutation maps to reorder the state vector elements for qubits less than small_qbit_num_limit
 			permute_map = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint32 )
