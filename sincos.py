@@ -1,61 +1,59 @@
-import os
+import os, subprocess
 import numpy as np
 import groq.api as g
 
 #float16/float32 compatible
 def remainder_float16(x, yinv, y, expmask, sgnmask, mantbias):
-        x_st = x.read(streams=g.SG4[6]) #direction=Direction.EASTWARD
-        yinv_st = yinv.read(streams=g.SG4[4]) #direction=Direction.EASTWARD
-        y_st = y.read(streams=g.SG4[5]) #direction=Direction.EASTWARD
-        expmask_st = expmask.read(streams=g.SG4[7]).reinterpret(x.dtype) #direction=Direction.EASTWARD
-        xo_st = g.vxm_identity(x_st, alus=[12], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_E[6]], direction=Direction.EASTWARD
-        save = g.memory_tensor(shape=xo_st.shape, dtype=xo_st.dtype, name="xo_st_store", layout=f"-1, H1(E), B2, S{x.dtype.size}(0-{x.dtype.size-1})", is_static=True)
-        xo_st.write(name="xo_st", storage_req=save.storage_request)
-        xd_st = save.read(streams=g.SG4[3]) #direction=Direction.WESTWARD
-        xyinv_st = g.mul(x_st, yinv_st, alus=[8], output_streams=[g.SG4[6]]) #input_streams=[g.SG4_E[6], g.SG4_E[4]], direction=Direction.EASTWARD
-        xyinv_id9_st = g.vxm_identity(xyinv_st, alus=[9], output_streams=[g.SG4[5]]) #input_streams=[g.SG4_E[6]], direction=Direction.WESTWARD
-        xyinv_id4_st = g.vxm_identity(xyinv_id9_st, alus=[4], output_streams=[g.SG4[3]]) #input_streams=[g.SG4_W[5]], direction=Direction.EASTWARD
-        xint_st = g.cast(xyinv_st, dtype=g.int16, alus=[15], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_E[6]], direction=Direction.WESTWARD
-        rintx_st = g.cast(xint_st, dtype=g.float16, alus=[2], output_streams=[g.SG4[3]]) #input_streams=[g.SG4_W[1]], direction=Direction.EASTWARD
-        exp_st = g.bitwise_and(xyinv_st, expmask_st, alus=[13], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_E[6], g.SG4_E[7]], direction=Direction.WESTWARD
-        sgnmask_st = sgnmask.read(streams=g.SG4[2]) #direction=Direction.EASTWARD
+        x_st = x.read(streams=g.SG4[5]) #direction=Direction.EASTWARD
+        yinv_st = yinv.read(streams=g.SG4[7]) #direction=Direction.EASTWARD
+        y_st = y.read(streams=g.SG4[2]) #direction=Direction.EASTWARD
+        expmask_st = expmask.read(streams=g.SG4[0]).reinterpret(x.dtype) #direction=Direction.EASTWARD
+        save = g.memory_tensor(shape=x_st.shape, dtype=x_st.dtype, name="x_st_store", layout=f"-1, H1(E), B2, S{x.dtype.size}(0-{x.dtype.size-1})", is_static=True)
+        x_st.write(name="x_st", storage_req=save.storage_request)
+        xd_st = save.read(streams=g.SG4[4]) #direction=Direction.WESTWARD
+        xyinv_st = g.mul(x_st, yinv_st, alus=[8], output_streams=[g.SG4[6]]) #input_streams=[g.SG4_E[5], g.SG4_E[7]], direction=Direction.EASTWARD
+        xyinv_id10_st = g.vxm_identity(xyinv_st, alus=[10], output_streams=[g.SG4[7]]) #input_streams=[g.SG4_E[6]], direction=Direction.EASTWARD
+        xyinv_id11_st = g.vxm_identity(xyinv_id10_st, alus=[11], output_streams=[g.SG4[6]]) #input_streams=[g.SG4_E[7]], direction=Direction.WESTWARD
+        xint_st = g.cast(xyinv_st, dtype=g.int16, alus=[15], output_streams=[g.SG4[0]]) #input_streams=[g.SG4_E[6]], direction=Direction.WESTWARD
+        rintx_st = g.cast(xint_st, dtype=g.float16, alus=[2], output_streams=[g.SG4[0]]) #input_streams=[g.SG4_W[0]], direction=Direction.WESTWARD
+        exp_st = g.bitwise_and(xyinv_st, expmask_st, alus=[13], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_E[6], g.SG4_E[0]], direction=Direction.WESTWARD
+        sgnmask_st = sgnmask.read(streams=g.SG4[6]) #direction=Direction.EASTWARD
         mantbias_st = mantbias.read(streams=g.SG4[1]) #direction=Direction.EASTWARD
-        isint_st = g.greater_equal(exp_st, mantbias_st, alus=[0], output_streams=[g.SG4[0]]) #input_streams=[g.SG4_W[1], g.SG4_E[1]], direction=Direction.EASTWARD
-        intx_st = g.mask(isint_st, xyinv_id4_st, alus=[1], output_streams=[g.SG4[3]]) #input_streams=[g.SG4_E[0], g.SG4_E[3]], direction=Direction.EASTWARD
-        sgn_st = g.bitwise_and(xyinv_id4_st, sgnmask_st, alus=[5], output_streams=[g.SG4[4]]) #input_streams=[g.SG4_E[3], g.SG4_E[2]], direction=Direction.EASTWARD
-        intxsgn_st = g.bitwise_or(intx_st, sgn_st, alus=[6], output_streams=[g.SG4[5]]) #input_streams=[g.SG4_E[3], g.SG4_E[4]], direction=Direction.EASTWARD
-        smallx_st = g.mask_bar(isint_st, rintx_st, alus=[3], output_streams=[g.SG4[0]]) #input_streams=[g.SG4_E[0], g.SG4_E[3]], direction=Direction.WESTWARD
-        smallx_id14_st = g.vxm_identity(smallx_st, alus=[14], output_streams=[g.SG4[7]]) #input_streams=[g.SG4_W[0]], direction=Direction.EASTWARD
-        rfloatadj_st = g.bitwise_or(intxsgn_st, smallx_id14_st, alus=[11], output_streams=[g.SG4[4]]) #input_streams=[g.SG4_E[5], g.SG4_E[7]], direction=Direction.WESTWARD
-        xfrac_st = g.mul(rfloatadj_st, y_st, alus=[10], output_streams=[g.SG4[4]]) #input_streams=[g.SG4_W[4], g.SG4_E[5]], direction=Direction.EASTWARD
-        r_st = g.sub(xd_st, xfrac_st, alus=[7], output_streams=[g.SG4[2]], time=0) #input_streams=[g.SG4_W[3], g.SG4_E[4]], direction=Direction.WESTWARD
-        return xo_st, r_st #directions=[Direction.EASTWARD, Direction.WESTWARD]
+        isint_st = g.greater_equal(exp_st, mantbias_st, alus=[0], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_W[1], g.SG4_E[1]], direction=Direction.EASTWARD
+        intx_st = g.mask(isint_st, xyinv_id11_st, alus=[14], output_streams=[g.SG4[7]]) #input_streams=[g.SG4_E[1], g.SG4_W[6]], direction=Direction.WESTWARD
+        sgn_st = g.bitwise_and(xyinv_id11_st, sgnmask_st, alus=[12], output_streams=[g.SG4[7]]) #input_streams=[g.SG4_W[6], g.SG4_E[6]], direction=Direction.EASTWARD
+        intxsgn_st = g.bitwise_or(intx_st, sgn_st, alus=[9], output_streams=[g.SG4[5]]) #input_streams=[g.SG4_W[7], g.SG4_E[7]], direction=Direction.WESTWARD
+        smallx_st = g.mask_bar(isint_st, rintx_st, alus=[1], output_streams=[g.SG4[3]]) #input_streams=[g.SG4_E[1], g.SG4_W[0]], direction=Direction.EASTWARD
+        smallx_id6_st = g.vxm_identity(smallx_st, alus=[6], output_streams=[g.SG4[2]]) #input_streams=[g.SG4_E[3]], direction=Direction.WESTWARD
+        rfloatadj_st = g.bitwise_or(intxsgn_st, smallx_id6_st, alus=[4], output_streams=[g.SG4[4]]) #input_streams=[g.SG4_W[5], g.SG4_W[2]], direction=Direction.EASTWARD
+        xfrac_st = g.mul(rfloatadj_st, y_st, alus=[5], output_streams=[g.SG4[2]]) #input_streams=[g.SG4_E[4], g.SG4_E[2]], direction=Direction.EASTWARD
+        r_st = g.sub(xd_st, xfrac_st, alus=[7], output_streams=[g.SG4[3]]) #input_streams=[g.SG4_W[4], g.SG4_E[2]], direction=Direction.WESTWARD
+        return x_st, r_st #directions=[Direction.EASTWARD, Direction.WESTWARD]
 
-def remainder_float32(x, yinv, y, one, expmask):
+def remainder_float32(x, yinv, y, expmask, one):
         x_st = x.read(streams=g.SG4[7]) #direction=Direction.EASTWARD
-        yinv_st = yinv.read(streams=g.SG4[0]) #direction=Direction.EASTWARD
+        yinv_st = yinv.read(streams=g.SG4[6]) #direction=Direction.EASTWARD
         y_st = y.read(streams=g.SG4[5]) #direction=Direction.EASTWARD
-        one_st = one.read(streams=g.SG4[2]).reinterpret(expmask.dtype) #direction=Direction.EASTWARD
-        expmask_st = expmask.read(streams=g.SG4[1]).reinterpret(x.dtype) #direction=Direction.EASTWARD
-        xo_st = g.vxm_identity(x_st, alus=[8], output_streams=[g.SG4[5]]) #input_streams=[g.SG4_E[7]], direction=Direction.EASTWARD
-        save = g.memory_tensor(shape=xo_st.shape, dtype=xo_st.dtype, name="xo_st_store", layout=f"-1, H1(E), B2, S{x.dtype.size}(0-{x.dtype.size-1})", is_static=True)
-        xo_st.write(name="xo_st", storage_req=save.storage_request)
-        xd_st = save.read(streams=g.SG4[6]) #direction=Direction.WESTWARD
-        xyinv_st = g.mul(x_st, yinv_st, alus=[12], output_streams=[g.SG4[0]]) #input_streams=[g.SG4_E[7], g.SG4_E[0]], direction=Direction.EASTWARD
-        xyinv_id13_st = g.vxm_identity(xyinv_st, alus=[13], output_streams=[g.SG4[7]]) #input_streams=[g.SG4_E[0]], direction=Direction.EASTWARD
-        xyinv_id14_st = g.vxm_identity(xyinv_id13_st, alus=[14], output_streams=[g.SG4[6]]) #input_streams=[g.SG4_E[7]], direction=Direction.EASTWARD
-        xyinv_id11_st = g.vxm_identity(xyinv_id14_st, alus=[11], output_streams=[g.SG4[4]]) #input_streams=[g.SG4_E[6]], direction=Direction.WESTWARD
-        xint_st = g.cast(xyinv_id14_st, dtype=g.int32, alus=[15], output_streams=[g.SG4[7]]) #input_streams=[g.SG4_E[6]], direction=Direction.WESTWARD
-        rintx_st = g.cast(xint_st, dtype=g.float32, alus=[10], output_streams=[g.SG4[5]]) #input_streams=[g.SG4_W[7]], direction=Direction.WESTWARD
-        exp_st = g.bitwise_and(xyinv_st, expmask_st, alus=[1], output_streams=[g.SG4[0]]) #input_streams=[g.SG4_E[0], g.SG4_E[1]], direction=Direction.EASTWARD
-        expfloat_st = g.cast(exp_st, dtype=g.uint32, alus=[2], output_streams=[g.SG4[3]]) #input_streams=[g.SG4_E[0]], direction=Direction.WESTWARD
-        minexpone_st = g.min(expfloat_st, one_st, alus=[0], output_streams=[g.SG4[2]]).reinterpret(x.dtype) #input_streams=[g.SG4_W[3], g.SG4_E[2]], direction=Direction.EASTWARD
-        intx_st = g.mul(minexpone_st, xyinv_id11_st, alus=[6], output_streams=[g.SG4[4]]) #input_streams=[g.SG4_E[2], g.SG4_W[4]], direction=Direction.WESTWARD
-        rfloatadj_st = g.max(rintx_st.reinterpret(g.uint32), intx_st.reinterpret(g.uint32), alus=[5], output_streams=[g.SG4[4]]).reinterpret(x.dtype) #input_streams=[g.SG4_W[5], g.SG4_W[4]], direction=Direction.WESTWARD
-        xfrac_st = g.mul(rfloatadj_st, y_st, alus=[4], output_streams=[g.SG4[4]]) #input_streams=[g.SG4_W[4], g.SG4_E[5]], direction=Direction.EASTWARD
-        r_st = g.sub(xd_st, xfrac_st, alus=[9], output_streams=[g.SG4[5]], time=0) #input_streams=[g.SG4_W[6], g.SG4_E[4]], direction=Direction.WESTWARD
+        expmask_st = expmask.read(streams=g.SG4[0]).reinterpret(x.dtype) #direction=Direction.EASTWARD
+        save = g.memory_tensor(shape=x_st.shape, dtype=x_st.dtype, name="x_st_store", layout=f"-1, H1(E), B2, 4, S{x.dtype.size}(0-{x.dtype.size-1})", is_static=True)
+        x_st.write(name="x_st", storage_req=save.storage_request)
+        xd_st = save.read(streams=g.SG4[7]) #direction=Direction.WESTWARD
+        xyinv_st = g.mul(x_st, yinv_st, alus=[12], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_E[7], g.SG4_E[6]], direction=Direction.EASTWARD
+        xyinv_id1_st = g.vxm_identity(xyinv_st, alus=[1], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_E[1]], direction=Direction.EASTWARD
+        xyinv_id14_st = g.vxm_identity(xyinv_id1_st, alus=[14], output_streams=[g.SG4[6]]) #input_streams=[g.SG4_E[1]], direction=Direction.EASTWARD
+        xyinv_id11_st = g.vxm_identity(xyinv_id14_st, alus=[11], output_streams=[g.SG4[5]]) #input_streams=[g.SG4_E[6]], direction=Direction.WESTWARD
+        xint_st = g.cast(xyinv_id14_st, dtype=g.int32, alus=[15], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_E[6]], direction=Direction.WESTWARD
+        rintx_st = g.cast(xint_st, dtype=g.float32, alus=[2], output_streams=[g.SG4[3]]) #input_streams=[g.SG4_W[1]], direction=Direction.WESTWARD
+        exp_st = g.bitwise_and(xyinv_st, expmask_st, alus=[13], output_streams=[g.SG4[6]]) #input_streams=[g.SG4_E[1], g.SG4_E[0]], direction=Direction.EASTWARD
+        one_st = one.read(streams=g.SG4[4]).reinterpret(expmask.dtype) #direction=Direction.EASTWARD
+        expfloat_st = g.cast(exp_st, dtype=g.uint32, alus=[10], output_streams=[g.SG4[6]]) #input_streams=[g.SG4_E[6]], direction=Direction.WESTWARD
+        minexpone_st = g.min(expfloat_st, one_st, alus=[8], output_streams=[g.SG4[4]]).reinterpret(x.dtype) #input_streams=[g.SG4_W[6], g.SG4_E[4]], direction=Direction.EASTWARD
+        intx_st = g.mul(minexpone_st, xyinv_id11_st, alus=[6], output_streams=[g.SG4[5]]) #input_streams=[g.SG4_E[4], g.SG4_W[5]], direction=Direction.WESTWARD
+        rfloatadj_st = g.max(rintx_st.reinterpret(expmask.dtype), intx_st.reinterpret(expmask.dtype), alus=[5], output_streams=[g.SG4[4]]).reinterpret(x.dtype) #input_streams=[g.SG4_W[3], g.SG4_W[5]], direction=Direction.WESTWARD
+        xfrac_st = g.mul(rfloatadj_st, y_st, alus=[4], output_streams=[g.SG4[5]]) #input_streams=[g.SG4_W[4], g.SG4_E[5]], direction=Direction.EASTWARD
+        r_st = g.sub(xd_st, xfrac_st, alus=[9], output_streams=[g.SG4[7]], time=0) #input_streams=[g.SG4_W[7], g.SG4_E[5]], direction=Direction.WESTWARD
         return r_st #directions=[Direction.WESTWARD]
-
+        
 #float16/float32 compatible       
 def sin_quads(angle, pi, threehalfpi, halfpi, sgnmask, mantexpmask1, mantexpmask2):
         angle_st = angle.read(streams=g.SG4[3]) #direction=Direction.EASTWARD
@@ -185,7 +183,7 @@ def remainder(x, y):
   expmask = g.from_data(np.array([((1<<exp)-1)<<mant]*320, dtype=npuintdtype), name='expbias')
   one = g.from_data(np.array([1.0]*320, dtype=np.float32 if x.dtype==g.float32 else np.float16), name="one")
   if x.dtype==g.float16: res = remainder_float16(x, yinv, y, expmask, sgnmask, mantbias)
-  else: res = remainder_float32(x, yinv, y, one, expmask)
+  else: res = remainder_float32(x, yinv, y, expmask, one)
   res = res.write(name='remainder')
   return res
 
@@ -254,6 +252,9 @@ def test_sincos(dtype, func, skip_fmod=False):
             else:
               res.set_program_output()
     iop_file = pgm_pkg.assemble()[0]
+    p = subprocess.run(["iop-utils", "stats", iop_file], capture_output=True, text=True)
+    progcycles = [int(x.replace("Program is ","").replace(" cycles.","")) for x in p.stdout.splitlines() if x.startswith("Program is ")]
+    print("Program cycles:", progcycles, "Compute time:", f"{progcycles[0]/900/1000000:.20f}")
     from groq.runner import tsp
     runner = tsp.create_tsp_runner(iop_file)
     if skip_fmod:
@@ -281,7 +282,7 @@ def test_sincos(dtype, func, skip_fmod=False):
         absdiff = np.abs(oracle[x] - results[x])
         relerr = absdiff/np.abs(oracle[x])
         print(f"{x}\n", "Max Abs. ULP", np.max(absdiff)/meps, "Avg. Abs. ULP", np.average(absdiff)/meps,
-              "Rel. ULP", np.max(relerr)/meps, "Avg. Rel. ULP", np.average(relerr)/meps)
+              "Max Rel. ULP", np.max(relerr)/meps, "Avg. Rel. ULP", np.average(relerr)/meps)
 for dtype in (g.float32,): #(g.float32, g.float16)
     for func, skip_fmod in ((sin, True), (sin, False), (cos, True), (cos, False), (sincos, True), (sincos, False)):
         test_sincos(dtype, func, skip_fmod=skip_fmod)
