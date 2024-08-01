@@ -98,27 +98,29 @@ def cos_quads(angle, pi, twopi, halfpi, mantexpmask1, mantexpmask2):
         return r_st, needneg_st #directions=[Direction.WESTWARD, Direction.WESTWARD]
         
 def sincos_quads(angle, pi, twopi, halfpi, mantexpmask1, mantexpmask2, sgnmask, halfpis):
-        angle_st = angle.read(streams=g.SG4[0]) #direction=Direction.EASTWARD
-        pi_st = pi.read(streams=g.SG4[6]) #direction=Direction.WESTWARD
-        twopi_st = twopi.read(streams=g.SG4[4]) #direction=Direction.WESTWARD
-        halfpi_st = halfpi.read(streams=g.SG4[1]) #direction=Direction.WESTWARD
-        mantexpmask1_st = mantexpmask1.read(streams=g.SG4[7]).reinterpret(angle.dtype) #direction=Direction.WESTWARD
-        mantexpmask2_st = mantexpmask2.read(streams=g.SG4[3]).reinterpret(angle.dtype) #direction=Direction.WESTWARD
-        absangle_st = g.bitwise_and(angle_st, mantexpmask1_st, alus=[15], output_streams=[g.SG4[7]]) #input_streams=[g.SG4_E[0], g.SG4_W[7]], direction=Direction.WESTWARD
-        absangle_id8_st = g.vxm_identity(absangle_st, alus=[8], output_streams=[g.SG4[6]]) #input_streams=[g.SG4_W[7]], direction=Direction.EASTWARD
-        absangle_id9_st = g.vxm_identity(absangle_id8_st, alus=[9], output_streams=[g.SG4[4]]) #input_streams=[g.SG4_E[6]], direction=Direction.EASTWARD
-        twopisubangle_st = g.sub(twopi_st, absangle_id9_st, alus=[11], output_streams=[g.SG4[5]]) #input_streams=[g.SG4_W[4], g.SG4_E[4]], direction=Direction.WESTWARD
-        pisubangle_st = g.sub(pi_st, absangle_st, alus=[12], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_W[6], g.SG4_W[7]], direction=Direction.EASTWARD
-        abspisubangle_st = g.bitwise_and(pisubangle_st, mantexpmask2_st, alus=[1], output_streams=[g.SG4[3]]) #input_streams=[g.SG4_E[1], g.SG4_W[3]], direction=Direction.EASTWARD
-        minpi_st = g.min(absangle_id9_st, abspisubangle_st, alus=[7], output_streams=[g.SG4[4]]) #input_streams=[g.SG4_E[4], g.SG4_E[3]], direction=Direction.WESTWARD
-        r_st = g.min(minpi_st, twopisubangle_st, alus=[10], output_streams=[g.SG4[4]], time=0) #input_streams=[g.SG4_W[4], g.SG4_W[5]], direction=Direction.WESTWARD
-        needneg_st = g.less(abspisubangle_st, halfpi_st, alus=[2], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_E[3], g.SG4_W[1]], direction=Direction.WESTWARD
-        sgnmask_st = sgnmask.read(streams=g.SG4[0]).reinterpret(angle.dtype) #direction=Direction.WESTWARD
-        sgnangle_st = g.bitwise_and(angle_st, sgnmask_st, alus=[3], output_streams=[g.SG4[0]]) #input_streams=[g.SG4_E[0], g.SG4_W[0]], direction=Direction.WESTWARD
-        signpi_st = g.bitwise_or(sgnangle_st, pi_st, alus=[14], output_streams=[g.SG4[0]]) #input_streams=[g.SG4_W[0], g.SG4_W[6]], direction=Direction.WESTWARD
-        neednegsin_st = g.greater(absangle_id8_st, signpi_st, alus=[13], output_streams=[g.SG4[0]]) #input_streams=[g.SG4_E[6], g.SG4_W[0]], direction=Direction.WESTWARD
-        halfpis_st = halfpis.read(streams=g.SG4[2]) #direction=Direction.WESTWARD
-        rsin_st = g.sub(halfpis_st, r_st, alus=[5], output_streams=[g.SG4[2]]) #input_streams=[g.SG4_W[2], g.SG4_W[4]], direction=Direction.WESTWARD
+        angle_st = angle.read(streams=g.SG4[1]) #direction=Direction.EASTWARD
+        angle_id2_st = g.vxm_identity(angle_st, alus=[2], output_streams=[g.SG4[2]]) #input_streams=[g.SG4_E[1]], direction=Direction.WESTWARD
+        angle_id0_st = g.vxm_identity(angle_id2_st, alus=[0], output_streams=[g.SG4[0]]) #input_streams=[g.SG4_W[2]], direction=Direction.EASTWARD
+        pi_st = pi.read(streams=g.SG4[7]) #direction=Direction.WESTWARD
+        twopi_st = twopi.read(streams=g.SG4[2]) #direction=Direction.WESTWARD
+        halfpi_st = halfpi.read(streams=g.SG4[5]) #direction=Direction.WESTWARD
+        mantexpmask1_st = mantexpmask1.read(streams=g.SG4[6]).reinterpret(angle.dtype) #direction=Direction.WESTWARD
+        mantexpmask2_st = mantexpmask2.read(streams=g.SG4[4]).reinterpret(angle.dtype) #direction=Direction.WESTWARD
+        absangle_st = g.bitwise_and(angle_st, mantexpmask1_st, alus=[15], output_streams=[g.SG4[6]]) #input_streams=[g.SG4_E[1], g.SG4_W[6]], direction=Direction.WESTWARD
+        absangle_id9_st = g.vxm_identity(absangle_st, alus=[9], output_streams=[g.SG4[4]]) #input_streams=[g.SG4_W[6]], direction=Direction.WESTWARD
+        absangle_id8_st = g.vxm_identity(absangle_id9_st, alus=[8], output_streams=[g.SG4[4]]) #input_streams=[g.SG4_W[4]], direction=Direction.EASTWARD
+        twopisubangle_st = g.sub(twopi_st, absangle_id8_st, alus=[6], output_streams=[g.SG4[5]]) #input_streams=[g.SG4_W[2], g.SG4_E[4]], direction=Direction.EASTWARD
+        pisubangle_st = g.sub(pi_st, absangle_st, alus=[14], output_streams=[g.SG4[7]]) #input_streams=[g.SG4_W[7], g.SG4_W[6]], direction=Direction.EASTWARD
+        abspisubangle_st = g.bitwise_and(pisubangle_st, mantexpmask2_st, alus=[11], output_streams=[g.SG4[4]]) #input_streams=[g.SG4_E[7], g.SG4_W[4]], direction=Direction.WESTWARD
+        minpi_st = g.min(absangle_id8_st, abspisubangle_st, alus=[5], output_streams=[g.SG4[3]]) #input_streams=[g.SG4_E[4], g.SG4_W[4]], direction=Direction.EASTWARD
+        r_st = g.min(minpi_st, twopisubangle_st, alus=[7], output_streams=[g.SG4[3]], time=0) #input_streams=[g.SG4_E[3], g.SG4_E[5]], direction=Direction.WESTWARD
+        needneg_st = g.less(abspisubangle_st, halfpi_st, alus=[10], output_streams=[g.SG4[5]]) #input_streams=[g.SG4_W[4], g.SG4_W[5]], direction=Direction.WESTWARD
+        sgnmask_st = sgnmask.read(streams=g.SG4[3]).reinterpret(angle.dtype) #direction=Direction.WESTWARD
+        sgnangle_st = g.bitwise_and(angle_st, sgnmask_st, alus=[3], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_E[1], g.SG4_W[3]], direction=Direction.WESTWARD
+        signpi_st = g.bitwise_or(sgnangle_st, pi_st, alus=[12], output_streams=[g.SG4[7]]) #input_streams=[g.SG4_W[1], g.SG4_W[7]], direction=Direction.EASTWARD
+        neednegsin_st = g.greater(angle_id0_st, signpi_st, alus=[13], output_streams=[g.SG4[6]]) #input_streams=[g.SG4_E[0], g.SG4_E[7]], direction=Direction.WESTWARD
+        halfpis_st = halfpis.read(streams=g.SG4[0]) #direction=Direction.WESTWARD
+        rsin_st = g.sub(halfpis_st, r_st, alus=[1], output_streams=[g.SG4[0]]) #input_streams=[g.SG4_W[0], g.SG4_W[3]], direction=Direction.WESTWARD
         return r_st, needneg_st, neednegsin_st, rsin_st #directions=[Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD]
 
 def sincos_approx_float16(x, needneg, c1, c2, c3, c4, sgnshift):
