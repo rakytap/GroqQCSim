@@ -207,7 +207,8 @@ def remainder(x, y):
   if x.dtype == g.float16: mant, exp = 10, 5
   elif x.dtype == g.float32: mant, exp = 23, 8
   uintdtype = g.uint32 if x.dtype == g.float32 else g.uint16
-  yp = (np.array([y]*320, dtype=np.float32 if x.dtype==g.float32 else np.float16).view(uintdtype.to_nptype()) & uintdtype.to_nptype()(((1<<(mant+exp))-1)<<(mant+1)//2)).view(np.float32 if x.dtype==g.float32 else np.float16)
+  intdtype = np.int32 if x.dtype == g.float32 else np.int16
+  yp = (np.array([y]*320, dtype=np.float32 if x.dtype==g.float32 else np.float16).view(uintdtype.to_nptype()) & intdtype(-1<<(mant+1)//2).view(uintdtype.to_nptype())).view(np.float32 if x.dtype==g.float32 else np.float16)
   yp2 = (y - yp.astype(np.float64)).astype(np.float32 if x.dtype==g.float32 else np.float16)
   yinv = g.from_data(np.array([1/y]*320, dtype=np.float32 if x.dtype==g.float32 else np.float16), name='yinv')
   y = g.from_data(yp, name='y')
@@ -268,6 +269,10 @@ def sin(x, skip_fmod=False): return sincos(x, skip_fmod=skip_fmod, sinonly=True)
 
 def cos(x, skip_fmod=False): return sincos(x, skip_fmod=skip_fmod, cosonly=True)
 
+def is_zerosubnormal_fp32(x):
+  return (x.view(np.uint32) & 0x7F800000) == 0
+def subnormal_to_zero_fp32(x): return np.where(is_zerosubnormal_fp32(x), np.copysign(np.float32(0.0), x), x)
+
 def test_sincos(dtype, func, skip_fmod=False):
     shape = (256, 320)
     npdtype = dtype.to_nptype()
@@ -298,7 +303,8 @@ def test_sincos(dtype, func, skip_fmod=False):
     results = {}
     import timeit
     def timerunner():
-      results.update(runner(x=r)) 
+      results.update(runner(x=r))
+    r = subnormal_to_zero_fp32(r) #Groq chip behavior is to zero input/output subnormals so we compare to same CPU behavior 
     time_lpu = timeit.timeit(timerunner, number=1)
     oracle = {}
     meps = np.finfo(npdtype).eps
