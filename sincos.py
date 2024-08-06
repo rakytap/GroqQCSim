@@ -248,9 +248,9 @@ def sincos(x, skip_fmod=False, sinonly=False, cosonly=False):
     angle = angle.write(name="angle", layout=f'H1(W), -1, S{x.dtype.size}')
     needneg = needneg.reinterpret(sgnshift.dtype).write(name="needneg", layout=f'H1(W), -1, S{x.dtype.size}')
   if x.dtype==g.float16:
-      coeffs = [1.0, -0.4995, 0.041, -0.001118]
+      coeffs = [1.0, -0.4995, 0.04102, -0.001132]
   else:
-      coeffs = [0.99999994, -0.49999887, 0.04166327, -0.0013851983, 2.3124361e-05]
+      coeffs = [0.99999994, -0.49999902, 0.041663624, -0.0013854447, 2.3177226e-05]
   c1 = g.from_data(np.array([coeffs[0]]*320, dtype=npdtype), name='c1', layout=f'H1(E), -1, S{x.dtype.size}')
   c2 = g.from_data(np.array([coeffs[1]]*320, dtype=npdtype), name='c2', layout=f'H1(E), -1, S{x.dtype.size}')
   if degree >= 2: c3 = g.from_data(np.array([coeffs[2]]*320, dtype=npdtype), name='c3', layout=f'H1(E), -1, S{x.dtype.size}')
@@ -276,8 +276,8 @@ def ulp(x):
     emin = np.finfo(x.dtype).minexp
     p = 23 if x.dtype==np.float32 else 10
     #Note: np.frexp(x)[1]-1 == np.floor(np.log2(np.abs(x.astype(np.float64)))).astype(np.int32)
-    return np.where(np.isfinite(x) & (x!=0.0), np.ldexp(x.dtype.type(0.5), np.maximum(np.frexp(x)[1]-1, emin)-p+1), x)
-    #np.where(x<0, x-np.nextafter(x, -np.inf), np.nextafter(x, np.inf)-x) #does not handle 0.0 or np.finfo(x).max, np.finfo(x).min
+    return np.where(np.isfinite(x) & (x!=0.0), np.ldexp(x.dtype.type(0.5), np.maximum(np.frexp(x)[1]-1, emin)-p+1), np.where(x==0.0, np.finfo(x.dtype).smallest_subnormal, x))
+    #np.where(x<0, x-np.nextafter(x, -np.inf), np.nextafter(x, np.inf)-x) #does not handle np.finfo(x).max, np.finfo(x).min
 def ufp(x):
     #Note: np.frexp(x)[1]-1 == np.floor(np.log2(np.abs(x.astype(np.float64)))).astype(np.int32)
     return np.where(np.isfinite(x) & (x!=0.0), np.ldexp(x.dtype.type(0.5), np.frexp(x)[1]-1), x)
@@ -330,8 +330,9 @@ def test_sincos(dtype, func, skip_fmod=False):
     time_oracle = timeit.timeit(oraclerunner, number=1)
     print("Groq time", time_lpu, "CPU time", time_oracle)
     for x in results:
+        oracle[x] = subnormal_to_zero_fp32(oracle[x])
         #assert np.allclose(oracle[x], results[x]), (oracle[x], results[x])
-        print(getrelabserr(r, results[x], oracle[x]))        
+        #print(getrelabserr(r, results[x], oracle[x]))        
         absdiff = np.abs(oracle[x] - results[x])
         relerr = absdiff/np.abs(oracle[x])
         ulperr = np.minimum(absdiff/meps, absdiff/ulp(r))
