@@ -272,7 +272,19 @@ def cos(x, skip_fmod=False): return sincos(x, skip_fmod=skip_fmod, cosonly=True)
 def is_zerosubnormal_fp32(x):
   return (x.view(np.uint32) & 0x7F800000) == 0
 def subnormal_to_zero_fp32(x): return np.where(is_zerosubnormal_fp32(x), np.copysign(np.float32(0.0), x), x)
-
+def ulp(x):
+    emin = np.finfo(x.dtype).minexp
+    p = 23 if x.dtype==np.float32 else 10
+    #Note: np.frexp(x)[1]-1 == np.floor(np.log2(np.abs(x.astype(np.float64)))).astype(np.int32)
+    return np.where(np.isfinite(x) & (x!=0.0), np.ldexp(x.dtype.type(0.5), np.maximum(np.frexp(x)[1]-1, emin)-p+1), x)
+    #np.where(x<0, x-np.nextafter(x, -np.inf), np.nextafter(x, np.inf)-x) #does not handle 0.0 or np.finfo(x).max, np.finfo(x).min
+def ufp(x):
+    #Note: np.frexp(x)[1]-1 == np.floor(np.log2(np.abs(x.astype(np.float64)))).astype(np.int32)
+    return np.where(np.isfinite(x) & (x!=0.0), np.ldexp(x.dtype.type(0.5), np.frexp(x)[1]-1), x)
+def getrelabserr(x, r, o):
+    p = 23 if x.dtype==np.float32 else 10
+    n = np.arange(np.finfo(o.dtype).minexp, np.finfo(o.dtype).maxexp+1)
+    return n[np.where(np.all(np.maximum(np.ldexp(0.5, n[:,None,None]+np.frexp(x)[1]-1-p), np.ldexp(0.5, n[:,None,None]-p)) >= np.abs(r - o)[None,...], axis=tuple(range(1, len(x.shape)+1))))[0][0]]
 def test_sincos(dtype, func, skip_fmod=False):
     shape = (256, 320)
     npdtype = dtype.to_nptype()
@@ -318,11 +330,14 @@ def test_sincos(dtype, func, skip_fmod=False):
     time_oracle = timeit.timeit(oraclerunner, number=1)
     print("Groq time", time_lpu, "CPU time", time_oracle)
     for x in results:
-        #assert np.allclose(oracle[x], results[x]), (oracle[x], results[x]) 
+        #assert np.allclose(oracle[x], results[x]), (oracle[x], results[x])
+        print(getrelabserr(r, results[x], oracle[x]))        
         absdiff = np.abs(oracle[x] - results[x])
         relerr = absdiff/np.abs(oracle[x])
-        print(f"{x}\n", "Max Abs. ULP", np.max(absdiff)/meps, "Avg. Abs. ULP", np.average(absdiff)/meps,
-              "Max Rel. ULP", np.max(relerr)/meps, "Avg. Rel. ULP", np.average(relerr)/meps)
+        ulperr = np.minimum(absdiff/meps, absdiff/ulp(r))
+        print(f"{x}\n", "Max Abs. Acc", np.max(absdiff), "Avg. Abs. ULP", np.average(absdiff),
+              "Max Rel. Acc", np.max(relerr), "Avg. Rel. Acc", np.average(relerr),
+              "Max ULP", np.max(ulperr), "Av. ULP", np.average(ulperr))
 for dtype in (g.float32,): #(g.float32, g.float16)
     for func, skip_fmod in ((sin, True), (sin, False), (cos, True), (cos, False), (sincos, True), (sincos, False)):
         test_sincos(dtype, func, skip_fmod=skip_fmod)
