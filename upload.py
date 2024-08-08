@@ -70,9 +70,32 @@ class Upload:
 
 			if ( self.mxm_permutation ):
 
-				identity = np.identity(320, dtype=np.int8)
-				self.identity_west_mt = g.from_data(identity, layout=layout_identity_west)
-				self.identity_east_mt = g.from_data(identity, layout=layout_identity_east)
+				identity                 = np.identity(320, dtype=np.int8)
+				mxm_permutation_matrices = np.zeros( (8,320,320,), dtype=np.int32 )
+
+				self.identity_west_mt = g.from_data(identity, layout=layout_identity_west) #########
+				self.identity_east_mt = g.from_data(identity, layout=layout_identity_east) #########
+
+
+				for target_qbit_loc in range(small_qbit_num_limit):
+
+					target_qbit_pair_diff = 1 << target_qbit_loc
+
+					matrix_row_indexes = np.zeros( (320,), dtype=np.int32 )
+					for idx in range(320):
+						if (idx < matrix_size):
+							matrix_row_indexes[idx] = idx ^ target_qbit_pair_diff
+						else:
+							matrix_row_indexes[idx] = idx
+					
+
+					mxm_permutation_matrices[ target_qbit_loc,:,: ] = identity[matrix_row_indexes,:]
+
+					
+				self.mxm_permute_matrices_mt_west = g.from_data( np.asarray(mxm_permutation_matrices, dtype=np.uint8), layout=layout_mxm_permutation_matrices_west )
+				self.mxm_permute_matrices_mt_east = g.from_data( np.asarray(mxm_permutation_matrices, dtype=np.uint8), layout=layout_mxm_permutation_matrices_east )
+				self.mxm_permute_matrices_mt_west.is_static = True
+				#self.mxm_permute_matrices_mt_east.is_static = True
 
 
 				self.permute_maps_mt_west = None
@@ -106,6 +129,10 @@ class Upload:
 				self.permute_maps_mt_east.is_static = True
 				print(self.permute_maps_mt_west.shape)
 				print(dir(self.permute_maps_mt_west))
+
+
+				self.mxm_permute_matrices_mt_west = None
+				self.mxm_permute_matrices_mt_east = None
 			
 			
 			# generate vectors to indicate which elements in a 320 vector correspond to state |1> of target qubit less than small_qbit_num_limit 

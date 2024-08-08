@@ -68,6 +68,11 @@ layout_State_input_imag_copy 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices 
 layout_zeros = f"H1(E), A1({320+2*gate_count}), S4(27-31)"
 layout_ones = f"H1(E), A1({320+2*gate_count}), S4(32-35)"
 
-# memory layout for the identity tensors
-layout_identity_west = "H1(W), A20(0-19), S16(17-35)" 
-layout_identity_east = f"H1(E), A20({(len(gate_kernel_element_labels)+1)*gate_count}-{(len(gate_kernel_element_labels)+1)*gate_count+19}), S16(0-15)"
+# memory layout for the identity tensors   # TODO remove because it became obsolete
+layout_identity_west = "H1(W), A20(800-819), S16(17-35)" 
+layout_identity_east = f"H1(E), A20({800+(len(gate_kernel_element_labels)+1)*gate_count}-{800+(len(gate_kernel_element_labels)+1)*gate_count+19}), S16(0-15)"
+
+
+# memory layout for the identity tensors   # TODO remove because it became obsolete
+layout_mxm_permutation_matrices_west = f"H1(W), A{small_qbit_num_limit*20}(0-{small_qbit_num_limit*20-1}), S16(17-35)" 
+layout_mxm_permutation_matrices_east = f"H1(E), A{small_qbit_num_limit*20}({(len(gate_kernel_element_labels)+1)*gate_count}-{(len(gate_kernel_element_labels)+1)*gate_count+small_qbit_num_limit*20-1}), S16(0-15)"
