@@ -4,7 +4,8 @@ import numpy as np
 from groq.api import instruction as inst
 
 class Upload:
-	def __init__(self, pgm_pkg):
+	def __init__(self, pgm_pkg, mxm_permutation=True):
+
 		self.pgm_pkg = pgm_pkg
 		self.gate_kernels_real_packed_mt = None
 		self.gate_kernels_imag_packed_mt = None
@@ -28,6 +29,11 @@ class Upload:
 
 		self.state_imag_copy_request = g.tensor.create_storage_request( layout=layout_State_input_imag_copy )
 		self.state_real_copy_request = g.tensor.create_storage_request( layout=layout_State_input_real_copy )
+
+		# for target qubits less than 8 MXM slices or the permutors can be used to generate the pairs for the state vector elements
+		# set mxm_permutation to True when MXM is used, or set to False when permutor is used
+		self.mxm_permutation = mxm_permutation
+
 
 	def upload_program(self):
 		# Defines a program to upload the inputs
@@ -61,37 +67,45 @@ class Upload:
 			state_1_selector_mt.is_static			= True
 			state_0_selector_mt.is_static			= True
 
-			identity = np.identity(320, dtype=np.int8)
-			self.identity_west_mt = g.from_data(identity, layout=layout_identity_west)
-			self.identity_east_mt = g.from_data(identity, layout=layout_identity_east)
+
+			if ( self.mxm_permutation ):
+
+				identity = np.identity(320, dtype=np.int8)
+				self.identity_west_mt = g.from_data(identity, layout=layout_identity_west)
+				self.identity_east_mt = g.from_data(identity, layout=layout_identity_east)
+
+
+				self.permute_maps_mt_west = None
+				self.permute_maps_mt_east = None
+
+			else:			
 			
-			
-			# generate permutation maps to reorder the state vector elements for qubits less than small_qbit_num_limit
-			permute_map = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint32 )
+				# generate permutation maps to reorder the state vector elements for qubits less than small_qbit_num_limit
+				permute_map = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint32 )
 
-			for target_qbit_loc in range(small_qbit_num_limit):
+				for target_qbit_loc in range(small_qbit_num_limit):
 
-				permute_map_np = np.zeros( (256,), dtype=np.uint32 )
-				target_qbit_pair_diff = 1 << target_qbit_loc
-				print('target_qubit_pair_diff', target_qbit_pair_diff)
+					permute_map_np = np.zeros( (256,), dtype=np.uint32 )
+					target_qbit_pair_diff = 1 << target_qbit_loc
+					print('target_qubit_pair_diff', target_qbit_pair_diff)
 				
-				for idx in range(256): # 256 = 2^8
-					if (idx < matrix_size):
-						permute_map_np[idx] = idx ^ target_qbit_pair_diff
-					else:
-						permute_map_np[idx] = idx
+					for idx in range(256): # 256 = 2^8
+						if (idx < matrix_size):
+							permute_map_np[idx] = idx ^ target_qbit_pair_diff
+						else:
+							permute_map_np[idx] = idx
 				
 
-				permute_map[target_qbit_loc,:] = inst.encode_permute_map(  permute_map_np.tolist() )
-				print(' ')
-				print(permute_map[target_qbit_loc,:])
+					permute_map[target_qbit_loc,:] = inst.encode_permute_map(  permute_map_np.tolist() )
+					print(' ')
+					print(permute_map[target_qbit_loc,:])
 
-			self.permute_maps_mt_west = g.from_data( np.asarray(permute_map, dtype=np.uint8), layout=layout_permute_maps_west )
-			self.permute_maps_mt_east = g.from_data( np.asarray(permute_map, dtype=np.uint8), layout=layout_permute_maps_east )
-			self.permute_maps_mt_west.is_static = True
-			self.permute_maps_mt_east.is_static = True
-			print(self.permute_maps_mt_west.shape)
-			print(dir(self.permute_maps_mt_west))
+				self.permute_maps_mt_west = g.from_data( np.asarray(permute_map, dtype=np.uint8), layout=layout_permute_maps_west )
+				self.permute_maps_mt_east = g.from_data( np.asarray(permute_map, dtype=np.uint8), layout=layout_permute_maps_east )
+				self.permute_maps_mt_west.is_static = True
+				self.permute_maps_mt_east.is_static = True
+				print(self.permute_maps_mt_west.shape)
+				print(dir(self.permute_maps_mt_west))
 			
 			
 			# generate vectors to indicate which elements in a 320 vector correspond to state |1> of target qubit less than small_qbit_num_limit 
