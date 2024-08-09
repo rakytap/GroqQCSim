@@ -51,23 +51,23 @@ def evaluate(individual, pset, hof, unitary, num_qubits, cost_func_method):
     circuit = CircuitBuilder(num_qubits)
     built = compiled_circuit(circuit)
     result = unitary.copy()
-    #if len(built.params) != 0: built.apply_to(np.concatenate(list(reversed(built.params))), result)
     if len(built.params) != 0: built.apply_to(np.concatenate(built.params), result)
     if cost_func_method == COST_METHOD_TRACE:
         return (1.0 - np.trace(np.real(result)) / len(result),)
     elif cost_func_method == COST_METHOD_FROBENIUS:
         return (np.linalg.norm(result - np.eye(len(result))),)
 def decompose_unitary(filepath, layers=4):
-    ## load the unitary from file
-    #data = loadmat(filepath)
-    ## The unitary to be decomposed  
-    #Umtx = data['Umtx']
-    #num_qubits = len(Umtx).bit_length()
-    
-    qc_trial = QuantumCircuit.from_qasm_file( filepath )
-    qc_trial = transpile(qc_trial, optimization_level=3, basis_gates=['cz', 'cx', 'u3'], layout_method='sabre')
-    num_qubits = qc_trial.num_qubits 
-    Umtx = get_unitary_from_qiskit_circuit( qc_trial )
+    if filepath.endswith(".mat"):
+        ## load the unitary from file
+        data = loadmat(filepath)
+        ## The unitary to be decomposed  
+        Umtx = data['Umtx']
+        num_qubits = len(Umtx).bit_length()-1
+    else:
+        qc_trial = QuantumCircuit.from_qasm_file( filepath )
+        qc_trial = transpile(qc_trial, optimization_level=3, basis_gates=['cz', 'cx', 'u3'], layout_method='sabre')
+        num_qubits = qc_trial.num_qubits 
+        Umtx = get_unitary_from_qiskit_circuit( qc_trial )
     
     pset = gp.PrimitiveSetTyped("MAIN", [CircuitBuilder], CircuitBuilder)
     
@@ -122,6 +122,7 @@ def decompose_unitary(filepath, layers=4):
     print("Best individual:", hof[0])
     print("Best individual fitness:", hof[0].fitness.values)
     
-decompose_unitary("/home/morse/squander/sequential-quantum-gate-decomposer/benchmarks/IBM/ex-1_166.qasm")
+decompose_unitary("/home/morse/squander/sequential-quantum-gate-decomposer/examples/decomposition/Umtx.mat")
+#decompose_unitary("/home/morse/squander/sequential-quantum-gate-decomposer/benchmarks/IBM/ex-1_166.qasm")
 #decompose_unitary("/home/morse/squander/sequential-quantum-gate-decomposer/benchmarks/IBM/3_17_13.qasm")
 #decompose_unitary("/home/morse/squander/sequential-quantum-gate-decomposer/benchmarks/IBM/alu-v4_37.qasm")
