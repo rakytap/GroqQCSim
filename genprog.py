@@ -6,8 +6,8 @@ from squander import Circuit, utils
 from qiskit import QuantumCircuit, transpile
 from squander.utils import get_unitary_from_qiskit_circuit
 
-ANGLE = np.float64
-QUBIT = np.int32
+ANGLE = float #np.float64
+QUBIT = int #np.int32
 
 class CircuitBuilder(Circuit):
     def __init__(self, num_qubits):
@@ -51,13 +51,36 @@ def evaluate(individual, pset, hof, unitary, num_qubits, cost_func_method):
     circuit = CircuitBuilder(num_qubits)
     built = compiled_circuit(circuit)
     result = unitary.copy()
-    if len(built.params) != 0: built.apply_to(np.concatenate(built.params), result)
+    if len(built.params) != 0: built.apply_to(np.concatenate(list(reversed(built.params))), result)
+    #print(individual, built.params, result)
     if cost_func_method == COST_METHOD_TRACE:
         return (1.0 - np.trace(np.real(result)) / len(result),)
     elif cost_func_method == COST_METHOD_FROBENIUS:
         return (np.linalg.norm(result - np.eye(len(result))),)
 def decompose_unitary(filepath, layers=4):
-    if filepath.endswith(".mat"):
+    if False:
+        num_qubits = 4
+        Umtx = np.eye(1<<num_qubits, dtype=np.complex128)
+        c = Circuit(num_qubits)
+        c.add_U3(2)
+        c.add_CNOT(1, 2)
+        c.add_U3(0)
+        c.add_CNOT(2, 3)
+        c.add_U3(3)
+        c.add_U3(1)
+        params = np.random.rand(12)*2*np.pi
+        c.apply_to(params, Umtx)
+        d = Circuit(num_qubits)
+        d.add_U3(1)
+        d.add_U3(3)
+        d.add_CNOT(2, 3)
+        d.add_U3(0)
+        d.add_CNOT(1, 2)
+        d.add_U3(2)
+        check = Umtx.copy()
+        d.apply_to(np.concatenate([-params[[9,11,10]], -params[[6,8,7]], -params[[3,5,4]], -params[[0,2,1]]]), check)
+        sol = f"sequence(sequence(sequence(U3({','.join(str(x) for x in -params[[0,2,1]])}, 1),  U3({','.join(str(x) for x in  -params[[3,5,4]])}, 3)), CNOT(3, 2)), sequence(sequence(U3({','.join(str(x) for x in -params[[6,8,7]])}, 0), CNOT(2, 1)), U3({','.join(str(x) for x in -params[[9,11,10]])}, 2)))"
+    elif filepath.endswith(".mat"):
         ## load the unitary from file
         data = loadmat(filepath)
         ## The unitary to be decomposed  
@@ -77,8 +100,10 @@ def decompose_unitary(filepath, layers=4):
     
     pset.addPrimitive(functools.partial(sequence, num_qubits), [CircuitBuilder, CircuitBuilder], CircuitBuilder, name="sequence")
     
-    pset.addPrimitive(functools.partial(randfloat_in_range, 0, 2*np.pi), [], ANGLE, name="anglepass")
-    pset.addPrimitive(functools.partial(np.random.randint, 0, num_qubits), [], QUBIT, name="qubitpass")
+    #pset.addPrimitive(functools.partial(randfloat_in_range, 0, 2*np.pi), [], ANGLE, name="anglepass")
+    #pset.addPrimitive(functools.partial(np.random.randint, 0, num_qubits), [], QUBIT, name="qubitpass")
+    pset.addPrimitive(pass_through, [ANGLE], ANGLE, name="anglepass")
+    pset.addPrimitive(pass_through, [QUBIT], QUBIT, name="qubitpass")
     
     pset.addEphemeralConstant("angle_param", functools.partial(randfloat_in_range, 0, 2*np.pi), ret_type=ANGLE)
     pset.addEphemeralConstant("qubit_index", functools.partial(np.random.randint, 0, num_qubits), ret_type=QUBIT)
@@ -109,7 +134,7 @@ def decompose_unitary(filepath, layers=4):
     toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=tree_depth))
     toolbox.register("generate", toolbox.population, n=npopulation)
     pop = toolbox.generate()
-    
+    #pop.append(creator.Individual(gp.PrimitiveTree.from_string(sol, pset)))
     stats = tools.Statistics(lambda ind: ind.fitness.values)
     stats.register("avg", np.mean)
     stats.register("std", np.std)
