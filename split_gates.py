@@ -34,35 +34,12 @@ class Split_gates(Upload):
 
 			# concat real and imag parts to pipeline them at once through a shifter
 			gate_kernels_packed_mt = g.concat( [gate_kernels_real_packed_shared, gate_kernels_imag_packed_shared], dim=0 )
-			gate_kernels_packed_st = gate_kernels_packed_mt.read( streams=g.SG4[0], time=0 )
-
-			# split the tensor between hemispheres WEST and EAST (each (2k+1)-th gate kernel goes to the western hemispheres, while 2k-th gates are assigned to the eastern hemisphere
-			# the gate kernel elements to be used later are the first 4 elements in each vector
-			gate_kernels_imag_list = []
-			gate_kernels_real_list = []
-
-
-			gate_kernels_packed_list = g.split_inner_splits( gate_kernels_packed_st )
-			gate_kernels_real_packed_st = gate_kernels_packed_list[0]
-			gate_kernels_imag_packed_st = gate_kernels_packed_list[1]
-
-			layout_real = layout_gate_kernels_real
-			layout_imag = layout_gate_kernels_imag
-
-			gate_kernels_imag_mt = gate_kernels_imag_packed_st.write(name=f"gate_kernel_imag", layout=layout_imag + f", A1(0)", program_output=True)
-			gate_kernels_real_mt = gate_kernels_real_packed_st.write(name=f"gate_kernel_real", layout=layout_real + f", A1(0)", program_output=True)
-   
-
-			gate_kernels_imag_list.append( gate_kernels_imag_mt )
-			gate_kernels_real_list.append( gate_kernels_real_mt )
-			
-
-
+					
 
 
 			# generate gate kernels to be applied on state |0> and resulting to alternating states |0> and |1> according to the periodicity of the current target qubit
 
-			# create distributo maps for the process to broadcast elements 00,01,10,11 of the gate kernel onto a 320 element vectors
+			# create distributor maps for the process to broadcast elements 00,01,10,11 of the gate kernel onto a 320 element vectors
 			distributor_00_np = np.zeros( (320,), dtype=np.uint8 )
 			distribute_map_tensor_mt_00 = g.from_data( np.asarray(distributor_00_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({small_qbit_num_limit})" )
 			distributor_01_np = np.ones( (320,), dtype=np.uint8 )
@@ -84,20 +61,16 @@ class Split_gates(Upload):
 			gate_kernels_broadcasted_real_list = []
 			gate_kernels_broadcasted_imag_copy_list = []
 			gate_kernels_broadcasted_real_copy_list = []
-			loop_time_long_cycle = 51 # comming from the iterations of the previous cycles (the loops are overlapping in execution)
-			loop_time_short_cycle = 31
 
-
-			gate_kernel_real_mt = gate_kernels_real_list[0]
-			gate_kernel_imag_mt = gate_kernels_imag_list[0]
 
 			for idx in range(len(gate_kernel_element_labels) ): # iterates over the labels of the gate kernel elements
 				label = gate_kernel_element_labels[idx]
 
 				# concat real and imag parts to pipeline them at once through a broadcaster
-				gate_kernel_real_st = gate_kernel_real_mt.read( streams=g.SG4[1], time=12 + 2*idx + (1//2)*loop_time_long_cycle ) 
-				gate_kernel_imag_st = gate_kernel_imag_mt.read( streams=g.SG4[1], time=14 + 2*idx + (1//2)*loop_time_long_cycle )		
-				gate_kernel_st = g.concat_inner_splits( [gate_kernel_real_st, gate_kernel_imag_st] )
+				#gate_kernel_real_st = gate_kernel_real_mt.read( streams=g.SG4[1], time=12 + 2*idx ) 
+				#gate_kernel_imag_st = gate_kernel_imag_mt.read( streams=g.SG4[1], time=14 + 2*idx )		
+				gate_kernel_st = gate_kernels_packed_mt.read( streams=g.SG4[1], time= 2*idx )  #g.concat_inner_splits( [gate_kernel_real_st, gate_kernel_imag_st] )
+				
 				distributor_request = distributor_requests[1]
 				gate_kernel_broadcasted_st = g.distribute_8( gate_kernel_st, 
 						distribute_map_tensor_list[idx],
@@ -158,9 +131,6 @@ class Split_gates(Upload):
 					g.add_mem_constraints(gate_kernels_broadcasted_imag_copy_list, [gate_kernels_broadcasted_imag_copy_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)   					
 		
 		
-				g.add_mem_constraints(gate_kernels_real_list, [gate_kernels_broadcasted_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)    
-				g.add_mem_constraints(gate_kernels_imag_list, [gate_kernels_broadcasted_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
-
 
 				gate_kernels_broadcasted_real_list.append( gate_kernels_broadcasted_real_mt )
 				gate_kernels_broadcasted_imag_list.append( gate_kernels_broadcasted_imag_mt )
@@ -172,6 +142,31 @@ class Split_gates(Upload):
 				gate_kernels_broadcasted_imag_copy_list.append( gate_kernels_broadcasted_imag_copy_mt )
 				self.gate_kernels_broadcasted_real_copy_dict[label] = gate_kernels_broadcasted_real_copy_mt
 				self.gate_kernels_broadcasted_imag_copy_dict[label] = gate_kernels_broadcasted_imag_copy_mt
+				
+				
+				
+			############################# shift the packed gate kernel elements by 4 for the next gate ######################################x
+			
+			# shift the packed gate kernels by 4 and save in the original place of the packed gate kernels
+			gate_kernels_packed_st = gate_kernels_packed_mt.read( streams=g.SG4[0], time=10 )
+			permutor_request = permutor_requests[1]
+			shift = 4
+			gate_kernels_packed_shifted_st = g.shift(gate_kernels_packed_st, 
+							shift, 
+							permutor_id=permutor_request, 
+							shift_src=[inst.NEW_SRC] * 2, 
+							dispatch_set=inst.DispatchSet.SET_1, 
+							input_streams=[g.SG4[0]], 
+							output_streams=[g.SG4[0]])
+				
+			# write the packed gate kernels shifted by 4 elements to the original position	
+			gate_kernels_packed_shifted_list = g.split_inner_splits( gate_kernels_packed_shifted_st )
+			gate_kernels_real_packed_shifted_st = gate_kernels_packed_shifted_list[0]
+			gate_kernels_imag_packed_shifted_st = gate_kernels_packed_shifted_list[1]
+			
+			gate_kernels_real_packed_shifted_st.write(name="gate_kernels_real_packed_shifted", storage_req=gate_kernels_real_packed_shared.storage_request)
+			gate_kernels_imag_packed_shifted_st.write(name="gate_kernels_imag_packed_shifted", storage_req=gate_kernels_imag_packed_shared.storage_request)			
+			
 
 
 			self.pgm_pkg.compile_program_context(pgm2)
