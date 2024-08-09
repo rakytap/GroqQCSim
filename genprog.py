@@ -42,6 +42,7 @@ def sequence(num_qubits, circuit1, circuit2):
     return CircuitBuilder(num_qubits).add_circuit_params(circuit1).add_circuit_params(circuit2)
 
 def pass_through(x): return x
+def randfloat_in_range(lo, hi): return ((hi-lo)*np.random.rand()-lo)
 
 COST_METHOD_TRACE, COST_METHOD_FROBENIUS, COST_METHOD_HILBERT_SCHMIDT = 0, 1, 2
 def evaluate(individual, pset, hof, unitary, num_qubits, cost_func_method):
@@ -50,7 +51,8 @@ def evaluate(individual, pset, hof, unitary, num_qubits, cost_func_method):
     circuit = CircuitBuilder(num_qubits)
     built = compiled_circuit(circuit)
     result = unitary.copy()
-    if len(built.params) != 0: built.apply_to(np.concatenate(list(reversed(built.params))), result)
+    #if len(built.params) != 0: built.apply_to(np.concatenate(list(reversed(built.params))), result)
+    if len(built.params) != 0: built.apply_to(np.concatenate(built.params), result)
     if cost_func_method == COST_METHOD_TRACE:
         return (1.0 - np.trace(np.real(result)) / len(result),)
     elif cost_func_method == COST_METHOD_FROBENIUS:
@@ -75,10 +77,9 @@ def decompose_unitary(filepath, layers=4):
     
     pset.addPrimitive(functools.partial(sequence, num_qubits), [CircuitBuilder, CircuitBuilder], CircuitBuilder, name="sequence")
     
-    pset.addPrimitive(pass_through, [ANGLE], ANGLE, name="anglepass")
-    pset.addPrimitive(pass_through, [QUBIT], QUBIT, name="qubitpass")
+    pset.addPrimitive(functools.partial(randfloat_in_range, 0, 2*np.pi), [], ANGLE, name="anglepass")
+    pset.addPrimitive(functools.partial(np.random.randint, 0, num_qubits), [], QUBIT, name="qubitpass")
     
-    def randfloat_in_range(lo, hi): return ((hi-lo)*np.random.rand()-lo)
     pset.addEphemeralConstant("angle_param", functools.partial(randfloat_in_range, 0, 2*np.pi), ret_type=ANGLE)
     pset.addEphemeralConstant("qubit_index", functools.partial(np.random.randint, 0, num_qubits), ret_type=QUBIT)
 
@@ -90,7 +91,7 @@ def decompose_unitary(filepath, layers=4):
     # Register the genetic operators
     toolbox = base.Toolbox()
     toolbox.register("compile", gp.compile, pset=pset)
-    toolbox.register("expr", gp.genHalfAndHalf, pset=pset, min_=0, max_=10)
+    toolbox.register("expr", gp.genHalfAndHalf, pset=pset, min_=0, max_=layers)
     toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.expr)
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
     hof = tools.HallOfFame(1)
@@ -101,7 +102,7 @@ def decompose_unitary(filepath, layers=4):
     #toolbox.register("select", tools.selBest)
     #toolbox.register("select", tools.selDoubleTournament, fitness_size=10, parsimony_size=1.4, fitness_first=False)
     toolbox.register("mate", gp.cxOnePoint)
-    toolbox.register("expr_mut", gp.genHalfAndHalf, pset=pset, min_=0, max_=10)
+    toolbox.register("expr_mut", gp.genHalfAndHalf, pset=pset, min_=0, max_=layers)
     npopulation = 32*32
     toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
     toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=tree_depth))
