@@ -24,7 +24,7 @@ print("Python packages imported successfully")
 #Note: MEM slices 16, 20, 24, and 28 on both the east and west hemispheres, and slice 38 on the west hemisphere are reserved for system use.
 
 
-def compile() -> List[str]:
+def compile(mxm_permutation = True) -> List[str]:
 	"""Compiles a program package with 2 programs.
 
 	Return: (List[str]): A list of IOP files.
@@ -33,11 +33,9 @@ def compile() -> List[str]:
 	shutil.rmtree(output_dir, ignore_errors=True)
 	pgm_pkg = g.ProgramPackage("QCsim_multi_program", output_dir)
 
-	print( dir(pgm_pkg) )
-	print( pgm_pkg.add_precompiled_program.__doc__ )
-	print( pgm_pkg.create_program_context.__doc__ )
+	
 
-	program = Gate(pgm_pkg)
+	program = Gate(pgm_pkg, mxm_permutation = mxm_permutation)
 	# Defines a program to upload the inputs
 	program.upload_program()
 	program.split_gates_program()
@@ -76,7 +74,7 @@ def invoke(device, iop, pgm_num, ep_num, tensors):
 	return outs
 
 
-def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_kernels_imag):
+def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_kernels_imag, mxm_permutation = True):
 	"""
     This function interacts with the device driver at a lower level to show
     the control of loading 2 programs and invoking each program through
@@ -99,19 +97,13 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 	device.load(iop[0], unsafe_keep_entry_points=True)
 	device.load(iop[1], unsafe_keep_entry_points=True)
 	device.load(iop[2], unsafe_keep_entry_points=True)
-	"""
-	# encode the target qubits: the 320 lanes are organized into 20 16byte superlanes. The distributor can distribute elements in one superlane in one clock cycle. 
-	# so the target qubits is encoded in the first 1 byte of each 16byte segments
-	modified_qbits = np.zeros( (320,), dtype=np.uint8 )
-	modified_qbits[0:320:16] = target_qbit[0]
-	"""
+	
 	# map for mem_gather to select the permutation map for the given target qubit. Th epermutor is used only for target qubits smaller than small_qbit_num_limit
-	state_permute_map_selector = np.zeros( (len(target_qbit),320,), dtype=np.uint8 )
-	for i in range(len(target_qbit)):
-		if ( target_qbit[i] < small_qbit_num_limit ) :
-			state_permute_map_selector[i,0:320:16] = target_qbit[i]
-		else :
-			state_permute_map_selector[i,0:320:16] = 0
+	state_permute_map_selector = np.zeros( (320,), dtype=np.uint8 )
+	if ( target_qbit < small_qbit_num_limit ) :
+		state_permute_map_selector[0:320:16] = target_qbit
+	else :
+		state_permute_map_selector[0:320:16] = 0
 			
 
 
@@ -186,37 +178,31 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 	#print(pgm_3_output["Psi_transformed_real"])
 	#print(pgm_3_output["Psi_transformed_imag"])
 
-	Psi_transformed_real = pgm_3_output[f"Psi_transformed_real_0"]
+	Psi_transformed_real = pgm_3_output[f"Psi_transformed_real"]
 	Psi_transformed_real = np.reshape( Psi_transformed_real, (Psi_transformed_real.size,) )
 	
-	Psi_transformed_imag = pgm_3_output[f"Psi_transformed_imag_0"]
+	Psi_transformed_imag = pgm_3_output[f"Psi_transformed_imag"]
 	Psi_transformed_imag = np.reshape( Psi_transformed_imag, (Psi_transformed_imag.size,) )	
 	return Psi_transformed_real, Psi_transformed_imag
 
 
 
-def main( State_orig_real_float32, State_orig_imag_float32, target_qbit, gate_kernels ):
+def main( State_orig_real_float32, State_orig_imag_float32, target_qbit, gate_kernels, mxm_permutation = True ):
 	"""Compiles and runs the example programs."""
 	
 	if qbit_num is None:
 		raise "qbit_num must be set with method initialize_qbit_num( qbit_num ) with a value greater or equal to 8"
 
-	iop_files = compile()
+	iop_files = compile( mxm_permutation )
 	print(f"Program compiled to IOP file: {iop_files}")
 
 	import time
 
 	start_time = time.time()
-	transformed_state = run(iop_files[0], State_orig_real_float32, State_orig_imag_float32, target_qbit, np.real(gate_kernels), np.imag(gate_kernels) )
+	transformed_state = run(iop_files[0], State_orig_real_float32, State_orig_imag_float32, target_qbit, np.real(gate_kernels), np.imag(gate_kernels), mxm_permutation )
 
 	print("time elapsed with groq: ", time.time() - start_time )
-	'''
-	##################################xx
-	import shutil
-	shutil.copyfile("build_iop/topo_0/gate/gate.aa", "build_iop/topo_0/gate/gate.0.aa")
-	utils.chain_aa("build_iop/topo_0/gate/gate.0.aa", 3)
-	##############################xx
-	'''
+	
 	return transformed_state
 
 
@@ -224,14 +210,4 @@ def main( State_orig_real_float32, State_orig_imag_float32, target_qbit, gate_ke
 
 if __name__ == "__main__":
     main()
-'''
-# compile the program
-iop_file = g.compile(base_name="QCsim", result_tensor=result)
-g.write_visualizer_data("QCsim")
-
-
-program = tsp.create_tsp_runner(iop_file)
-t0 = time.time()
-result = program(State_input_real=State_orig_real_float32, State_input_imag=State_orig_real_float32)
-groq_result_mm = result['result']
-'''
+    
