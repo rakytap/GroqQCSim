@@ -159,8 +159,8 @@ class Gate(Split_gates):
 
 
 						# mxm only accepts tensors with an inner dim of 320
-						Psi_transformed_real_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=Psi_transformed_real_mt.storage_request, initialized=False)
-						Psi_transformed_imag_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=Psi_transformed_imag_mt.storage_request, initialized=False)
+						Psi_transformed_real_mt_320 = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=Psi_transformed_real_mt.storage_request, initialized=False)
+						Psi_transformed_imag_mt_320 = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=Psi_transformed_imag_mt.storage_request, initialized=False)
 
 						Psi_transformed_real_mt_320 = g.reinterpret(Psi_transformed_real_mt_320, dtype=g.int8)
 						Psi_transformed_imag_mt_320 = g.reinterpret(Psi_transformed_imag_mt_320, dtype=g.int8)
@@ -176,7 +176,7 @@ class Gate(Split_gates):
 						
 
 						# 20 cycles to read the permute matrix, 8 for installing the weights and each matmul operation takes "memory_slices" cycles
-						time_list = [8, 28, 8+memory_slices, 28+memory_slices]
+						time_list = [8, 28, 8+memory_addresses, 28+memory_addresses]
 						weights_list = []
 						weights_list.append(g.install_weights(permute_matrix_west_mt, planes=mxm_requests[0], time=0))
 						weights_list.append(g.install_weights(permute_matrix_west_mt, planes=mxm_requests[1], time=20))
@@ -219,8 +219,8 @@ class Gate(Split_gates):
 						permuted_state_real_st_8 = g.permute_inner(state_real_st_8, permute_map_west_st, permutor_req=permutor_requests[gate_idx*2+1], input_streams=[g.SG1_E[0], g.SG1_E[24]], output_streams=g.SG1[12], time=0 )
 						permuted_state_imag_st_8 = g.permute_inner(state_imag_st_8, permute_map_east_st, permutor_req=permutor_requests[gate_idx*2], input_streams=[g.SG1_W[0], g.SG1_W[24]], output_streams=g.SG1[4], time=0 )
 
-						permuted_state_real_st_8 = g.reshape(permuted_state_real_st_8, [memory_slices, 4, matrix_size] )
-						permuted_state_imag_st_8 = g.reshape(permuted_state_imag_st_8, [memory_slices, 4, matrix_size] )
+						permuted_state_real_st_8 = g.reshape(permuted_state_real_st_8, [memory_addresses, 4, matrix_size] )
+						permuted_state_imag_st_8 = g.reshape(permuted_state_imag_st_8, [memory_addresses, 4, matrix_size] )
 					
 						permuted_state_real_st = g.reinterpret(permuted_state_real_st_8, g.float32 )
 						permuted_state_imag_st = g.reinterpret(permuted_state_imag_st_8, g.float32 )

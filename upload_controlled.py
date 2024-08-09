@@ -35,11 +35,11 @@ class Upload:
 		name = "upload"
 		with self.pgm_pkg.create_program_context(name) as pgm1:
 
-			self.State_input_real_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_real", storage_req=self.state_real_request)
-			self.State_input_imag_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_imag", storage_req=self.state_imag_request)
+			self.State_input_real_mt = g.input_tensor(shape=(memory_addresses, matrix_size,), dtype=g.float32, name="State_input_real", storage_req=self.state_real_request)
+			self.State_input_imag_mt = g.input_tensor(shape=(memory_addresses, matrix_size,), dtype=g.float32, name="State_input_imag", storage_req=self.state_imag_request)
 
-			self.State_input_real_copy_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_real_copy", storage_req=self.state_real_copy_request)
-			self.State_input_imag_copy_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_imag_copy", storage_req=self.state_imag_copy_request)
+			self.State_input_real_copy_mt = g.input_tensor(shape=(memory_addresses, matrix_size,), dtype=g.float32, name="State_input_real_copy", storage_req=self.state_real_copy_request)
+			self.State_input_imag_copy_mt = g.input_tensor(shape=(memory_addresses, matrix_size,), dtype=g.float32, name="State_input_imag_copy", storage_req=self.state_imag_copy_request)
 							
 			
 			self.state_permute_map_selector_mt 	= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="state_permute_map_selector", layout=layout_state_permute_map_selector)

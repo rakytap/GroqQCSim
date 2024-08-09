@@ -108,7 +108,7 @@ class Gate(Split_gates):
 
 				index_pair = 1 << (self.control_qbit[gate_idx] - small_qbit_num_limit)
 
-				half_memory_slices = memory_slices >> 1
+				half_memory_slices = memory_addresses >> 1
 				print("iiiiiiiiiiii ", half_memory_slices)
 
 				stagger_time = 20
@@ -117,7 +117,7 @@ class Gate(Split_gates):
 					raise('Stegger time should be a multiple of 2')
 
 				stagger_cycles = half_memory_slices // stagger_time
-				if ( memory_slices % stagger_time ) > 0:
+				if ( memory_addresses % stagger_time ) > 0:
 					stagger_cycles = stagger_cycles + 1 
 
 				mask_lower_bits = index_pair - 1 
@@ -200,8 +200,8 @@ class Gate(Split_gates):
 					print(10*"#" + " permuted")
 
 					# We only work with the half of the state vecor
-					permuted_state_real_st_8 = g.reshape(permuted_state_real_st_8, [(memory_slices >> 1), 4, matrix_size] )
-					permuted_state_imag_st_8 = g.reshape(permuted_state_imag_st_8, [(memory_slices >> 1), 4, matrix_size] )
+					permuted_state_real_st_8 = g.reshape(permuted_state_real_st_8, [(memory_addresses >> 1), 4, matrix_size] )
+					permuted_state_imag_st_8 = g.reshape(permuted_state_imag_st_8, [(memory_addresses >> 1), 4, matrix_size] )
 				
 					permuted_state_real_st = g.reinterpret(permuted_state_real_st_8, g.float32 )
 					permuted_state_imag_st = g.reinterpret(permuted_state_imag_st_8, g.float32 )

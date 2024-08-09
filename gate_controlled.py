@@ -152,8 +152,8 @@ class Gate(Split_gates):
 					permuted_state_imag_st_8 = g.permute_inner(state_imag_st_8, permute_map_east_st, permutor_req=permutor_requests[gate_idx*2], input_streams=[g.SG1_W[0], g.SG1_W[24]], output_streams=g.SG1[0], time=0 )
 					print(10*"#" + " permuted")
 
-					permuted_state_real_st_8 = g.reshape(permuted_state_real_st_8, [memory_slices, 4, matrix_size] )
-					permuted_state_imag_st_8 = g.reshape(permuted_state_imag_st_8, [memory_slices, 4, matrix_size] )
+					permuted_state_real_st_8 = g.reshape(permuted_state_real_st_8, [memory_addresses, 4, matrix_size] )
+					permuted_state_imag_st_8 = g.reshape(permuted_state_imag_st_8, [memory_addresses, 4, matrix_size] )
 				
 					permuted_state_real_st = g.reinterpret(permuted_state_real_st_8, g.float32 )
 					permuted_state_imag_st = g.reinterpret(permuted_state_imag_st_8, g.float32 )
