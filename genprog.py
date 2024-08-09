@@ -3,6 +3,8 @@ import numpy as np
 from scipy.io import loadmat
 import functools
 from squander import Circuit, utils
+from qiskit import QuantumCircuit, transpile
+from squander.utils import get_unitary_from_qiskit_circuit
 
 ANGLE = np.float64
 QUBIT = np.int32
@@ -10,21 +12,21 @@ QUBIT = np.int32
 class CircuitBuilder(Circuit):
     def __init__(self, num_qubits):
         super().__init__(num_qubits)
-        self.params = np.empty(0, dtype=ANGLE)
+        self.params = []
     def add_U3_params(self, theta, phi, lambd, qubit):
         self.add_U3(qubit)
-        self.params = np.concatenate([self.params, np.array([theta, phi, lambd])])
+        self.params.append([theta, phi, lambd])
         return self
     def add_CRY_params(self, theta, control_qubit, target_qubit):
         self.add_CRY(target_qubit, control_qubit)
-        self.params = np.concatenate([self.params, np.array([theta])])
+        self.params.append([theta])
         return self
     def add_CNOT_params(self, control_qubit, target_qubit):
         self.add_CNOT(target_qubit, control_qubit)
         return self
     def add_circuit_params(self, circuit):
         self.add_Circuit(circuit)
-        self.params = np.concatenate([self.params, circuit.params])
+        self.params.extend(circuit.params)
         return self
 
 def U3_gate(num_qubits, theta, phi, lambd, qubit):
@@ -40,15 +42,19 @@ def sequence(num_qubits, circuit1, circuit2):
     return CircuitBuilder(num_qubits).add_circuit_params(circuit1).add_circuit_params(circuit2)
 
 def pass_through(x): return x
-    
+
+COST_METHOD_TRACE, COST_METHOD_FROBENIUS, COST_METHOD_HILBERT_SCHMIDT = 0, 1, 2
 def evaluate(individual, pset, hof, unitary, num_qubits, cost_func_method):
     compiled_circuit = gp.compile(expr=individual, pset=pset)
     #print(individual)
     circuit = CircuitBuilder(num_qubits)
     built = compiled_circuit(circuit)
     result = unitary.copy()
-    built.apply_to( built.params, result)
-    return (np.abs(np.trace(np.real(result)) - len(result)),)
+    if len(built.params) != 0: built.apply_to(np.concatenate(list(reversed(built.params))), result)
+    if cost_func_method == COST_METHOD_TRACE:
+        return (1.0 - np.trace(np.real(result)) / len(result),)
+    elif cost_func_method == COST_METHOD_FROBENIUS:
+        return (np.linalg.norm(result - np.eye(len(result))),)
 def decompose_unitary(filepath, layers=4):
     ## load the unitary from file
     #data = loadmat(filepath)
@@ -56,8 +62,6 @@ def decompose_unitary(filepath, layers=4):
     #Umtx = data['Umtx']
     #num_qubits = len(Umtx).bit_length()
     
-    from qiskit import QuantumCircuit, transpile
-    from squander.utils import get_unitary_from_qiskit_circuit
     qc_trial = QuantumCircuit.from_qasm_file( filepath )
     qc_trial = transpile(qc_trial, optimization_level=3, basis_gates=['cz', 'cx', 'u3'], layout_method='sabre')
     num_qubits = qc_trial.num_qubits 
@@ -74,7 +78,7 @@ def decompose_unitary(filepath, layers=4):
     pset.addPrimitive(pass_through, [ANGLE], ANGLE, name="anglepass")
     pset.addPrimitive(pass_through, [QUBIT], QUBIT, name="qubitpass")
     
-    def randfloat_in_range(lo, hi): return ((hi-lo)*np.random.rand(1)-lo)[0]
+    def randfloat_in_range(lo, hi): return ((hi-lo)*np.random.rand()-lo)
     pset.addEphemeralConstant("angle_param", functools.partial(randfloat_in_range, 0, 2*np.pi), ret_type=ANGLE)
     pset.addEphemeralConstant("qubit_index", functools.partial(np.random.randint, 0, num_qubits), ret_type=QUBIT)
 
@@ -86,18 +90,18 @@ def decompose_unitary(filepath, layers=4):
     # Register the genetic operators
     toolbox = base.Toolbox()
     toolbox.register("compile", gp.compile, pset=pset)
-    toolbox.register("expr", gp.genHalfAndHalf, pset=pset, min_=0, max_=4)
+    toolbox.register("expr", gp.genHalfAndHalf, pset=pset, min_=0, max_=10)
     toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.expr)
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
     hof = tools.HallOfFame(1)
     #toolbox/pset contains wrapper functions
-    cost_func_method = 0
+    cost_func_method = COST_METHOD_TRACE
     toolbox.register("evaluate", functools.partial(evaluate, pset=pset, hof=hof, unitary=Umtx, num_qubits=num_qubits, cost_func_method=cost_func_method))
     toolbox.register("select", tools.selTournament, tournsize=5)
     #toolbox.register("select", tools.selBest)
     #toolbox.register("select", tools.selDoubleTournament, fitness_size=10, parsimony_size=1.4, fitness_first=False)
     toolbox.register("mate", gp.cxOnePoint)
-    toolbox.register("expr_mut", gp.genHalfAndHalf, pset=pset, min_=0, max_=2)
+    toolbox.register("expr_mut", gp.genHalfAndHalf, pset=pset, min_=0, max_=10)
     npopulation = 32*32
     toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
     toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=tree_depth))
@@ -111,10 +115,12 @@ def decompose_unitary(filepath, layers=4):
     stats.register("min", np.min)
     stats.register("max", np.max)
     algorithms.eaSimple(pop, toolbox, cxpb=0.6, mutpb=0.3, ngen=100000, stats=stats, halloffame=hof, verbose=True)
-    #algorithms.eaMuPlusLambda(pop, toolbox, mu=10, lambda_=100, cxpb=0.6, mutpb=0.3, ngen=100000, stats=stats, halloffame=hof, verbose=True)
-    #algorithms.eaMuCommaLambda(pop, toolbox, mu=10, lambda_=100, cxpb=0.6, mutpb=0.3, ngen=100000, stats=stats, halloffame=hof, verbose=True)
+    #algorithms.eaMuPlusLambda(pop, toolbox, mu=100, lambda_=1000, cxpb=0.6, mutpb=0.3, ngen=100000, stats=stats, halloffame=hof, verbose=True)
+    #algorithms.eaMuCommaLambda(pop, toolbox, mu=100, lambda_=1000, cxpb=0.6, mutpb=0.3, ngen=100000, stats=stats, halloffame=hof, verbose=True)
     #algorithms.eaGenerateUpdate(toolbox, ngen=100000, stats=stats, halloffame=hof, verbose=True)
     print("Best individual:", hof[0])
     print("Best individual fitness:", hof[0].fitness.values)
     
-decompose_unitary("/home/morse/squander/sequential-quantum-gate-decomposer/benchmarks/IBM/alu-v4_37.qasm")
+decompose_unitary("/home/morse/squander/sequential-quantum-gate-decomposer/benchmarks/IBM/ex-1_166.qasm")
+#decompose_unitary("/home/morse/squander/sequential-quantum-gate-decomposer/benchmarks/IBM/3_17_13.qasm")
+#decompose_unitary("/home/morse/squander/sequential-quantum-gate-decomposer/benchmarks/IBM/alu-v4_37.qasm")
