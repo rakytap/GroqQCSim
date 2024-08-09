@@ -3,8 +3,8 @@ from memory_layouts import *
 import groq.api as g
 
 class Gate(Split_gates):
-	def __init__(self, pgm_pkg):
-		super().__init__(pgm_pkg)
+	def __init__(self, pgm_pkg, control_qbit):
+		super().__init__(pgm_pkg, control_qbit)
 	
 	def gate_program(self):
 		#############################################################################################################x		
@@ -15,8 +15,6 @@ class Gate(Split_gates):
 
 			#g.reserve_tensor(pgm1, pgm2, State_input_real_mt)
 				
-			control_qbit = [9]
-
 			# create reusable permutor requests
 			permutor_requests = []
 			permutor_requests.append( g.tensor.create_permutor_request( [0], 1 ) )
@@ -108,7 +106,7 @@ class Gate(Split_gates):
 				Psi_transformed_real_copy_mt_list = g.split( Psi_transformed_real_copy_mt, 1 )
 				Psi_transformed_imag_copy_mt_list = g.split( Psi_transformed_imag_copy_mt, 1 )
 
-				index_pair = 1 << (control_qbit[gate_idx] - small_qbit_num_limit)
+				index_pair = 1 << (self.control_qbit[gate_idx] - small_qbit_num_limit)
 
 				half_memory_slices = memory_slices >> 1
 				print("iiiiiiiiiiii ", half_memory_slices)
@@ -123,9 +121,9 @@ class Gate(Split_gates):
 					stagger_cycles = stagger_cycles + 1 
 
 				mask_lower_bits = index_pair - 1 
-				mask_upper_bits = 1 << ( qbit_num - control_qbit[gate_idx] )
+				mask_upper_bits = 1 << ( qbit_num - self.control_qbit[gate_idx] )
 				mask_upper_bits = mask_upper_bits - 1
-				mask_upper_bits = mask_upper_bits << (control_qbit[gate_idx] - small_qbit_num_limit )
+				mask_upper_bits = mask_upper_bits << (self.control_qbit[gate_idx] - small_qbit_num_limit )
 
 			
 				address_offset = 4*gate_count + gate_idx

@@ -4,8 +4,8 @@ import groq.api as g
 import numpy as np
 
 class Gate(Split_gates):
-	def __init__(self, pgm_pkg):
-		super().__init__(pgm_pkg)
+	def __init__(self, pgm_pkg, target_qbit):
+		super().__init__(pgm_pkg, target_qbit)
 	
 	def gate_program(self):
 		#############################################################################################################x		
@@ -15,7 +15,6 @@ class Gate(Split_gates):
 		with self.pgm_pkg.create_program_context(name) as pgm3:
 
 			#g.reserve_tensor(pgm1, pgm2, State_input_real_mt)
-			target_qbit = [2]
 			mxm_permutation = [False]
 
 			# create reusable permutor requests
@@ -140,7 +139,7 @@ class Gate(Split_gates):
 					
 					
 					if mxm_permutation[gate_idx]:
-						target_qbit_pair_diff = 1 << target_qbit[gate_idx]
+						target_qbit_pair_diff = 1 << self.target_qbit[gate_idx]
 						print('target_qubit_pair_diff', target_qbit_pair_diff)
 						matrix_row_indexes = []
 						for idx in range(320):

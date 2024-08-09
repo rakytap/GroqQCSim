@@ -3,8 +3,8 @@ from memory_layouts import *
 import groq.api as g
 
 class Gate(Split_gates):
-	def __init__(self, pgm_pkg):
-		super().__init__(pgm_pkg)
+	def __init__(self, pgm_pkg, control_qbit):
+		super().__init__(pgm_pkg, control_qbit)
 	
 	def gate_program(self):
 		#############################################################################################################x		

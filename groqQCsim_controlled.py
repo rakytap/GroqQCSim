@@ -24,7 +24,7 @@ print("Python packages imported successfully")
 #Note: MEM slices 16, 20, 24, and 28 on both the east and west hemispheres, and slice 38 on the west hemisphere are reserved for system use.
 
 
-def compile() -> List[str]:
+def compile(control_qbit) -> List[str]:
 	"""Compiles a program package with 2 programs.
 
 	Return: (List[str]): A list of IOP files.
@@ -37,7 +37,7 @@ def compile() -> List[str]:
 	print( pgm_pkg.add_precompiled_program.__doc__ )
 	print( pgm_pkg.create_program_context.__doc__ )
 
-	program = Gate(pgm_pkg)
+	program = Gate(pgm_pkg, control_qbit)
 	# Defines a program to upload the inputs
 	program.upload_program()
 	program.split_gates_program()
@@ -216,7 +216,7 @@ def main( State_orig_real_float32, State_orig_imag_float32, target_qbit, control
 	if qbit_num is None:
 		raise "qbit_num must be set with method initialize_qbit_num( qbit_num ) with a value greater or equal to 8"
 
-	iop_files = compile()
+	iop_files = compile(control_qbit)
 	print(f"Program compiled to IOP file: {iop_files}")
 
 	import time

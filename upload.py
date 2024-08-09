@@ -4,8 +4,9 @@ import numpy as np
 from groq.api import instruction as inst
 
 class Upload:
-	def __init__(self, pgm_pkg):
+	def __init__(self, pgm_pkg, target_qbit):
 		self.pgm_pkg = pgm_pkg
+		self.target_qbit = target_qbit
 		self.gate_kernels_real_packed_mt = None
 		self.gate_kernels_imag_packed_mt = None
 		self.State_input_real_mt = None
