@@ -18,8 +18,6 @@ class Upload:
 		self.permute_maps_east = None
 		self.state_1_broadcasted_mt = None
 		self.state_0_broadcasted_mt = None
-		self.identity_west_mt = None
-		self.identity_east_mt = None
 
 
 
@@ -71,11 +69,7 @@ class Upload:
 			if ( self.mxm_permutation ):
 
 				identity                 = np.identity(320, dtype=np.int8)
-				mxm_permutation_matrices = np.zeros( (8,320,320,), dtype=np.int32 )
-
-				self.identity_west_mt = g.from_data(identity, layout=layout_identity_west) #########
-				self.identity_east_mt = g.from_data(identity, layout=layout_identity_east) #########
-
+				mxm_permutation_matrices = np.zeros( (8,320,320,), dtype=np.int8 )
 
 				for target_qbit_loc in range(small_qbit_num_limit):
 
@@ -92,10 +86,10 @@ class Upload:
 					mxm_permutation_matrices[ target_qbit_loc,:,: ] = identity[matrix_row_indexes,:]
 
 					
-				self.mxm_permute_matrices_mt_west = g.from_data( np.asarray(mxm_permutation_matrices, dtype=np.uint8), layout=layout_mxm_permutation_matrices_west )
-				self.mxm_permute_matrices_mt_east = g.from_data( np.asarray(mxm_permutation_matrices, dtype=np.uint8), layout=layout_mxm_permutation_matrices_east )
+				self.mxm_permute_matrices_mt_west = g.from_data( np.asarray(mxm_permutation_matrices, dtype=np.int8), layout=layout_mxm_permutation_matrices_west )
+				self.mxm_permute_matrices_mt_east = g.from_data( np.asarray(mxm_permutation_matrices, dtype=np.int8), layout=layout_mxm_permutation_matrices_east )
 				self.mxm_permute_matrices_mt_west.is_static = True
-				#self.mxm_permute_matrices_mt_east.is_static = True
+				self.mxm_permute_matrices_mt_east.is_static = True
 
 
 				self.permute_maps_mt_west = None

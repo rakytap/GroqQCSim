@@ -32,8 +32,7 @@ class Gate(Split_gates):
 
 			state_permute_map_selector_shared 	= g.shared_memory_tensor(self.state_permute_map_selector_mt, name="state_permute_map_selector_shared")
 
-			identity_west_shared = g.shared_memory_tensor(self.identity_west_mt, name="identity_west_shared")
-			identity_east_shared = g.shared_memory_tensor(self.identity_east_mt, name="identity_east_shared")
+			
 			
 			#state_permute_map_selector_st = state_permute_map_selector_shared.read(streams=g.SG1_W[24])
 			
@@ -44,10 +43,17 @@ class Gate(Split_gates):
 			if ( self.mxm_permutation ) :
 				permute_maps_mt_west_shared = None 
 				permute_maps_mt_east_shared = None
+
+				mxm_permute_matrices_west_shared = g.shared_memory_tensor(self.mxm_permute_matrices_mt_west, name="mxm_permute_matrices_west_shared")
+				mxm_permute_matrices_east_shared = g.shared_memory_tensor(self.mxm_permute_matrices_mt_east, name="mxm_permute_matrices_east_shared")
 			else: 
 				# otherwise the permutor slices are used
 				permute_maps_mt_west_shared = g.shared_memory_tensor(self.permute_maps_mt_west, name=f"permute_maps_west_shared")
 				permute_maps_mt_east_shared = g.shared_memory_tensor(self.permute_maps_mt_east, name=f"permute_maps_east_shared")
+
+				mxm_permute_matrices_west_shared = None
+				mxm_permute_matrices_east_shared = None
+
 
 			# state_1_mt: if target_qubit_loc at the idx-th element is in state_1 |1> then all the 8 bits of the idx-th element is set to 1, thus state_1[idx] = 255
 			# state_0_mt: if target_qubit_loc at the idx-th element is in state_0 |0> then all the 8 bits of the idx-th element is set to 1, thus state_0[idx] = 255
@@ -134,28 +140,15 @@ class Gate(Split_gates):
 
 					# make a copy of the real part somewhere else on the chip (just for testing, will be removed)
 					print('gatescope')   
-					#target_qbit = 0
 					
 					
 					if ( self.mxm_permutation ):
-						target_qbit_pair_diff = 1 << target_qbit[gate_idx]
-						print('target_qubit_pair_diff', target_qbit_pair_diff)
-						matrix_row_indexes = []
-						for idx in range(320):
-							if (idx < matrix_size):
-								matrix_row_indexes.append(idx ^ target_qbit_pair_diff)
-							else:
-								matrix_row_indexes.append(idx)
-						matrix_row_indexes = np.array(matrix_row_indexes, dtype=np.int32)
 
-						identity_west_mt_list = np.array(g.split(identity_west_shared, 1))
-						identity_east_mt_list = np.array(g.split(identity_east_shared, 1))
-						identity_west_mt_list = identity_west_mt_list[matrix_row_indexes]
-						identity_east_mt_list = identity_east_mt_list[matrix_row_indexes]
+						mxm_permute_matrices_west_list = g.split(mxm_permute_matrices_west_shared, dim=0, num_splits=8 )
+						mxm_permute_matrices_east_list = g.split(mxm_permute_matrices_east_shared, dim=0, num_splits=8 )
 
-						permute_matrix_west_mt = g.concat(identity_west_mt_list)
-						permute_matrix_east_mt = g.concat(identity_east_mt_list)
-
+						permute_matrix_west_mt = g.reshape(  mxm_permute_matrices_west_list[target_qbit[gate_idx]], (320,320,) )
+						permute_matrix_east_mt = g.reshape(  mxm_permute_matrices_east_list[target_qbit[gate_idx]], (320,320,) )
 
 						# mxm only accepts tensors with an inner dim of 320
 						Psi_transformed_real_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=Psi_transformed_real_mt.storage_request, initialized=False)
@@ -167,7 +160,7 @@ class Gate(Split_gates):
 						Psi_transformed_real_copy_mt = g.reinterpret(Psi_transformed_real_copy_mt, dtype=g.int8)
 						Psi_transformed_imag_copy_mt = g.reinterpret(Psi_transformed_imag_copy_mt, dtype=g.int8)
 
-						# separating the tensors along the slice dimension
+						# separating the tensors along the slice dimension (separating the bytes)
 						Psi_transformed_real_mt_list = g.split(Psi_transformed_real_mt_320, dim=-2, num_splits=g.float32.size)
 						Psi_transformed_imag_mt_list = g.split(Psi_transformed_imag_mt_320, dim=-2, num_splits=g.float32.size)
 						Psi_transformed_real_copy_mt_list = g.split(Psi_transformed_real_copy_mt, dim=-2, num_splits=g.float32.size)

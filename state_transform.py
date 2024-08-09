@@ -86,8 +86,8 @@ if __name__ == "__main__":
 
 	print( State_orig_real_float32[0:10] )
 	print(' ' )
-	print( np.real( State_transformed_oracle[0:10] ) )
+	print( np.real( State_transformed_oracle[0:] ) )
 	print(' ')
-	print( real_part[0:10] )
+	print( real_part[0:] )
 
 
