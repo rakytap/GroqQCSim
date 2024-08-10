@@ -40,9 +40,12 @@ class Upload:
 
 			self.State_input_real_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_real", storage_req=self.state_real_request)
 			self.State_input_imag_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_imag", storage_req=self.state_imag_request)
+			
+			State_input_real_st = self.State_input_real_mt.read(streams=[g.SG4[1]], time = 0)
+			State_input_imag_st = self.State_input_imag_mt.read(streams=[g.SG4[2]], time = 0)
 
-			self.State_input_real_copy_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_real_copy", storage_req=self.state_real_copy_request)
-			self.State_input_imag_copy_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_imag_copy", storage_req=self.state_imag_copy_request)
+			self.State_input_real_copy_mt = State_input_real_st.write( name="State_input_real_copy", storage_req=self.state_real_copy_request)
+			self.State_input_imag_copy_mt = State_input_imag_st.write( name="State_input_imag_copy", storage_req=self.state_imag_copy_request)
 							
 			
 			
