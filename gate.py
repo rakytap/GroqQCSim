@@ -17,7 +17,7 @@ class Gate(Split_gates):
 		with self.pgm_pkg.create_program_context(name) as pgm3:
 
 			#g.reserve_tensor(pgm1, pgm2, State_input_real_mt)
-			target_qbit = 2
+			target_qbit = 4
 
 			# create reusable permutor requests
 			permutor_requests = []
@@ -32,14 +32,7 @@ class Gate(Split_gates):
 			State_input_real_copy_shared = g.shared_memory_tensor(self.State_input_real_copy_mt, name="State_input_real_copy_shared")
 			State_input_imag_copy_shared = g.shared_memory_tensor(self.State_input_imag_copy_mt, name="State_input_imag_copy_shared")
 
-			state_permute_map_selector_shared 	= g.shared_memory_tensor(self.state_permute_map_selector_mt, name="state_permute_map_selector_shared")
-
 			
-			
-			#state_permute_map_selector_st = state_permute_map_selector_shared.read(streams=g.SG1_W[24])
-			
-			#state_permute_map_selector_list = g.split_inner_splits(state_permute_map_selector_st)		
-			state_permute_map_selector_list = g.split_vectors(input=state_permute_map_selector_shared, splits=[1]*gate_count)
 			
 			# when self.mxm_permutation is True, MXM is used for permuatations on target qubits less than 8
 			if ( self.mxm_permutation ) :
@@ -49,6 +42,10 @@ class Gate(Split_gates):
 				mxm_permute_matrices_west_shared = g.shared_memory_tensor(self.mxm_permute_matrices_mt_west, name="mxm_permute_matrices_west_shared")
 				mxm_permute_matrices_east_shared = g.shared_memory_tensor(self.mxm_permute_matrices_mt_east, name="mxm_permute_matrices_east_shared")
 			else: 
+			
+				state_permute_map_selector_shared 	= g.shared_memory_tensor(self.state_permute_map_selector_mt, name="state_permute_map_selector_shared")		
+				state_permute_map_selector_list = g.split_vectors(input=state_permute_map_selector_shared, splits=[1]*gate_count)
+			
 				# otherwise the permutor slices are used
 				permute_maps_mt_west_shared = g.shared_memory_tensor(self.permute_maps_mt_west, name=f"permute_maps_west_shared")
 				permute_maps_mt_east_shared = g.shared_memory_tensor(self.permute_maps_mt_east, name=f"permute_maps_east_shared")
@@ -197,7 +194,7 @@ class Gate(Split_gates):
 					permuted_state_real_mt = g.constant_tensor(Psi_transformed_real_copy_mt.shape, g.float32, name="permuted_result_real", storage_req=self.state_real_copy_request, initialized=False)
 					permuted_state_imag_mt = g.constant_tensor(Psi_transformed_imag_copy_mt.shape, g.float32, name="permuted_result_imag", storage_req=self.state_imag_copy_request, initialized=False)
 
-				else: # mxm permutation end
+				else: # if mxm_permutation
 
 					state_permute_map_selector_west_st = state_permute_map_selector_list[0].read(streams=[g.SG1_W[24]])
 					state_permute_map_selector_east_st = state_permute_map_selector_list[0].read(streams=[g.SG1_E[24]])

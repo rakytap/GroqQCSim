@@ -45,11 +45,11 @@ class Upload:
 			self.State_input_imag_copy_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_imag_copy", storage_req=self.state_imag_copy_request)
 							
 			
-			self.state_permute_map_selector_mt 	= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="state_permute_map_selector", layout=layout_state_permute_map_selector)
+			
+			
+			
 			state_1_selector_mt				= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="state_1_selector", layout=layout_state_1_selector)
 			state_0_selector_mt				= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="state_0_selector", layout=layout_state_0_selector)
-			print(self.state_permute_map_selector_mt.shape)
-			print(dir(self.state_permute_map_selector_mt))
 
 			self.gate_kernels_real_packed_mt = g.input_tensor(shape=(320,), dtype=g.float32, name="gate_kernels_real_packed", layout=layout_gate_kernels_real_packed)
 			self.gate_kernels_imag_packed_mt = g.input_tensor(shape=(320,), dtype=g.float32, name="gate_kernels_imag_packed", layout=layout_gate_kernels_imag_packed)
@@ -59,7 +59,7 @@ class Upload:
 			self.State_input_imag_mt.is_static 			= True
 			self.State_input_real_copy_mt.is_static 			= True
 			self.State_input_imag_copy_mt.is_static 			= True
-			self.state_permute_map_selector_mt.is_static = True
+
 			self.gate_kernels_real_packed_mt.is_static 	= True
 			self.gate_kernels_imag_packed_mt.is_static 	= True
 			state_1_selector_mt.is_static			= True
@@ -95,7 +95,11 @@ class Upload:
 				self.permute_maps_mt_west = None
 				self.permute_maps_mt_east = None
 
-			else:			
+			else:	
+				# the input vector containing the memory address for the correct target qubits. 
+				# TODO: cutrrently supports only a single target qubit, but need to support 80, as the number of the packed gate kernels		
+				self.state_permute_map_selector_mt 	= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="state_permute_map_selector", layout=layout_state_permute_map_selector)	
+				self.state_permute_map_selector_mt.is_static = True	
 			
 				# generate permutation maps to reorder the state vector elements for qubits less than small_qbit_num_limit
 				permute_map = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint32 )
@@ -104,7 +108,6 @@ class Upload:
 
 					permute_map_np = np.zeros( (256,), dtype=np.uint32 )
 					target_qbit_pair_diff = 1 << target_qbit_loc
-					print('target_qubit_pair_diff', target_qbit_pair_diff)
 				
 					for idx in range(256): # 256 = 2^8
 						if (idx < matrix_size):
@@ -114,19 +117,17 @@ class Upload:
 				
 
 					permute_map[target_qbit_loc,:] = inst.encode_permute_map(  permute_map_np.tolist() )
-					print(' ')
-					print(permute_map[target_qbit_loc,:])
 
 				self.permute_maps_mt_west = g.from_data( np.asarray(permute_map, dtype=np.uint8), layout=layout_permute_maps_west )
 				self.permute_maps_mt_east = g.from_data( np.asarray(permute_map, dtype=np.uint8), layout=layout_permute_maps_east )
 				self.permute_maps_mt_west.is_static = True
 				self.permute_maps_mt_east.is_static = True
-				print(self.permute_maps_mt_west.shape)
-				print(dir(self.permute_maps_mt_west))
 
 
 				self.mxm_permute_matrices_mt_west = None
 				self.mxm_permute_matrices_mt_east = None
+				
+				
 			
 			
 			# generate vectors to indicate which elements in a 320 vector correspond to state |1> of target qubit less than small_qbit_num_limit 

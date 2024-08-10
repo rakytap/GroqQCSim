@@ -98,18 +98,33 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 	device.load(iop[1], unsafe_keep_entry_points=True)
 	device.load(iop[2], unsafe_keep_entry_points=True)
 	
-	# map for mem_gather to select the permutation map for the given target qubit. Th epermutor is used only for target qubits smaller than small_qbit_num_limit
-	state_permute_map_selector = np.zeros( (320,), dtype=np.uint8 )
-	if ( target_qbit < small_qbit_num_limit ) :
-		state_permute_map_selector[0:320:16] = target_qbit
-	else :
-		state_permute_map_selector[0:320:16] = 0
+	if target_qbit >= small_qbit_num_limit :
+		raise ValueError( "the target qubit in this program should be less than 8" )
+	
+	
+	# maps for mem_gather to select the correct state_1 indices according to the target qubit
+	target_qbit_selector = np.zeros( (320,), dtype=np.uint8 )
+	target_qbit_selector[0:320:16] = target_qbit
+		
+	state_1_selector = target_qbit_selector#np.zeros( (2,320,), dtype=np.uint8 )
+	state_0_selector = target_qbit_selector#np.zeros( (2,320,), dtype=np.uint8 )	
+	
+	
+	# create memory maps to access the correct metadata on the chip to perform the gate operation on the chosen target_qubit
+	if mxm_permutation :
+		state_permute_map_selector = None
+		
+		#map to choose the correct permutation matrix to reorder the state vector
+		mxm_permutation_matrix_selector = None
+	
+	
+	else:
+		# map for mem_gather to select the permutation map for the given target qubit. Th epermutor is used only for target qubits smaller than small_qbit_num_limit
+		state_permute_map_selector = target_qbit_selector
+			
+		mxm_permutation_matrix_selector = None
 			
 
-
-	# maps for mem_gather to select the correct state_1 indices according to the target qubit
-	state_1_selector = state_permute_map_selector#np.zeros( (2,320,), dtype=np.uint8 )
-	state_0_selector = state_permute_map_selector#np.zeros( (2,320,), dtype=np.uint8 )
 
 	# generate packed gate kernel data
 	gate_kernels_real_packed = np.zeros( (320,), dtype=np.float32 )
@@ -133,7 +148,12 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 
 
 	# run the first program
-	pgm_1_output = invoke(device, iop, 0, 0, {"State_input_real": input_real, "State_input_imag": input_imag, "State_input_real_copy": input_real, "State_input_imag_copy": input_imag, "state_permute_map_selector": state_permute_map_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector})
+	if mxm_permutation :
+		pgm_1_output = invoke(device, iop, 0, 0, {"State_input_real": input_real, "State_input_imag": input_imag, "State_input_real_copy": input_real, "State_input_imag_copy": input_imag, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector})
+		
+	else: 
+		pgm_1_output = invoke(device, iop, 0, 0, {"State_input_real": input_real, "State_input_imag": input_imag, "State_input_real_copy": input_real, "State_input_imag_copy": input_imag, "state_permute_map_selector": state_permute_map_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector})
+	
 	
 	# run the gate split program
 	index_of_split_program = 1
