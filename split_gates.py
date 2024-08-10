@@ -19,14 +19,10 @@ class Split_gates(Upload):
 		with self.pgm_pkg.create_program_context(name) as pgm2:
 
 			# create reusable permutor requests
-			permutor_requests = []
-			permutor_requests.append(  g.tensor.create_permutor_request( [0], 1 ) ) # WEST
-			permutor_requests.append(  g.tensor.create_permutor_request( [1], 1 ) ) # EAST
+			permutor_request = g.tensor.create_permutor_request( [1], 1 ) # EAST
 			
 			# create reusable distributor requests
-			distributor_requests = []
-			distributor_requests.append(  g.tensor.create_distributor_request( [0], 1 ) ) # WEST
-			distributor_requests.append(  g.tensor.create_distributor_request( [4], 1 ) ) # EAST		
+			distributor_request = g.tensor.create_distributor_request( [4], 1 )  # EAST		
 
 			# Creates a shared tensor to reuse the memory allocation made by program pgm1
 			gate_kernels_real_packed_shared = g.shared_memory_tensor(self.gate_kernels_real_packed_mt, name="gate_kernels_real_packed") ## 80 gates all packed onto a single vector
@@ -71,7 +67,7 @@ class Split_gates(Upload):
 				#gate_kernel_imag_st = gate_kernel_imag_mt.read( streams=g.SG4[1], time=14 + 2*idx )		
 				gate_kernel_st = gate_kernels_packed_mt.read( streams=g.SG4[1], time= 2*idx )  #g.concat_inner_splits( [gate_kernel_real_st, gate_kernel_imag_st] )
 				
-				distributor_request = distributor_requests[1]
+				
 				gate_kernel_broadcasted_st = g.distribute_8( gate_kernel_st, 
 						distribute_map_tensor_list[idx],
 						distributor_req=distributor_request,
@@ -79,7 +75,7 @@ class Split_gates(Upload):
 						bypass8=0b00001111,
 				)
 
-				permutor_request = permutor_requests[1]
+
 				gate_kernel_broadcasted_st = g.broadcast_lane_0( gate_kernel_broadcasted_st, 
 									permutor_request,
 									old_bitmap=[inst.NEW_SRC] * 4, 
@@ -149,7 +145,7 @@ class Split_gates(Upload):
 			
 			# shift the packed gate kernels by 4 and save in the original place of the packed gate kernels
 			gate_kernels_packed_st = gate_kernels_packed_mt.read( streams=g.SG4[0], time=10 )
-			permutor_request = permutor_requests[1]
+
 			shift = 4
 			gate_kernels_packed_shifted_st = g.shift(gate_kernels_packed_st, 
 							shift, 

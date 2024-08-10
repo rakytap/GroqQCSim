@@ -237,12 +237,7 @@ class Gate(Split_gates):
 			with g.ResourceScope(name=f"prepare_gate_kernel_scope", is_buffered=True, time=tm_pgk) as prepare_gate_kernel_scope :
 
 		
-				# combine 00 and 10 elements of the gate kernel to be used in the transformation
-				#states_1_mt_list = g.split( states_1_shared, 1, 0)
-				#states_0_mt_list = g.split( states_0_shared, 1, 0)
-
-				#state_1_mt = states_1_mt_list[target_qbit] #TODO: do with gather map
-				#state_0_mt = states_0_mt_list[target_qbit] #TODO: do with gather map
+				# combine the rows of the gate kernel to be used in the transformation on target qubits < 8
 					
 					
 				# filter the elements in the vector according to the indices standig for output states |0> and |1> 
