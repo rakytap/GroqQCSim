@@ -41,6 +41,8 @@ class Gate(Split_gates):
 
 				mxm_permute_matrices_west_shared = g.shared_memory_tensor(self.mxm_permute_matrices_mt_west, name="mxm_permute_matrices_west_shared")
 				mxm_permute_matrices_east_shared = g.shared_memory_tensor(self.mxm_permute_matrices_mt_east, name="mxm_permute_matrices_east_shared")
+				
+				mxm_permute_map_selector_shared 	= g.shared_memory_tensor(self.state_permute_map_selector_expanded, name="mxm_permute_map_selector_shared")
 			else: 
 			
 				state_permute_map_selector_shared 	= g.shared_memory_tensor(self.state_permute_map_selector_mt, name="state_permute_map_selector_shared")		
@@ -148,7 +150,43 @@ class Gate(Split_gates):
 
 					permute_matrix_west_mt = g.reshape(  mxm_permute_matrices_west_list[target_qbit], (320,320,) )
 					permute_matrix_east_mt = g.reshape(  mxm_permute_matrices_east_list[target_qbit], (320,320,) )
+					
+					### split the permutation matrices over slices ###
+									
+					# split the stored permutation matrices into 16-line chunks
+					# one int8 chunk is splited over 16 memory slices
+					print( mxm_permute_matrices_west_shared.storage_request )
+					mxm_permute_rows_west = g.reshape( mxm_permute_matrices_west_shared, [ small_qbit_num_limit*320, 1, 320 ] )
+					mxm_permute_rows_west_list = g.split( mxm_permute_rows_west, dim=0, num_splits=small_qbit_num_limit*320 )
+					
+					print( mxm_permute_rows_west_list[0].storage_request )
+					print( mxm_permute_rows_west_list[4].storage_request )	
+					
+					# generating stream to gather the correct 
+					mxm_permute_row_selectors_list = g.split( mxm_permute_map_selector_shared, dim=0, num_splits = 320//16 )
+					#mxm_permute_row_selector_st = mxm_permute_row_selectors_list[0].read( streams = g.SG1_W[10], time = 65 )					
 
+					#mxm_permute_row_selector_st = mxm_permute_map_selector_shared.read( streams = g.SG1_W[31], time = 65 )
+					
+					print( "oooooooooooooooo ", len(mxm_permute_rows_west_list) )
+					
+					# list storing the fetched rows of the permutation matrix
+					mxm_permute_row_west_st_list = []					
+					'''
+					for permute_selector_idx in range(320//16):
+					
+					    mxm_permute_row_selector_st = mxm_permute_row_selectors_list[permute_selector_idx].read( streams = g.SG1_W[31])#, time = 465+permute_selector_idx )
+					
+					
+					    for stream_idx in range(16):
+
+						    mxm_permute_row_west_st_tmp = g.mem_gather(mxm_permute_rows_west_list[stream_idx], mxm_permute_row_selector_st, output_streams=[g.SG1_W[stream_idx]] )#, time=75+stream_idx)
+						    #mxm_permute_row_west_mt_1 = mxm_permute_row_west_st_tmp.write( name=f"test_{stream_idx}", layout=f"H1(W), -1, S1({40+stream_idx})")
+						    mxm_permute_row_west_st_list.append( mxm_permute_row_west_st_tmp )
+					
+					permute_matrix_west_st_tmp = g.concat( mxm_permute_row_west_st_list )
+					#permute_matrix_west_mt_tmp = permute_matrix_west_st_tmp.write( name=f"test", layout=f"H1(W), -1, S4(40-43)")
+                    '''
 					# mxm only accepts tensors with an inner dim of 320
 					Psi_transformed_real_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=Psi_transformed_real_mt.storage_request, initialized=False)
 					Psi_transformed_imag_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=Psi_transformed_imag_mt.storage_request, initialized=False)
@@ -169,8 +207,10 @@ class Gate(Split_gates):
 					# 20 cycles to read the permute matrix, 8 for installing the weights and each matmul operation takes "memory_slices" cycles
 					time_list = [8, 28, 8+memory_slices, 28+memory_slices]
 					weights_list = []
-					weights_list.append(g.install_weights(permute_matrix_west_mt, planes=mxm_requests[0], time=0))
+					#weights_list.append(g.install_weights(permute_matrix_west_st_tmp, planes=mxm_requests[0], time=460))
+					weights_list.append(g.install_weights(permute_matrix_west_mt, planes=mxm_requests[0], time=0))					
 					weights_list.append(g.install_weights(permute_matrix_west_mt, planes=mxm_requests[1], time=20))
+					
 					weights_list.append(g.install_weights(permute_matrix_east_mt, planes=mxm_requests[2], time=0))
 					weights_list.append(g.install_weights(permute_matrix_east_mt, planes=mxm_requests[3], time=20))
 					for byte_idx in range(4):

@@ -92,7 +92,7 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 
 
 	iop = runtime.IOProgram(iop_file)
-	device = runtime.devices[0]
+	device = runtime.devices[1]
 	device.open()
 	device.load(iop[0], unsafe_keep_entry_points=True)
 	device.load(iop[1], unsafe_keep_entry_points=True)
@@ -111,18 +111,7 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 	
 	
 	# create memory maps to access the correct metadata on the chip to perform the gate operation on the chosen target_qubit
-	if mxm_permutation :
-		state_permute_map_selector = None
-		
-		#map to choose the correct permutation matrix to reorder the state vector
-		mxm_permutation_matrix_selector = None
-	
-	
-	else:
-		# map for mem_gather to select the permutation map for the given target qubit. Th epermutor is used only for target qubits smaller than small_qbit_num_limit
-		state_permute_map_selector = target_qbit_selector
-			
-		mxm_permutation_matrix_selector = None
+	permutation_selector = target_qbit_selector
 			
 
 
@@ -148,11 +137,7 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 
 
 	# run the first program
-	if mxm_permutation :
-		pgm_1_output = invoke(device, iop, 0, 0, {"State_input_real": input_real, "State_input_imag": input_imag, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector})
-		
-	else: 
-		pgm_1_output = invoke(device, iop, 0, 0, {"State_input_real": input_real, "State_input_imag": input_imag, "state_permute_map_selector": state_permute_map_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector})
+	pgm_1_output = invoke(device, iop, 0, 0, {"State_input_real": input_real, "State_input_imag": input_imag, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector})
 	
 	
 	# run the gate split program

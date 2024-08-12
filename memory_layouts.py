@@ -10,9 +10,12 @@ gate_count = 1
 small_qbit_num_limit = 8
 
 # layout to gather map selecting the permutation map corresponding to the target qubit  -- the MT should be replaced by on chip determined gather map, currently it is uploaded from CPU
-layout_state_permute_map_selector   = f"H1(W), A{gate_count}(320-{320+gate_count-1}), S1(17)"
-layout_state_1_selector				= f"H1(E), A{gate_count}(0-{gate_count-1}), S1(19)" 
-layout_state_0_selector				= f"H1(E), A{gate_count}(0-{gate_count-1}), S1(21)"
+layout_state_permute_map_selector        = f"H1(W), A{gate_count}(320-{320+gate_count-1}), S1(17)"
+layout_mxm_permute_map_selector          = f"H1(W), A{gate_count}(320-{320+gate_count-1}), S1(17)" #either state permute map selector or mxm_permute_map selctor is used on the chip, but not booth
+layout_expanded_mxm_permute_map_selector = f"H1(W), A{20*gate_count}({320+gate_count}-{320+gate_count+20*gate_count-1}), S1(37)"
+layout_state_1_selector				     = f"H1(E), A{gate_count}(0-{gate_count-1}), S1(19)" 
+layout_state_0_selector				     = f"H1(E), A{gate_count}(0-{gate_count-1}), S1(21)"
+layout_constant_1_address_offset         = f"H1(W), A{1}(320), S1(18)"
 
 layout_control_state_1_selector = f"H1(E), A{gate_count}({gate_count}-{2*gate_count-1}), S1(19)"
 layout_control_state_0_selector = f"H1(E), A{gate_count}({gate_count}-{2*gate_count-1}), S1(21)"
@@ -69,10 +72,10 @@ layout_zeros = f"H1(E), A1({320+2*gate_count}), S4(27-31)"
 layout_ones = f"H1(E), A1({320+2*gate_count}), S4(32-35)"
 
 # memory layout for the identity tensors   # TODO remove because it became obsolete
-layout_identity_west = "H1(W), A20(800-819), S16(17-35)" 
+layout_identity_west = "H1(W), A20(800-819), S16(18-36)" 
 layout_identity_east = f"H1(E), A20({800+(len(gate_kernel_element_labels)+1)*gate_count}-{800+(len(gate_kernel_element_labels)+1)*gate_count+19}), S16(0-15)"
 
 
 # memory layout for the identity tensors   # TODO remove because it became obsolete
-layout_mxm_permutation_matrices_west = f"H1(W), A{small_qbit_num_limit*20}(0-{small_qbit_num_limit*20-1}), S16(17-35)" 
+layout_mxm_permutation_matrices_west = f"H1(W), A{small_qbit_num_limit*20}(0-{small_qbit_num_limit*20-1}), S16(18-36)" 
 layout_mxm_permutation_matrices_east = f"H1(E), A{small_qbit_num_limit*20}({(len(gate_kernel_element_labels)+1)*gate_count}-{(len(gate_kernel_element_labels)+1)*gate_count+small_qbit_num_limit*20-1}), S16(0-15)"

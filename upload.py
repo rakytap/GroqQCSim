@@ -31,6 +31,9 @@ class Upload:
 		# for target qubits less than 8 MXM slices or the permutors can be used to generate the pairs for the state vector elements
 		# set mxm_permutation to True when MXM is used, or set to False when permutor is used
 		self.mxm_permutation = mxm_permutation
+		
+		# the memory addresses for gathering the mxm permutation matrices
+		self.state_permute_map_selector_expanded = None
 
 
 	def upload_program(self):
@@ -67,9 +70,55 @@ class Upload:
 			self.gate_kernels_imag_packed_mt.is_static 	= True
 			state_1_selector_mt.is_static			= True
 			state_0_selector_mt.is_static			= True
+			
+			# the input vector containing the memory address for the correct target qubits. 
+			# TODO: cutrrently supports only a single target qubit, but need to support 80, as the number of the packed gate kernels		
+			self.state_permute_map_selector_mt 	= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="permutation_selector", layout=layout_state_permute_map_selector)	
+			self.state_permute_map_selector_mt.is_static = True	
 
 
 			if ( self.mxm_permutation ):
+				
+				# expand the permutation maps to query for the whol 320x320 permute matrix, not just for the first row
+				constant_1_address_offset_np           = np.zeros( (320,), dtype=np.uint8 )
+				constant_1_address_offset_np[0:320:16] = 1
+				constant_1_address_offset_mt = g.from_data( np.asarray(constant_1_address_offset_np, dtype=np.uint8), layout=layout_constant_1_address_offset )
+				
+				alu_rq_8 = g.tensor.create_alu_request( alus=[8] )
+				
+				state_permute_map_selector_new_mt_list = []
+				for row_idx in range(20) :
+					layout = f"H1(W), A{1}({320+gate_count+row_idx}), S1(17)"
+				
+					
+					constant_1_address_offset_st = constant_1_address_offset_mt.read( streams=[g.SG1_E[20]], time=row_idx*31 )
+				
+					if row_idx == 0:
+						state_permute_map_selector_st = self.state_permute_map_selector_mt.read( streams=[g.SG1_E[16]] )
+					else:
+						state_permute_map_selector_st = state_permute_map_selector_new_mt.read( streams=[g.SG1_E[16]] )
+				
+				
+					# offset the memory address by 1
+					state_permute_map_selector_new_st = g.add(constant_1_address_offset_st, state_permute_map_selector_st, alus=alu_rq_8, output_streams=g.SG4[7])
+				
+					# save the offsetted memory address
+					state_permute_map_selector_new_mt = state_permute_map_selector_new_st.write(name=f"mxm_permute_selector_offset_{row_idx}", layout=layout, program_output=False)
+					state_permute_map_selector_new_mt = g.reshape( state_permute_map_selector_new_mt, [1,320] )
+					
+					g.add_mem_constraints([state_permute_map_selector_new_mt], [self.state_permute_map_selector_mt] + state_permute_map_selector_new_mt_list, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+
+					state_permute_map_selector_new_mt_list.append( state_permute_map_selector_new_mt )
+					
+					
+				# generate constant tensors from the offsetted memory addresses
+				self.state_permute_map_selector_expanded = g.concat( state_permute_map_selector_new_mt_list )
+				self.state_permute_map_selector_expanded.is_static = True
+				print( "iiiiiiiiiiiiiiiiiiiiiiiiiiiiii ")
+				print( self.state_permute_map_selector_expanded.shape ) 
+			
+			
+				# generate the permute matrices
 
 				identity                 = np.identity(320, dtype=np.int8)
 				mxm_permutation_matrices = np.zeros( (8,320,320,), dtype=np.int8 )
@@ -99,10 +148,7 @@ class Upload:
 				self.permute_maps_mt_east = None
 
 			else:	
-				# the input vector containing the memory address for the correct target qubits. 
-				# TODO: cutrrently supports only a single target qubit, but need to support 80, as the number of the packed gate kernels		
-				self.state_permute_map_selector_mt 	= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="state_permute_map_selector", layout=layout_state_permute_map_selector)	
-				self.state_permute_map_selector_mt.is_static = True	
+			
 			
 				# generate permutation maps to reorder the state vector elements for qubits less than small_qbit_num_limit
 				permute_map = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint32 )
