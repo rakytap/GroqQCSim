@@ -4,7 +4,7 @@ import groq.api as g
 
 class Gate_8_21(Split_gates):
   def __init__(self, pgm_pkg, target_qubit):
-        super().__init__(pgm_pkg)
+        super().__init__(pgm_pkg, target_qubit)
         self.target_qubit = target_qubit
 
   def two_complex_dot_product(s_r_0, s_i_0, s_r_1, s_i_1, g_r_0, g_i_0, g_r_1, g_i_1):
@@ -148,7 +148,7 @@ class Gate_8_21(Split_gates):
               pairs0[0], pairs0[1], pairs1[0], pairs1[1] = pairs0[0].reshape(*new_shape).transpose(1, 0, 2, 3), pairs0[1].reshape(*new_shape).transpose(1, 0, 2, 3), pairs1[0].reshape(*new_shape).transpose(1, 0, 2, 3), pairs1[1].reshape(*new_shape).transpose(1, 0, 2, 3)
                             
           pairs0[0], pairs0[1], pairs1[0], pairs1[1] = Gate_8_21.two_complex_dot_product(
-                  pairs1[0], pairs1[1], pairs0[0], pairs0[1], gr0, gi0, gr1, gi1)
+                  pairs0[0], pairs0[1], pairs1[0], pairs1[1], gr0, gi0, gr1, gi1)
 
 
           pairs_to_store0 = g.stack([pairs_to_concat0_0, pairs_to_concat0_1], dim=0)
