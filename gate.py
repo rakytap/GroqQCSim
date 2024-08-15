@@ -3,6 +3,45 @@ from memory_layouts import *
 import groq.api as g
 import numpy as np
 
+
+
+def gather_permutation_matrix( mxm_permute_map_selector, mxm_permute_matrices):
+
+	### split the permutation matrices over slices ###
+							
+	# split the stored permutation matrices into 16-line chunks
+	# one permute matrix will occupy 20 addresses
+	mxm_permute_rows = g.reshape( mxm_permute_matrices, [ small_qbit_num_limit*320, 1, 320 ] )
+	mxm_permute_rows_list = g.split( mxm_permute_rows, dim=0, num_splits=small_qbit_num_limit*320 )
+	mxm_permute_mt_slices_list = []
+					
+	for slice_idx in range(16):
+		mxm_permute_mt_slice = mxm_permute_rows_list[slice_idx:small_qbit_num_limit*320:16]
+		mxm_permute_mt_slices_list.append( g.concat(mxm_permute_mt_slice) )
+
+	# the permutation matrix occupy 20 adresses over 16 slices
+	mxm_permute_row_selectors_list = g.split( mxm_permute_map_selector, dim=0, num_splits = 20 )
+
+	mxm_permute_row_st_list = []
+	# the permutation matrix occupy 20 adresses over 16 slices
+	for permute_selector_idx in range(20):
+                                       
+		mxm_permute_row_selector_st = mxm_permute_row_selectors_list[permute_selector_idx].read( streams = g.SG1[31])
+						                
+		for stream_idx in range(16):
+
+			mxm_permute_row_st = g.mem_gather(mxm_permute_mt_slices_list[stream_idx], mxm_permute_row_selector_st, output_streams=[g.SG1[stream_idx]] )
+			mxm_permute_row_st_list.append( mxm_permute_row_st )
+                                        	
+                                        	
+                                        	
+	permute_matrix_st = g.concat( mxm_permute_row_st_list )
+	
+	return permute_matrix_st
+	
+	
+	
+
 class Gate(Split_gates):
 
 
@@ -148,45 +187,19 @@ class Gate(Split_gates):
 					mxm_permute_matrices_west_list = g.split(mxm_permute_matrices_west_shared, dim=0, num_splits=8 )
 					mxm_permute_matrices_east_list = g.split(mxm_permute_matrices_east_shared, dim=0, num_splits=8 )
 
-					permute_matrix_west_mt = g.reshape(  mxm_permute_matrices_west_list[target_qbit], (320,320,) )
+					#permute_matrix_west_mt = g.reshape(  mxm_permute_matrices_west_list[target_qbit], (320,320,) )
 					permute_matrix_east_mt = g.reshape(  mxm_permute_matrices_east_list[target_qbit], (320,320,) )
 					
-					### split the permutation matrices over slices ###
-									
-					# split the stored permutation matrices into 16-line chunks
-					# one int8 chunk is splited over 16 memory slices
-					print( mxm_permute_matrices_west_shared.storage_request )
-					mxm_permute_rows_west = g.reshape( mxm_permute_matrices_west_shared, [ small_qbit_num_limit*320, 1, 320 ] )
-					mxm_permute_rows_west_list = g.split( mxm_permute_rows_west, dim=0, num_splits=small_qbit_num_limit*320 )
-					
-					print( mxm_permute_rows_west_list[0].storage_request )
-					print( mxm_permute_rows_west_list[4].storage_request )	
-					
-					# generating stream to gather the correct 
-					mxm_permute_row_selectors_list = g.split( mxm_permute_map_selector_shared, dim=0, num_splits = 320//16 )
-					#mxm_permute_row_selector_st = mxm_permute_row_selectors_list[0].read( streams = g.SG1_W[10], time = 65 )					
+					# gathering the permutation matrices over the 16 slices with mem_gather 
+					# allows dynamic memory addressing according to the target qubit
+					permute_matrix_west_1_st = gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_west_shared)									
+					permute_matrix_west_2_st = gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_west_shared)
+					#permute_matrix_east_1_st = gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_east_shared)														
 
-					#mxm_permute_row_selector_st = mxm_permute_map_selector_shared.read( streams = g.SG1_W[31], time = 65 )
-					
-					print( "oooooooooooooooo ", len(mxm_permute_rows_west_list) )
 					
 					# list storing the fetched rows of the permutation matrix
 					mxm_permute_row_west_st_list = []					
-					'''
-					for permute_selector_idx in range(320//16):
-					
-					    mxm_permute_row_selector_st = mxm_permute_row_selectors_list[permute_selector_idx].read( streams = g.SG1_W[31])#, time = 465+permute_selector_idx )
-					
-					
-					    for stream_idx in range(16):
-
-						    mxm_permute_row_west_st_tmp = g.mem_gather(mxm_permute_rows_west_list[stream_idx], mxm_permute_row_selector_st, output_streams=[g.SG1_W[stream_idx]] )#, time=75+stream_idx)
-						    #mxm_permute_row_west_mt_1 = mxm_permute_row_west_st_tmp.write( name=f"test_{stream_idx}", layout=f"H1(W), -1, S1({40+stream_idx})")
-						    mxm_permute_row_west_st_list.append( mxm_permute_row_west_st_tmp )
-					
-					permute_matrix_west_st_tmp = g.concat( mxm_permute_row_west_st_list )
-					#permute_matrix_west_mt_tmp = permute_matrix_west_st_tmp.write( name=f"test", layout=f"H1(W), -1, S4(40-43)")
-                    '''
+			
 					# mxm only accepts tensors with an inner dim of 320
 					Psi_transformed_real_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=Psi_transformed_real_mt.storage_request, initialized=False)
 					Psi_transformed_imag_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=Psi_transformed_imag_mt.storage_request, initialized=False)
@@ -203,14 +216,18 @@ class Gate(Split_gates):
 					Psi_transformed_real_copy_mt_list = g.split(Psi_transformed_real_copy_mt, dim=-2, num_splits=g.float32.size)
 					Psi_transformed_imag_copy_mt_list = g.split(Psi_transformed_imag_copy_mt, dim=-2, num_splits=g.float32.size)
 						
+					
 
 					# 20 cycles to read the permute matrix, 8 for installing the weights and each matmul operation takes "memory_slices" cycles
 					time_list = [8, 28, 8+memory_slices, 28+memory_slices]
 					weights_list = []
-					#weights_list.append(g.install_weights(permute_matrix_west_st_tmp, planes=mxm_requests[0], time=460))
-					weights_list.append(g.install_weights(permute_matrix_west_mt, planes=mxm_requests[0], time=0))					
-					weights_list.append(g.install_weights(permute_matrix_west_mt, planes=mxm_requests[1], time=20))
+					weights_list.append(g.install_weights(permute_matrix_west_1_st, planes=mxm_requests[0], time=0))
+					weights_list.append(g.install_weights(permute_matrix_west_2_st, planes=mxm_requests[1], time=20))					
+					#weights_list.append(g.install_weights(permute_matrix_west_mt, planes=mxm_requests[0], time=0))					
+					#weights_list.append(g.install_weights(permute_matrix_west_mt, planes=mxm_requests[1], time=20))
 					
+					#weights_list.append(g.install_weights(permute_matrix_east_1_st, planes=mxm_requests[2], time=-6))
+					#weights_list.append(g.install_weights(permute_matrix_east_mt, planes=mxm_requests[3], time=20-6))					
 					weights_list.append(g.install_weights(permute_matrix_east_mt, planes=mxm_requests[2], time=0))
 					weights_list.append(g.install_weights(permute_matrix_east_mt, planes=mxm_requests[3], time=20))
 					for byte_idx in range(4):
@@ -234,7 +251,7 @@ class Gate(Split_gates):
 					permuted_state_real_mt = g.constant_tensor(Psi_transformed_real_copy_mt.shape, g.float32, name="permuted_result_real", storage_req=self.state_real_copy_request, initialized=False)
 					permuted_state_imag_mt = g.constant_tensor(Psi_transformed_imag_copy_mt.shape, g.float32, name="permuted_result_imag", storage_req=self.state_imag_copy_request, initialized=False)
 
-				else: # if mxm_permutation
+				else: # if permutor is used
 
 					state_permute_map_selector_west_st = state_permute_map_selector_list[0].read(streams=[g.SG1_W[24]])
 					state_permute_map_selector_east_st = state_permute_map_selector_list[0].read(streams=[g.SG1_E[24]])
@@ -283,6 +300,7 @@ class Gate(Split_gates):
 
 					state_1_broadcasted_st = state_1_broadcasted_shared.read( streams=g.SG4[2] )
 					state_0_broadcasted_st = state_0_broadcasted_shared.read( streams=g.SG4[0] )
+					
 				
 					# real and imaginary parts of the state concatenated into a unified tensor
 					gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["00"].read( streams=g.SG4[1], time=0 )
@@ -461,7 +479,7 @@ class Gate(Split_gates):
 				g.add_mem_constraints(Psi_transformed_imag_copy_list, [Psi_transformed_imag_copy_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
 				Psi_transformed_imag_copy_list.append( Psi_transformed_imag_copy_mt )
 					
-					
+				
 			self.pgm_pkg.compile_program_context(pgm3)
 			
 			#g.compile(base_name="QCsim", result_tensor=result)

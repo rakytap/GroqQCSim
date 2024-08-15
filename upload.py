@@ -44,37 +44,43 @@ class Upload:
 			self.State_input_real_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_real", storage_req=self.state_real_request)
 			self.State_input_imag_mt = g.input_tensor(shape=(memory_slices, matrix_size,), dtype=g.float32, name="State_input_imag", storage_req=self.state_imag_request)
 			
-			State_input_real_st = self.State_input_real_mt.read(streams=[g.SG4[1]], time = 0)
-			State_input_imag_st = self.State_input_imag_mt.read(streams=[g.SG4[2]], time = 0)
-
-			self.State_input_real_copy_mt = State_input_real_st.write( name="State_input_real_copy", storage_req=self.state_real_copy_request)
-			self.State_input_imag_copy_mt = State_input_imag_st.write( name="State_input_imag_copy", storage_req=self.state_imag_copy_request)
+			
 							
 			
 			
 			
 			
-			state_1_selector_mt				= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="state_1_selector", layout=layout_state_1_selector)
-			state_0_selector_mt				= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="state_0_selector", layout=layout_state_0_selector)
+			state_1_selector_mt = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="state_1_selector", layout=layout_state_1_selector)
+			state_0_selector_mt = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="state_0_selector", layout=layout_state_0_selector)
 
 			self.gate_kernels_real_packed_mt = g.input_tensor(shape=(320,), dtype=g.float32, name="gate_kernels_real_packed", layout=layout_gate_kernels_real_packed)
 			self.gate_kernels_imag_packed_mt = g.input_tensor(shape=(320,), dtype=g.float32, name="gate_kernels_imag_packed", layout=layout_gate_kernels_imag_packed)
 
 
+			
+			
+			# the input vector containing the memory address for the correct target qubits. 
+			# TODO: cutrrently supports only a single target qubit, but need to support 80, as the number of the packed gate kernels		
+			self.state_permute_map_selector_mt 	= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="permutation_selector", layout=layout_state_permute_map_selector)	
+				
+			
+			
+			State_input_real_st = self.State_input_real_mt.read(streams=[g.SG4[1]], time = 0)
+			State_input_imag_st = self.State_input_imag_mt.read(streams=[g.SG4[2]], time = 0)
+
+			self.State_input_real_copy_mt = State_input_real_st.write( name="State_input_real_copy", storage_req=self.state_real_copy_request)
+			self.State_input_imag_copy_mt = State_input_imag_st.write( name="State_input_imag_copy", storage_req=self.state_imag_copy_request)
+			
 			self.State_input_real_mt.is_static 			= True
 			self.State_input_imag_mt.is_static 			= True
-			self.State_input_real_copy_mt.is_static 			= True
-			self.State_input_imag_copy_mt.is_static 			= True
+			self.State_input_real_copy_mt.is_static 		= True
+			self.State_input_imag_copy_mt.is_static 		= True
 
 			self.gate_kernels_real_packed_mt.is_static 	= True
 			self.gate_kernels_imag_packed_mt.is_static 	= True
 			state_1_selector_mt.is_static			= True
 			state_0_selector_mt.is_static			= True
-			
-			# the input vector containing the memory address for the correct target qubits. 
-			# TODO: cutrrently supports only a single target qubit, but need to support 80, as the number of the packed gate kernels		
-			self.state_permute_map_selector_mt 	= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="permutation_selector", layout=layout_state_permute_map_selector)	
-			self.state_permute_map_selector_mt.is_static = True	
+			self.state_permute_map_selector_mt.is_static = True
 
 
 			if ( self.mxm_permutation ):
@@ -88,22 +94,28 @@ class Upload:
 				
 				state_permute_map_selector_new_mt_list = []
 				for row_idx in range(20) :
+				
 					layout = f"H1(W), A{1}({320+gate_count+row_idx}), S1(17)"
 				
-					
-					constant_1_address_offset_st = constant_1_address_offset_mt.read( streams=[g.SG1_E[20]], time=row_idx*31 )
-				
 					if row_idx == 0:
-						state_permute_map_selector_st = self.state_permute_map_selector_mt.read( streams=[g.SG1_E[16]] )
+						state_permute_map_selector_st = self.state_permute_map_selector_mt.read( streams=[g.SG1_E[16]], time=0 )
+						
+						state_permute_map_selector_st = g.vxm_identity( state_permute_map_selector_st, alus=alu_rq_8, output_streams=g.SG4_W[7] )
+						
+						# save the offsetted memory address
+						state_permute_map_selector_new_mt = state_permute_map_selector_st.write(name=f"mxm_permute_selector_offset_{row_idx}", layout=layout)
 					else:
+					
+						constant_1_address_offset_st = constant_1_address_offset_mt.read( streams=[g.SG1_E[20]], time=row_idx*31 )
 						state_permute_map_selector_st = state_permute_map_selector_new_mt.read( streams=[g.SG1_E[16]] )
 				
 				
-					# offset the memory address by 1
-					state_permute_map_selector_new_st = g.add(constant_1_address_offset_st, state_permute_map_selector_st, alus=alu_rq_8, output_streams=g.SG4[7])
+						# offset the memory address by 1
+						state_permute_map_selector_new_st = g.add(constant_1_address_offset_st, state_permute_map_selector_st, alus=alu_rq_8, output_streams=g.SG4[7])
 				
-					# save the offsetted memory address
-					state_permute_map_selector_new_mt = state_permute_map_selector_new_st.write(name=f"mxm_permute_selector_offset_{row_idx}", layout=layout, program_output=False)
+						# save the offsetted memory address
+						state_permute_map_selector_new_mt = state_permute_map_selector_new_st.write(name=f"mxm_permute_selector_offset_{row_idx}", layout=layout)
+						
 					state_permute_map_selector_new_mt = g.reshape( state_permute_map_selector_new_mt, [1,320] )
 					
 					g.add_mem_constraints([state_permute_map_selector_new_mt], [self.state_permute_map_selector_mt] + state_permute_map_selector_new_mt_list, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
@@ -224,7 +236,7 @@ class Upload:
 
 				state_1_selector_st = state_1_selector_mt.read(streams=[g.SG1[0]])
 				state_1_st = g.mem_gather(states_1_mt, state_1_selector_st, output_streams=[g.SG1[0]], time=0)
-
+				
 				state_0_selector_st = state_0_selector_mt.read(streams=[g.SG1[24]])
 				state_0_st = g.mem_gather(states_0_mt, state_0_selector_st, output_streams=[g.SG1[24]], time=0)
 

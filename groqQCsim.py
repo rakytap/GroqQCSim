@@ -105,13 +105,19 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 	# maps for mem_gather to select the correct state_1 indices according to the target qubit
 	target_qbit_selector = np.zeros( (320,), dtype=np.uint8 )
 	target_qbit_selector[0:320:16] = target_qbit
+
 		
-	state_1_selector = target_qbit_selector#np.zeros( (2,320,), dtype=np.uint8 )
-	state_0_selector = target_qbit_selector#np.zeros( (2,320,), dtype=np.uint8 )	
+	state_1_selector = target_qbit_selector.copy()#np.zeros( (2,320,), dtype=np.uint8 )
+	state_0_selector = target_qbit_selector.copy()#np.zeros( (2,320,), dtype=np.uint8 )	
 	
 	
 	# create memory maps to access the correct metadata on the chip to perform the gate operation on the chosen target_qubit
-	permutation_selector = target_qbit_selector
+	if mxm_permutation :
+		#in case the MXM is used, the individual permute mtrices will occupy 20 memory addresses
+		permutation_selector = target_qbit_selector*20
+	else: 
+		# in case the permutor is used for permutation
+		permutation_selector = target_qbit_selector	
 			
 
 
@@ -145,33 +151,19 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 	pgm_2_output = invoke(device, iop, index_of_split_program, 0, {})
 	#print( pgm_2_output.keys() )
 	'''
-	print( pgm_2_output["gate_kernel_broadcasted_real_0_00"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_0_00"] )
+	print( pgm_2_output["gate_kernel_broadcasted_real_00"] )
+	print( pgm_2_output["gate_kernel_broadcasted_imag_00"] )
 	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_1_00"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_1_00"] )
+	print( pgm_2_output["gate_kernel_broadcasted_real_01"] )
+	print( pgm_2_output["gate_kernel_broadcasted_imag_01"] )
 	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_0_01"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_0_01"] )
+	print( pgm_2_output["gate_kernel_broadcasted_real_10"] )
+	print( pgm_2_output["gate_kernel_broadcasted_imag_10"] )
 	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_1_01"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_1_01"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_0_10"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_0_10"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_1_10"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_1_10"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_0_11"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_0_11"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_1_11"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_1_11"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_real_0"] )
-	print( pgm_2_output["gate_kernel_imag_0"] )
+	print( pgm_2_output["gate_kernel_broadcasted_real_11"] )
+	print( pgm_2_output["gate_kernel_broadcasted_imag_11"] )
 	'''
+	
 
 	# run the second program
 	index_of_gate_program = 2
@@ -182,7 +174,33 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 	#print(pgm_3_output["gate_first_column_imag"])
 	#print(pgm_3_output["Psi_transformed_real"])
 	#print(pgm_3_output["Psi_transformed_imag"])
+	'''
+	print(pgm_3_output["test"])
+	print(np.sum(pgm_3_output["test"], axis=1) )
+	
+	tmp = pgm_3_output["test"]
+	
+	identity                 = np.identity(320, dtype=np.int8)
+	target_qbit_pair_diff = 1 << target_qbit
 
+	matrix_row_indexes = np.zeros( (320,), dtype=np.int32 )
+	for idx in range(320):
+		if (idx < matrix_size):
+			matrix_row_indexes[idx] = idx ^ target_qbit_pair_diff
+		else:
+			matrix_row_indexes[idx] = idx
+					
+	mxm_permutation_matrix = identity[matrix_row_indexes,:]
+	
+	#mxm_permutation_matrix = mxm_permutation_matrix[0:3,:]
+	
+	print( tmp[0,:] - mxm_permutation_matrix )
+	print( tmp[0,:] )
+	print( tmp[1,:] )	
+	print( mxm_permutation_matrix[16,:] )
+	print( mxm_permutation_matrix[17,:] )	
+	'''	
+			
 	Psi_transformed_real = pgm_3_output[f"Psi_transformed_real"]
 	Psi_transformed_real = np.reshape( Psi_transformed_real, (Psi_transformed_real.size,) )
 	

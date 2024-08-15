@@ -40,8 +40,8 @@ layout_gate_kernels_imag_copy	="H1(E), S4(4-7)"
 # addresses from 0 to small_qbit_num_limit-1       			are occupied by vectors describing states |0> and |1> for different target qubits (states |1> are labeled by bits 1)
 # addresses from small_qbit_num_limit to 2*small_qbit_num_limit-1 	are occupied by vectors describing states |0> and |1> for different target qubits (states |0> are labeled by bits 1)
 # addresses from 2*small_qbit_num_limit to 2*small_qbit_num_limit+3 	are occupied by distributor maps to used to broadcast elements 01,10,11 of the gate kernel
-layout_states_1						= f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(E), S1(17)"  
-layout_states_0						= f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(E), S1(18)"
+layout_states_1						= f"H1(E), A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), S1(17)"  
+layout_states_0						= f"H1(E), A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), S1(18)"
 layout_distribute_map_tensor    	= "H1(E), S1(17)"
 layout_distribute_map_tensor_state1 = "H1(E), S1(17)"
 layout_distribute_map_tensor_state0 = "H1(E), S1(18)"
@@ -52,7 +52,7 @@ layout_control_state_1_broadcasted			= f"H1(E), A{gate_count}({320+gate_count}-{
 layout_control_state_0_broadcasted			= f"H1(E), A{gate_count}({320+gate_count}-{320+2*gate_count-1}), S4(27-31)" # slice 28 is reserved
 
 
-# permute maps at -- used to reorder the state vector elements according to the given target qubit
+# permute maps used to reorder the state vector elements according to the given target qubit
 layout_permute_maps_west = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(43)"
 layout_permute_maps_east = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(E), S1(39)"
 
