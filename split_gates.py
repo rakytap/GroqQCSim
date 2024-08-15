@@ -97,7 +97,7 @@ class Split_gates(Upload):
 				layout_real_copy = layout_gate_kernels_real_copy
 				layout_imag_copy = layout_gate_kernels_imag_copy
 
-				address_offset = idx
+				address_offset = idx + small_qbit_num_limit*20 # MXM permute matrices are also trored on these slices
 
 				layout_real = layout_real + f", A1({address_offset})"
 				layout_imag = layout_imag + f", A1({address_offset})"

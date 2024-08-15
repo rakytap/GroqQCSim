@@ -95,7 +95,7 @@ class Upload:
 				state_permute_map_selector_new_mt_list = []
 				for row_idx in range(20) :
 				
-					layout = f"H1(W), A{1}({320+gate_count+row_idx}), S1(17)"
+					layout = layout_expanded_mxm_permute_map_selector + f", A{1}({320+gate_count+row_idx})"
 				
 					if row_idx == 0:
 						state_permute_map_selector_st = self.state_permute_map_selector_mt.read( streams=[g.SG1_E[16]], time=0 )

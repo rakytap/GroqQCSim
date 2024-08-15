@@ -55,8 +55,6 @@ class Gate(Split_gates):
 		
 		with self.pgm_pkg.create_program_context(name) as pgm3:
 
-			#g.reserve_tensor(pgm1, pgm2, State_input_real_mt)
-			target_qbit = 4
 
 			# create reusable permutor requests
 			permutor_requests = []
@@ -186,15 +184,13 @@ class Gate(Split_gates):
 
 					mxm_permute_matrices_west_list = g.split(mxm_permute_matrices_west_shared, dim=0, num_splits=8 )
 					mxm_permute_matrices_east_list = g.split(mxm_permute_matrices_east_shared, dim=0, num_splits=8 )
-
-					#permute_matrix_west_mt = g.reshape(  mxm_permute_matrices_west_list[target_qbit], (320,320,) )
-					permute_matrix_east_mt = g.reshape(  mxm_permute_matrices_east_list[target_qbit], (320,320,) )
 					
 					# gathering the permutation matrices over the 16 slices with mem_gather 
 					# allows dynamic memory addressing according to the target qubit
 					permute_matrix_west_1_st = gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_west_shared)									
 					permute_matrix_west_2_st = gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_west_shared)
-					#permute_matrix_east_1_st = gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_east_shared)														
+					permute_matrix_east_1_st = gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_east_shared)	
+					permute_matrix_east_2_st = gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_east_shared)																																
 
 					
 					# list storing the fetched rows of the permutation matrix
@@ -223,13 +219,9 @@ class Gate(Split_gates):
 					weights_list = []
 					weights_list.append(g.install_weights(permute_matrix_west_1_st, planes=mxm_requests[0], time=0))
 					weights_list.append(g.install_weights(permute_matrix_west_2_st, planes=mxm_requests[1], time=20))					
-					#weights_list.append(g.install_weights(permute_matrix_west_mt, planes=mxm_requests[0], time=0))					
-					#weights_list.append(g.install_weights(permute_matrix_west_mt, planes=mxm_requests[1], time=20))
+					weights_list.append(g.install_weights(permute_matrix_east_1_st, planes=mxm_requests[2], time=-26)) #TODO make it time=0
+					weights_list.append(g.install_weights(permute_matrix_east_2_st, planes=mxm_requests[3], time=20-26)) #TODO make it time=20
 					
-					#weights_list.append(g.install_weights(permute_matrix_east_1_st, planes=mxm_requests[2], time=-6))
-					#weights_list.append(g.install_weights(permute_matrix_east_mt, planes=mxm_requests[3], time=20-6))					
-					weights_list.append(g.install_weights(permute_matrix_east_mt, planes=mxm_requests[2], time=0))
-					weights_list.append(g.install_weights(permute_matrix_east_mt, planes=mxm_requests[3], time=20))
 					for byte_idx in range(4):
 						# Real part
 						permuted_state_real_st = Psi_transformed_real_mt_list[byte_idx].matmul(weights_list[byte_idx%2+2], planes=mxm_requests[byte_idx%2+2], time=time_list[byte_idx])

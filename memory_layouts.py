@@ -11,9 +11,10 @@ small_qbit_num_limit = 8
 
 
 # permute maps used to reorder the state vector elements according to the given target qubit (permute map is also stored on the easter hemisphere)
-layout_permute_maps_west = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(43)"
+layout_permute_maps_west = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(37)"
 
-layout_expanded_mxm_permute_map_selector = f"H1(W), A{20*gate_count}({320+gate_count}-{320+gate_count+20*gate_count-1}), S1(37)"
+# if MXM is used to permute the state vector the single memory address need to be extended to address 20 memory addresses where the MXM permutation matrices are stored
+layout_expanded_mxm_permute_map_selector = "H1(W), S1(17)"
 
 
 # memory layout for the mxm permutation marices (identical permutation matrices are also stored on the easterns hemisphere)
@@ -84,10 +85,6 @@ layout_gate_kernels_real_packed ="H1(E), A1(320), S4(40-43)"
 layout_gate_kernels_imag_packed	="H1(E), A1(321), S4(40-43)"
 
 
-# memory layout for the identity tensors   # TODO remove because it became obsolete
-layout_identity_west = "H1(W), A20(800-819), S16(18-36)" 
-layout_identity_east = f"H1(E), A20({800+(len(gate_kernel_element_labels)+1)*gate_count}-{800+(len(gate_kernel_element_labels)+1)*gate_count+19}), S16(0-15)"
-
 
 # memory layout for the mxm permutation marices (identical permutation matrices are also stored on the western hemisphere) 
-layout_mxm_permutation_matrices_east = f"H1(E), A{small_qbit_num_limit*20}({(len(gate_kernel_element_labels)+1)*gate_count}-{(len(gate_kernel_element_labels)+1)*gate_count+small_qbit_num_limit*20-1}), S16(0-15)"
+layout_mxm_permutation_matrices_east = f"H1(E), A{small_qbit_num_limit*20}(0-{small_qbit_num_limit*20-1}), S16(0-15)"
