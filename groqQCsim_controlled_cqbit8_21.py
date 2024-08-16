@@ -24,7 +24,7 @@ print("Python packages imported successfully")
 #Note: MEM slices 16, 20, 24, and 28 on both the east and west hemispheres, and slice 38 on the west hemisphere are reserved for system use.
 
 
-def compile() -> List[str]:
+def compile(mxm_permutation = True) -> List[str]:
 	"""Compiles a program package with 2 programs.
 
 	Return: (List[str]): A list of IOP files.
@@ -37,7 +37,7 @@ def compile() -> List[str]:
 	print( pgm_pkg.add_precompiled_program.__doc__ )
 	print( pgm_pkg.create_program_context.__doc__ )
 
-	program = Gate(pgm_pkg)
+	program = Gate(pgm_pkg, mxm_permutation = mxm_permutation)
 	# Defines a program to upload the inputs
 	program.upload_program()
 	program.split_gates_program()
@@ -106,12 +106,11 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	modified_qbits[0:320:16] = target_qbit[0]
 	"""
 	# map for mem_gather to select the permutation map for the given target qubit. Th epermutor is used only for target qubits smaller than small_qbit_num_limit
-	state_permute_map_selector = np.zeros( (len(target_qbit),320,), dtype=np.uint8 )
-	for i in range(len(target_qbit)):
-		if ( target_qbit[i] < small_qbit_num_limit ) :
-			state_permute_map_selector[i,0:320:16] = target_qbit[i]
-		else :
-			state_permute_map_selector[i,0:320:16] = 0
+	state_permute_map_selector = np.zeros( (1,320,), dtype=np.uint8 )
+	if ( target_qbit < small_qbit_num_limit ) :
+		state_permute_map_selector[0,0:320:16] = target_qbit
+	else :
+		state_permute_map_selector[0,0:320:16] = 0
 			
 
 
@@ -119,13 +118,12 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	state_1_selector = state_permute_map_selector#np.zeros( (2,320,), dtype=np.uint8 )
 	state_0_selector = state_permute_map_selector#np.zeros( (2,320,), dtype=np.uint8 )
 
-	control_state_1_selector = np.zeros( (len(target_qbit),320,), dtype=np.uint8 )
-	for i in range(len(control_qbit)):
-		if control_qbit[i] is not None:
-			if ( control_qbit[i] < small_qbit_num_limit ) :
-				control_state_1_selector[i,0:320:16] = control_qbit[i]
-			else :
-				control_state_1_selector[i,0:320:16] = 0
+	control_state_1_selector = np.zeros( (1,320,), dtype=np.uint8 )
+	if control_qbit is not None:
+		if ( control_qbit < small_qbit_num_limit ) :
+			control_state_1_selector[0,0:320:16] = control_qbit
+		else :
+			control_state_1_selector[0,0:320:16] = 0
 	control_state_0_selector = control_state_1_selector
 
 	# generate packed gate kernel data
@@ -150,7 +148,7 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 
 
 	# run the first program
-	pgm_1_output = invoke(device, iop, 0, 0, {"State_input_real": input_real, "State_input_imag": input_imag, "State_input_real_copy": input_real, "State_input_imag_copy": input_imag, "state_permute_map_selector": state_permute_map_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector})
+	pgm_1_output = invoke(device, iop, 0, 0, {"State_input_real": input_real, "State_input_imag": input_imag, "State_input_real_copy": input_real, "State_input_imag_copy": input_imag, "permutation_selector": state_permute_map_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector})
 	# print( "c0>", pgm_1_output["control_state_0_broadcasted"])
 	# print( "c1>", pgm_1_output["control_state_1_broadcasted"])
 	# print( "1>", pgm_1_output["state_1_broadcasted"])
@@ -210,13 +208,13 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 
 
 
-def main( State_orig_real_float32, State_orig_imag_float32, target_qbit, control_qbit, gate_kernels ):
+def main( State_orig_real_float32, State_orig_imag_float32, target_qbit, control_qbit, gate_kernels, mxm_permutation = True ):
 	"""Compiles and runs the example programs."""
 	
 	if qbit_num is None:
 		raise "qbit_num must be set with method initialize_qbit_num( qbit_num ) with a value greater or equal to 8"
 
-	iop_files = compile()
+	iop_files = compile( mxm_permutation )
 	print(f"Program compiled to IOP file: {iop_files}")
 
 	import time

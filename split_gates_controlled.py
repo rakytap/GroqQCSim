@@ -1,12 +1,14 @@
-from upload_controlled import Upload
+from upload import Upload
 from memory_layouts import *
 import groq.api as g
 import numpy as np
 from groq.api import instruction as inst
 
 class Split_gates(Upload):
-	def __init__(self, pgm_pkg):
-		super().__init__(pgm_pkg)
+
+	def __init__(self, pgm_pkg, mxm_permutation=True):
+	
+		super().__init__(pgm_pkg, mxm_permutation = mxm_permutation )
 		self.gate_kernels_broadcasted_real_dict = {}
 		self.gate_kernels_broadcasted_imag_dict = {}
 		self.gate_kernels_broadcasted_real_copy_dict = {}

@@ -74,7 +74,7 @@ def invoke(device, iop, pgm_num, ep_num, tensors):
 	return outs
 
 
-def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_kernels_imag, mxm_permutation = True):
+def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernels_real, gate_kernels_imag, mxm_permutation = True):
 	"""
     This function interacts with the device driver at a lower level to show
     the control of loading 2 programs and invoking each program through
@@ -110,6 +110,13 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 	state_1_selector = target_qbit_selector.copy()#np.zeros( (2,320,), dtype=np.uint8 )
 	state_0_selector = target_qbit_selector.copy()#np.zeros( (2,320,), dtype=np.uint8 )	
 	
+	control_state_1_selector = np.zeros( (1,320,), dtype=np.uint8 )
+	if ( control_qbit < small_qbit_num_limit and control_qbit >= 0 ) :
+		control_state_1_selector[0,0:320:16] = control_qbit
+	else :
+		control_state_1_selector[0,0:320:16] = 8  # no contron qubit is used when filetring the gate kernels
+	control_state_0_selector = control_state_1_selector	
+	
 	
 	# create memory maps to access the correct metadata on the chip to perform the gate operation on the chosen target_qubit
 	if mxm_permutation :
@@ -143,7 +150,7 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 
 
 	# run the first program
-	pgm_1_output = invoke(device, iop, 0, 0, {"State_input_real": input_real, "State_input_imag": input_imag, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector})
+	pgm_1_output = invoke(device, iop, 0, 0, {"State_input_real": input_real, "State_input_imag": input_imag, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector})
 	
 	
 	# run the gate split program
@@ -210,7 +217,7 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 
 
 
-def main( State_orig_real_float32, State_orig_imag_float32, target_qbit, gate_kernels, mxm_permutation = True ):
+def main( State_orig_real_float32, State_orig_imag_float32, target_qbit, control_qbit, gate_kernels, mxm_permutation = True ):
 	"""Compiles and runs the example programs."""
 	
 	if qbit_num is None:
@@ -222,7 +229,7 @@ def main( State_orig_real_float32, State_orig_imag_float32, target_qbit, gate_ke
 	import time
 
 	start_time = time.time()
-	transformed_state = run(iop_files[0], State_orig_real_float32, State_orig_imag_float32, target_qbit, np.real(gate_kernels), np.imag(gate_kernels), mxm_permutation )
+	transformed_state = run(iop_files[0], State_orig_real_float32, State_orig_imag_float32, target_qbit, control_qbit, np.real(gate_kernels), np.imag(gate_kernels), mxm_permutation )
 
 	print("time elapsed with groq: ", time.time() - start_time )
 	

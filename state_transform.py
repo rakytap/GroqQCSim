@@ -11,7 +11,8 @@ import time
 qbit_num = groqQCsim.qbit_num
 
 if __name__ == "__main__":
-	target_qbit = 6
+	target_qbit  = 6
+	control_qbit = -1 #i.e. no control qubit is involved
 
 	# determine the soze of the unitary to be decomposed
 	matrix_size = 1 << qbit_num
@@ -70,7 +71,7 @@ if __name__ == "__main__":
 	#State_orig_real_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
 	#State_orig_imag_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
 
-	real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbit, gate_kernels, mxm_permutation = True)
+	real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbit, control_qbit, gate_kernels, mxm_permutation = True)
 	print(' ')
 	print( 'difference between CPU oracle and Groq chip (real part): ', scipy.linalg.norm( real_part - np.real( State_transformed_oracle ) , 2), '(imag part): ', scipy.linalg.norm( imag_part - np.imag( State_transformed_oracle ) , 2) )
 

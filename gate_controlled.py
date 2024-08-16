@@ -3,8 +3,8 @@ from memory_layouts import *
 import groq.api as g
 
 class Gate(Split_gates):
-	def __init__(self, pgm_pkg):
-		super().__init__(pgm_pkg)
+	def __init__(self, pgm_pkg, mxm_permutation=True):
+		super().__init__(pgm_pkg, mxm_permutation = mxm_permutation)
 	
 	def gate_program(self):
 		#############################################################################################################x		
@@ -46,7 +46,7 @@ class Gate(Split_gates):
 			# Creates a shared tensor to reuse the memory allocation made by program pgm1
 			state_1_broadcasted_shared = g.shared_memory_tensor(self.state_1_broadcasted_mt, name="state_1_broadcasted_shared")
 			state_0_broadcasted_shared = g.shared_memory_tensor(self.state_0_broadcasted_mt, name="state_0_broadcasted_shared")
-
+			print('uuuuuuuuuuuuuuu ', self.control_state_1_broadcasted_mt)
 			control_state_1_broadcasted_shared = g.shared_memory_tensor(self.control_state_1_broadcasted_mt, name="control_state_1_broadcasted_shared")
 			control_state_0_broadcasted_shared = g.shared_memory_tensor(self.control_state_0_broadcasted_mt, name="control_state_0_broadcasted_shared")
 
