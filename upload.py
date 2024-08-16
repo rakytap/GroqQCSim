@@ -36,6 +36,44 @@ class Upload:
 		
 		# the memory addresses for gathering the mxm permutation matrices
 		self.state_permute_map_selector_expanded = None
+		
+		
+	def broadcast_element( self, element_to_broadcast_st, distribute_map_mt, distributor_request, transposer_request):
+	
+		# broadcast the element
+		
+		if distributor_request.distributors == [4]:
+			map_stream_req = g.SG1[12]
+		elif distributor_request.distributors == [7]:
+			map_stream_req = g.SG1[31]
+					
+		broadcasted_vector_st = g.distribute_lowest( element_to_broadcast_st, 
+				distribute_map_mt,
+				distributor_req=distributor_request,
+				map_stream_req=map_stream_req,
+				bypass8=0b00001111,
+		)
+
+		# reverse the direction of the broadcasted vector
+		
+		if transposer_request.transposers == [2]:
+			stream_order = [4,5,6,7]
+		elif transposer_request.transposers == [3]:
+			stream_order = [12,13,14,15]
+		
+		broadcasted_vector_st = g.transpose_null(
+			broadcasted_vector_st,
+			transposer_req=transposer_request,
+			stream_order=stream_order,
+		)	
+		
+		
+		broadcasted_vector_st = g.reinterpret( broadcasted_vector_st, g.uint32 )
+							
+				
+		return broadcasted_vector_st
+			
+	
 
 
 	def upload_program(self):
@@ -251,49 +289,25 @@ class Upload:
 
 			with g.ResourceScope(name="distribute_state_indices_scope", is_buffered=True, time=0) as distribute_state_indices_scope :
 
-				#state_1_st = state_1_mt.read( streams=g.SG1[0], time=0 )
-				#state_0_st = state_0_mt.read( streams=g.SG1[24], time=0 )
-
 				state_1_selector_st = state_1_selector_mt.read(streams=[g.SG1[0]])
 				state_1_st = g.mem_gather(states_1_mt, state_1_selector_st, output_streams=[g.SG1[0]], time=0)
 				
 				state_0_selector_st = state_0_selector_mt.read(streams=[g.SG1[24]])
 				state_0_st = g.mem_gather(states_0_mt, state_0_selector_st, output_streams=[g.SG1[24]], time=0)
+								
+				state_1_broadcasted_st = self.broadcast_element(state_1_st,
+				                                               distribute_map_tensor_state1_mt, 
+				                                               distributor_requests[0],
+				                                               transposer_requests[0])
 
-
-				distributor_request = distributor_requests[0]
-				state_1_broadcasted_st = g.distribute_lowest( state_1_st, 
-						distribute_map_tensor_state1_mt,
-						distributor_req=distributor_request,
-						map_stream_req=g.SG1[12],
-						bypass8=0b00001111,
-				)
-
-				state_1_broadcasted_st = g.transpose_null(
-					state_1_broadcasted_st,
-					transposer_req=transposer_requests[0],
-					stream_order=[4,5,6,7],
-				)
+				
+				state_0_broadcasted_st = self.broadcast_element(state_0_st,
+				                                               distribute_map_tensor_state0_mt, 
+				                                               distributor_requests[1],
+				                                               transposer_requests[1])
 
 		
-				distributor_request = distributor_requests[1]
-				state_0_broadcasted_st = g.distribute_lowest( state_0_st, 
-						distribute_map_tensor_state0_mt,
-						distributor_req=distributor_request,
-						map_stream_req=g.SG1[31],
-						bypass8=0b00001111,
-				)
-
-				state_0_broadcasted_st = g.transpose_null(
-					state_0_broadcasted_st,
-					transposer_req=transposer_requests[1],
-					stream_order=[12,13,14,15],
-				)
-
-		
-				state_1_broadcasted_st = g.reinterpret( state_1_broadcasted_st, g.uint32 )
 				self.state_1_broadcasted_mt = state_1_broadcasted_st.write(name="state_1_broadcasted", layout=layout_state_1_broadcasted , program_output=False)
-				state_0_broadcasted_st = g.reinterpret( state_0_broadcasted_st, g.uint32 )
 				self.state_0_broadcasted_mt = state_0_broadcasted_st.write(name="state_0_broadcasted", layout=layout_state_0_broadcasted, program_output=False)
 
 				self.state_1_broadcasted_mt.is_static = True
@@ -306,38 +320,19 @@ class Upload:
 				control_state_0_selector_st = control_state_0_selector_mt.read(streams=[g.SG1[24]])
 				control_state_0_st = g.mem_gather(states_0_mt, control_state_0_selector_st, output_streams=[g.SG1[24]], time=3)
 				
+								
+				control_state_1_broadcasted_st = self.broadcast_element(control_state_1_st,
+				                                               distribute_map_tensor_state1_mt, 
+				                                               distributor_requests[0],
+				                                               transposer_requests[0])
+
 				
-				distributor_request = distributor_requests[0]
-				control_state_1_broadcasted_st = g.distribute_lowest( control_state_1_st, 
-						distribute_map_tensor_state1_mt,
-						distributor_req=distributor_request,
-						map_stream_req=g.SG1[12],
-						bypass8=0b00001111,
-				)
+				control_state_0_broadcasted_st = self.broadcast_element(control_state_0_st,
+				                                               distribute_map_tensor_state0_mt, 
+				                                               distributor_requests[1],
+				                                               transposer_requests[1])
 				
-				control_state_1_broadcasted_st = g.transpose_null(
-					control_state_1_broadcasted_st,
-					transposer_req=transposer_requests[0],
-					stream_order=[4,5,6,7],
-				)
 				
-					
-				distributor_request = distributor_requests[1]
-				control_state_0_broadcasted_st = g.distribute_lowest( control_state_0_st, 
-						distribute_map_tensor_state0_mt,
-						distributor_req=distributor_request,
-						map_stream_req=g.SG1[31],
-						bypass8=0b00001111,
-				)
-				
-				control_state_0_broadcasted_st = g.transpose_null(
-					control_state_0_broadcasted_st,
-					transposer_req=transposer_requests[1],
-					stream_order=[12,13,14,15],
-				)
-				
-				control_state_0_broadcasted_st = g.reinterpret( control_state_0_broadcasted_st, g.uint32 )
-				control_state_1_broadcasted_st = g.reinterpret( control_state_1_broadcasted_st, g.uint32 )
 				self.control_state_1_broadcasted_mt = control_state_1_broadcasted_st.write(name="control_state_1_broadcasted", layout=layout_control_state_1_broadcasted, program_output=False)
 				self.control_state_0_broadcasted_mt = control_state_0_broadcasted_st.write(name="control_state_0_broadcasted", layout=layout_control_state_0_broadcasted, program_output=False)
 				
