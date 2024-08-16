@@ -190,13 +190,13 @@ class Gate(Split_gates):
 					permute_matrix_west_1_st = gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_west_shared)									
 					permute_matrix_west_2_st = gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_west_shared)
 					permute_matrix_east_1_st = gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_east_shared)	
-					permute_matrix_east_2_st = gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_east_shared)																																
+					permute_matrix_east_2_st = gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_east_shared)														
 
 					
 					# list storing the fetched rows of the permutation matrix
 					mxm_permute_row_west_st_list = []					
 			
-					# mxm only accepts tensors with an inner dim of 320
+					# mxm only accepts tensors with an inner dim of 320, thus 256 inner splits should be extended to 320
 					Psi_transformed_real_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=Psi_transformed_real_mt.storage_request, initialized=False)
 					Psi_transformed_imag_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=Psi_transformed_imag_mt.storage_request, initialized=False)
 
@@ -207,8 +207,8 @@ class Gate(Split_gates):
 					Psi_transformed_imag_copy_mt = g.reinterpret(Psi_transformed_imag_copy_mt, dtype=g.int8)
 
 					# separating the tensors along the slice dimension (separating the bytes)
-					Psi_transformed_real_mt_list = g.split(Psi_transformed_real_mt_320, dim=-2, num_splits=g.float32.size)
-					Psi_transformed_imag_mt_list = g.split(Psi_transformed_imag_mt_320, dim=-2, num_splits=g.float32.size)
+					Psi_transformed_real_mt_list      = g.split(Psi_transformed_real_mt_320, dim=-2, num_splits=g.float32.size)
+					Psi_transformed_imag_mt_list      = g.split(Psi_transformed_imag_mt_320, dim=-2, num_splits=g.float32.size)
 					Psi_transformed_real_copy_mt_list = g.split(Psi_transformed_real_copy_mt, dim=-2, num_splits=g.float32.size)
 					Psi_transformed_imag_copy_mt_list = g.split(Psi_transformed_imag_copy_mt, dim=-2, num_splits=g.float32.size)
 						
@@ -223,17 +223,18 @@ class Gate(Split_gates):
 					weights_list.append(g.install_weights(permute_matrix_east_2_st, planes=mxm_requests[3], time=20-26)) #TODO make it time=20
 					
 					for byte_idx in range(4):
+					
 						# Real part
 						permuted_state_real_st = Psi_transformed_real_mt_list[byte_idx].matmul(weights_list[byte_idx%2+2], planes=mxm_requests[byte_idx%2+2], time=time_list[byte_idx])
 						permuted_state_real_st = g.reinterpret(permuted_state_real_st, dtype=g.int8)
-						# we only need the last byte
+						# we only need the last byte from the MXM result
 						permuted_state_real_st = g.split(permuted_state_real_st, dim=-2, num_splits=g.int32.size)[0]
 						permuted_state_real_st.write(storage_req=Psi_transformed_real_copy_mt_list[byte_idx].storage_request)
 
 						# Imag part
 						permuted_state_imag_st = Psi_transformed_imag_mt_list[byte_idx].matmul(weights_list[byte_idx%2], planes=mxm_requests[byte_idx%2], time=time_list[byte_idx])
 						permuted_state_imag_st = g.reinterpret(permuted_state_imag_st, dtype=g.int8)
-						# we only need the last byte
+						# we only need the last byte from the MXM result
 						permuted_state_imag_st = g.split(permuted_state_imag_st, dim=-2, num_splits=g.int32.size)[0]
 						permuted_state_imag_st.write(storage_req=Psi_transformed_imag_copy_mt_list[byte_idx].storage_request)
 
@@ -321,7 +322,6 @@ class Gate(Split_gates):
 					gate_first_column_st = g.add(gate_00_st, gate_10_st, alus=[1], output_streams=g.SG4[3])
 				
 							
-					print("layout: ", layout_imag_first_column)
 					
 					gate_first_column_st_list	= g.split( gate_first_column_st, num_splits=2, dim=0 )
 					gate_first_column_real_mt 	= gate_first_column_st_list[0].write(name=f"gate_first_column_real", storage_req=storage_req_real_first_column, program_output=True)
@@ -438,11 +438,6 @@ class Gate(Split_gates):
 				state_permuted__gate_second_column_imag_st	= g.add( state_permuted_imag__gate_second_column_real_st, state_permuted_real__gate_second_column_imag_st, alus=[11], output_streams=g.SG4_W[7]  )
 				
 		
-
-				layout_transformed_state_real_copy = layout_State_input_real_copy
-				layout_transformed_state_imag_copy = layout_State_input_imag_copy
-
-				print( g.vxm_identity.__doc__ )
 
 				# calculate (Psi*gate_first_column).real + (Psi_permuted*gate_second_column).real
 				Psi_transformed_real_st	= g.add( state__gate_first_column_real_st,  state_permuted__gate_second_column_real_st, alus=[7], output_streams=g.SG4_W[2] )
