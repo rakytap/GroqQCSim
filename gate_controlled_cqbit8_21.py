@@ -80,22 +80,12 @@ class Gate(Split_gates):
 
 
 			# the transformed states are interated further from gate to gate, but for the first gate they are set to the initial state
-			Psi_transformed_real_mt = State_input_real_shared
-			Psi_transformed_imag_mt = State_input_imag_shared
+			Psi_transformed_real_mt      = State_input_real_shared
+			Psi_transformed_imag_mt      = State_input_imag_shared
 			Psi_transformed_real_copy_mt = State_input_real_copy_shared
 			Psi_transformed_imag_copy_mt = State_input_imag_copy_shared
 
-			# list of tensors for mutual memory exclusions
-			Psi_transformed_real_list = [Psi_transformed_real_mt]
-			Psi_transformed_imag_list = [Psi_transformed_imag_mt]
-			Psi_transformed_real_copy_list = [Psi_transformed_real_copy_mt]
-			Psi_transformed_imag_copy_list = [Psi_transformed_imag_copy_mt]
 
-
-			gate_diag_real_list = []
-			gate_diag_imag_list = []
-			gate_off_diag_real_list = []
-			gate_off_diag_imag_list = []
 
 			Psi_transformed_real_mt_list = g.split( Psi_transformed_real_mt, 1 )
 			Psi_transformed_imag_mt_list = g.split( Psi_transformed_imag_mt, 1 )
@@ -295,8 +285,6 @@ class Gate(Split_gates):
 					gate_off_diag_real_mt 	= gate_off_diag_st_list[0].write(name=f"gate_off_diag_real", storage_req=storage_req_real_off_diag, program_output=True)
 					gate_off_diag_imag_mt 	= gate_off_diag_st_list[1].write(name=f"gate_off_diag_imag", storage_req=storage_req_imag_off_diag, program_output=True)
 
-					gate_off_diag_real_list.append(gate_off_diag_real_mt)
-					gate_off_diag_imag_list.append(gate_off_diag_imag_mt)
 
 			#################################################################################
 				
@@ -382,11 +370,6 @@ class Gate(Split_gates):
 				Psi_transformed_real_mt = g.constant_tensor(Psi_transformed_real_mt.shape, g.float32, storage_req=self.state_real_request, name=f"Psi_transformed_real", initialized=False)
 				Psi_transformed_real_copy_mt = g.constant_tensor(Psi_transformed_real_copy_mt.shape, g.float32, storage_req=self.state_real_copy_request, name=f"Psi_transformed_real_copy", initialized=False)
 
-				g.add_mem_constraints(Psi_transformed_real_list, [Psi_transformed_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
-				Psi_transformed_real_list.append( Psi_transformed_real_mt )
-				
-				g.add_mem_constraints(Psi_transformed_real_copy_list, [Psi_transformed_real_copy_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
-				Psi_transformed_real_copy_list.append( Psi_transformed_real_copy_mt )
 
 				# calculate (Psi*gate_diag).imag + (Psi_permuted*gate_off_diag).imag
 				Psi_transformed_imag_st	    = g.add( state__gate_diag_imag_st,  state_permuted__gate_off_diag_imag_st, alus=[14], output_streams=g.SG4_E[6] )
@@ -401,11 +384,6 @@ class Gate(Split_gates):
 				Psi_transformed_real_mt.set_program_output()
 				Psi_transformed_imag_mt.set_program_output()
 					
-				g.add_mem_constraints(Psi_transformed_imag_list, [Psi_transformed_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
-				Psi_transformed_imag_list.append( Psi_transformed_imag_mt )
-					
-				g.add_mem_constraints(Psi_transformed_imag_copy_list, [Psi_transformed_imag_copy_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
-				Psi_transformed_imag_copy_list.append( Psi_transformed_imag_copy_mt )
 					
 					
 			self.pgm_pkg.compile_program_context(pgm3)
