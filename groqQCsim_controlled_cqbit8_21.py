@@ -199,10 +199,10 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	#print(pgm_3_output["Psi_transformed_real"])
 	#print(pgm_3_output["Psi_transformed_imag"])
 
-	Psi_transformed_real = pgm_3_output[f"Psi_transformed_real_0"]
+	Psi_transformed_real = pgm_3_output[f"Psi_transformed_real"]
 	Psi_transformed_real = np.reshape( Psi_transformed_real, (Psi_transformed_real.size,) )
 	
-	Psi_transformed_imag = pgm_3_output[f"Psi_transformed_imag_0"]
+	Psi_transformed_imag = pgm_3_output[f"Psi_transformed_imag"]
 	Psi_transformed_imag = np.reshape( Psi_transformed_imag, (Psi_transformed_imag.size,) )	
 	return Psi_transformed_real, Psi_transformed_imag
 
