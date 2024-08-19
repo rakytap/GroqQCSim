@@ -151,14 +151,16 @@ class Gate_S_base(Split_gates):
 		permuted_state_real_st_8 = g.permute_inner(state_real_st_8, permute_map_west_st, permutor_req=permutor_requests[1], input_streams=[g.SG1_E[0], g.SG1_E[24]], output_streams=g.SG1[12], time=0 )
 		permuted_state_imag_st_8 = g.permute_inner(state_imag_st_8, permute_map_east_st, permutor_req=permutor_requests[0], input_streams=[g.SG1_W[0], g.SG1_W[24]], output_streams=g.SG1[4], time=0 )
 
-		permuted_state_real_st_8 = g.reshape(permuted_state_real_st_8, [memory_slices, 4, matrix_size] )
-		permuted_state_imag_st_8 = g.reshape(permuted_state_imag_st_8, [memory_slices, 4, matrix_size] )
+		memory_addresses = permuted_state_real_st_8.physical_shape.outer_size >> 2
+
+		permuted_state_real_st_8 = g.reshape(permuted_state_real_st_8, [memory_addresses, 4, matrix_size] )
+		permuted_state_imag_st_8 = g.reshape(permuted_state_imag_st_8, [memory_addresses, 4, matrix_size] )
 				
 		permuted_state_real_st = g.reinterpret(permuted_state_real_st_8, g.float32 )
 		permuted_state_imag_st = g.reinterpret(permuted_state_imag_st_8, g.float32 )
 
-		permuted_state_real_mt = permuted_state_real_st.write(name=f"permuted_result_real", storage_req=self.state_real_copy_request)
-		permuted_state_imag_mt = permuted_state_imag_st.write(name=f"permuted_result_imag", storage_req=self.state_imag_copy_request)
+		permuted_state_real_mt = permuted_state_real_st.write(name=f"permuted_result_real", storage_req=Psi_transformed_real_copy_mt.storage_request)
+		permuted_state_imag_mt = permuted_state_imag_st.write(name=f"permuted_result_imag", storage_req=Psi_transformed_imag_copy_mt.storage_request)
 
 
 		return permuted_state_real_mt, permuted_state_imag_mt
