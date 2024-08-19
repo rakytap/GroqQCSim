@@ -1,12 +1,13 @@
 from gate_S import Gate as Gate_S
 from gate_SS import Gate as Gate_SS
+from gate_SL import Gate as Gate_SL
 from memory_layouts import *
 import groq.api as g
 import numpy as np
 
 
 
-class Gate_IOP(Gate_S, Gate_SS):
+class Gate_IOP(Gate_S, Gate_SS, Gate_SL):
 
 
 	def __init__(self, pgm_pkg, mxm_permutation=True):

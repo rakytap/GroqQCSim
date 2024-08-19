@@ -11,8 +11,8 @@ import time
 qbit_num = groqQCsim.qbit_num
 
 if __name__ == "__main__":
-	target_qbit  = 6
-	control_qbit = 2 #i.e. no control qubit is involved
+	target_qbit  = 4
+	control_qbit = 9 #i.e. no control qubit is involved
 
 	# determine the soze of the unitary to be decomposed
 	matrix_size = 1 << qbit_num
@@ -22,7 +22,10 @@ if __name__ == "__main__":
 	State_orig = State_orig_real + 1j*State_orig_imag
 	State_orig = State_orig/np.linalg.norm(State_orig)
 
-	if target_qbit >= 0 and target_qbit < 8 and control_qbit == -1:
+	if target_qbit == control_qbit:
+		error("The control qubit and target qubit should be different")
+
+	elif target_qbit >= 0 and target_qbit < 8 and control_qbit == -1:
 		# define quantum circuit
 		circuit = Circuit(qbit_num)
 		circuit.add_U3( target_qbit )
@@ -38,6 +41,18 @@ if __name__ == "__main__":
 	
 		circuit_1 = Circuit( 1 )
 		circuit_1.add_RY( 0  )	
+
+	elif target_qbit >= 0 and target_qbit < 8 and control_qbit > 8 and control_qbit <= 21:	
+	
+		# define quantum circuit
+		circuit = Circuit(qbit_num)
+		circuit.add_adaptive( target_qbit, control_qbit )
+	
+		circuit_1 = Circuit( 1 )
+		circuit_1.add_RY( 0  )	
+
+	else:
+		error("Unimplemented case wit target qubit and control qubit.")
 		
 		
 		

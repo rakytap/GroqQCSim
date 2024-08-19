@@ -47,6 +47,9 @@ def compile(mxm_permutation = True) -> List[str]:
 
 	# program to perform gate_SS operation
 	program.gate_SS_program()
+
+	# program to perform gate_SL operation
+	program.gate_SL_program()
 	
 	iops = pgm_pkg.assemble()
 
@@ -105,6 +108,7 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	device.load(iop[2], unsafe_keep_entry_points=True)
 	device.load(iop[3], unsafe_keep_entry_points=True)
 	device.load(iop[4], unsafe_keep_entry_points=True)
+	device.load(iop[5], unsafe_keep_entry_points=True)
 	
 	if target_qbit >= small_qbit_num_limit :
 		raise ValueError( "the target qubit in this program should be less than 8" )
@@ -168,7 +172,10 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	
 
 	# run the gate program
-	if target_qbit >= 0 and target_qbit < 8 and control_qbit == -1: 
+	if target_qbit == control_qbit:
+		error("QCsim::run: The control qubit and target qubit should be different")
+
+	elif target_qbit >= 0 and target_qbit < 8 and control_qbit == -1: 
 		# pogram perfroming the Gate_S operation
 		index_of_gate_program = 3
 		entry_point = iop["gate_S"]["compute"]
@@ -180,6 +187,17 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 		index_of_gate_program = 4
 		entry_point = iop["gate_SS"]["compute"]
 		gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})	
+
+	elif target_qbit >= 0 and target_qbit < 8 and control_qbit > 8 and control_qbit <= 21:
+
+		# pogram perfroming the Gate_SL operation
+		index_of_gate_program = 5
+		entry_point = iop["gate_SL"]["compute"]
+		gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})	
+
+	else:
+
+		error("QCsim::run: Unimplemented case wit target qubit and control qubit.")
 	
 
 	# download the transformed state vector

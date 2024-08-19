@@ -242,8 +242,18 @@ class Gate_S_base(Split_gates):
 		return permuted_state_real_mt, permuted_state_imag_mt
 
 
+
+
+
+
+
+
+
+
+
 	def VXM_S_round_trip(self, Psi_transformed_real_mt, Psi_transformed_imag_mt, permuted_state_real_mt, permuted_state_imag_mt, gate_diag_real_mt, gate_diag_imag_mt, gate_off_diag_real_mt, gate_off_diag_imag_mt):
 
+		
 		alu_rq_0  = g.tensor.create_alu_request( alus=[0] )
 		alu_rq_1  = g.tensor.create_alu_request( alus=[1] )
 		alu_rq_4  = g.tensor.create_alu_request( alus=[4] )			
@@ -338,8 +348,8 @@ class Gate_S_base(Split_gates):
 		Psi_transformed_real_st	= g.add( state__gate_diag_real_st,  state_permuted__gate_off_diag_real_st, alus=[7], output_streams=g.SG4_W[2] )
 		Psi_transformed_real_st = g.vxm_identity( Psi_transformed_real_st, alus=[6], output_streams=g.SG4_W[2] )
 
-		Psi_transformed_real_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real", storage_req=self.state_real_request)
-		Psi_transformed_real_copy_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real_copy", storage_req=self.state_real_copy_request)
+		Psi_transformed_real_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real", storage_req=Psi_transformed_real_mt.storage_request)
+		Psi_transformed_real_copy_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real_copy", storage_req=permuted_state_real_mt.storage_request)
 
 
 		# calculate (Psi*gate_diag).imag + (Psi_permuted*gate_off_diag).imag
@@ -347,9 +357,9 @@ class Gate_S_base(Split_gates):
 		Psi_transformed_imag_st = g.vxm_identity( Psi_transformed_imag_st, alus=[15], output_streams=g.SG4_W[0] )
 
 
-		Psi_transformed_imag_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag", storage_req=self.state_imag_request)
-		Psi_transformed_imag_copy_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag_copy", storage_req=self.state_imag_copy_request)
-
-		return Psi_transformed_imag_mt, Psi_transformed_imag_mt
+		Psi_transformed_imag_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag", storage_req=Psi_transformed_imag_mt.storage_request)
+		Psi_transformed_imag_copy_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag_copy", storage_req=permuted_state_imag_mt.storage_request)
+		
+		return Psi_transformed_real_mt, Psi_transformed_imag_mt
 					
 	
