@@ -20,41 +20,11 @@ class Gate(Gate_S_base):
 		with self.pgm_pkg.create_program_context(name) as pgm5:
 
 
-			# create reusable permutor requests
-			permutor_requests = []
-			permutor_requests.append( g.tensor.create_permutor_request( [0], 1 ) )
-			permutor_requests.append( g.tensor.create_permutor_request( [1], 1 ) )
-			permutor_requests.append( g.tensor.create_permutor_request( [0], 1 ) )
-			permutor_requests.append( g.tensor.create_permutor_request( [1], 1 ) )
-
 			# Creates a shared tensor to reuse the memory allocation made by program pgm1
 			State_input_real_shared      = g.shared_memory_tensor(self.State_input_real_mt, name="State_input_real_shared")
 			State_input_imag_shared      = g.shared_memory_tensor(self.State_input_imag_mt, name="State_input_imag_shared")
 			State_input_real_copy_shared = g.shared_memory_tensor(self.State_input_real_copy_mt, name="State_input_real_copy_shared")
 			State_input_imag_copy_shared = g.shared_memory_tensor(self.State_input_imag_copy_mt, name="State_input_imag_copy_shared")
-
-			
-			
-			# when self.mxm_permutation is True, MXM is used for permuatations on target qubits less than 8
-			if ( self.mxm_permutation ) :
-				permute_maps_mt_west_shared = None 
-				permute_maps_mt_east_shared = None
-
-				mxm_permute_matrices_west_shared = g.shared_memory_tensor(self.mxm_permute_matrices_mt_west, name="mxm_permute_matrices_west_shared")
-				mxm_permute_matrices_east_shared = g.shared_memory_tensor(self.mxm_permute_matrices_mt_east, name="mxm_permute_matrices_east_shared")
-				
-				mxm_permute_map_selector_shared  = g.shared_memory_tensor(self.state_permute_map_selector_expanded, name="mxm_permute_map_selector_shared")
-			else: 
-			
-				state_permute_map_selector_shared = g.shared_memory_tensor(self.state_permute_map_selector_mt, name="state_permute_map_selector_shared")		
-				state_permute_map_selector_list   = g.split_vectors(input=state_permute_map_selector_shared, splits=[1]*gate_count)
-			
-				# otherwise the permutor slices are used
-				permute_maps_mt_west_shared = g.shared_memory_tensor(self.permute_maps_mt_west, name="permute_maps_west_shared")
-				permute_maps_mt_east_shared = g.shared_memory_tensor(self.permute_maps_mt_east, name="permute_maps_east_shared")
-
-				mxm_permute_matrices_west_shared = None
-				mxm_permute_matrices_east_shared = None
 
 
 			# state_1_mt: if target_qubit_loc at the idx-th element is in state_1 |1> then all the 8 bits of the idx-th element is set to 1, thus state_1[idx] = 255
@@ -62,9 +32,6 @@ class Gate(Gate_S_base):
 			# Creates a shared tensor to reuse the memory allocation made by program pgm1
 			state_1_broadcasted_shared = g.shared_memory_tensor(self.state_1_broadcasted_mt, name="state_1_broadcasted_shared")
 			state_0_broadcasted_shared = g.shared_memory_tensor(self.state_0_broadcasted_mt, name="state_0_broadcasted_shared")
-			
-			control_state_1_broadcasted_shared = g.shared_memory_tensor(self.control_state_1_broadcasted_mt, name="control_state_1_broadcasted_shared")
-			control_state_0_broadcasted_shared = g.shared_memory_tensor(self.control_state_0_broadcasted_mt, name="control_state_0_broadcasted_shared")
 
 			ones_shared = g.shared_memory_tensor(self.ones_mt, name="ones_shared")
 			zeros_shared = g.shared_memory_tensor(self.zeros_mt, name="zeros_shared")
@@ -124,110 +91,30 @@ class Gate(Gate_S_base):
 			storage_req_imag_diag  = g.tensor.create_storage_request( layout = layout_imag_diag )
 			storage_req_real_off_diag = g.tensor.create_storage_request( layout = layout_real_off_diag )
 			storage_req_imag_off_diag = g.tensor.create_storage_request( layout = layout_imag_off_diag )
-			
-							
-			mxm_requests = []
-			mxm_requests.append(g.tensor.create_mxm_request(planes=[0], signed=True))
-			mxm_requests.append(g.tensor.create_mxm_request(planes=[1], signed=True))
-			mxm_requests.append(g.tensor.create_mxm_request(planes=[2], signed=True))
-			mxm_requests.append(g.tensor.create_mxm_request(planes=[3], signed=True))
-				
+
+			control_state_1_broadcasted_shared = g.shared_memory_tensor(self.control_state_1_broadcasted_mt, name="control_state_1_broadcasted_shared")
+			control_state_0_broadcasted_shared = g.shared_memory_tensor(self.control_state_0_broadcasted_mt, name="control_state_0_broadcasted_shared")
+
+
 			with g.ResourceScope(name=f"prepare_state_pair_scope_SS", is_buffered=True, time=tm) as prepare_state_pair_scope :
 
 				# make a copy of the real part somewhere else on the chip (just for testing, will be removed)
 				print('gatescope')   
 					
 					
-				if ( self.mxm_permutation ):
+				if ( self.mxm_permutation ): # if MXM is used to generate qubit pairs
 
-					mxm_permute_matrices_west_list = g.split(mxm_permute_matrices_west_shared, dim=0, num_splits=8 )
-					mxm_permute_matrices_east_list = g.split(mxm_permute_matrices_east_shared, dim=0, num_splits=8 )
-					
-					# gathering the permutation matrices over the 16 slices with mem_gather 
-					# allows dynamic memory addressing according to the target qubit
-					permute_matrix_west_1_st = self.gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_west_shared)									
-					permute_matrix_west_2_st = self.gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_west_shared)
-					permute_matrix_east_1_st = self.gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_east_shared)	
-					permute_matrix_east_2_st = self.gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_east_shared)														
+					permuted_state_real_mt, permuted_state_imag_mt = self.MXM_permutation_of_S_qubits(Psi_transformed_real_mt, 
+                                                                                                                          Psi_transformed_imag_mt, 
+                                                                                                                          Psi_transformed_real_copy_mt, 
+                                                                                                                          Psi_transformed_imag_copy_mt)
 
-					
-					# list storing the fetched rows of the permutation matrix
-					mxm_permute_row_west_st_list = []					
-			
-					# mxm only accepts tensors with an inner dim of 320, thus 256 inner splits should be extended to 320
-					Psi_transformed_real_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=Psi_transformed_real_mt.storage_request, initialized=False)
-					Psi_transformed_imag_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=Psi_transformed_imag_mt.storage_request, initialized=False)
+				else: # if permutor is used to generate qubit pairs
 
-					Psi_transformed_real_mt_320 = g.reinterpret(Psi_transformed_real_mt_320, dtype=g.int8)
-					Psi_transformed_imag_mt_320 = g.reinterpret(Psi_transformed_imag_mt_320, dtype=g.int8)
-
-					Psi_transformed_real_copy_mt = g.reinterpret(Psi_transformed_real_copy_mt, dtype=g.int8)
-					Psi_transformed_imag_copy_mt = g.reinterpret(Psi_transformed_imag_copy_mt, dtype=g.int8)
-
-					# separating the tensors along the slice dimension (separating the bytes)
-					Psi_transformed_real_mt_list      = g.split(Psi_transformed_real_mt_320, dim=-2, num_splits=g.float32.size)
-					Psi_transformed_imag_mt_list      = g.split(Psi_transformed_imag_mt_320, dim=-2, num_splits=g.float32.size)
-					Psi_transformed_real_copy_mt_list = g.split(Psi_transformed_real_copy_mt, dim=-2, num_splits=g.float32.size)
-					Psi_transformed_imag_copy_mt_list = g.split(Psi_transformed_imag_copy_mt, dim=-2, num_splits=g.float32.size)
-						
-					
-
-					# 20 cycles to read the permute matrix, 8 for installing the weights and each matmul operation takes "memory_slices" cycles
-					time_list = [8, 28, 8+memory_slices, 28+memory_slices]
-					weights_list = []
-					weights_list.append(g.install_weights(permute_matrix_west_1_st, planes=mxm_requests[0], time=0))
-					weights_list.append(g.install_weights(permute_matrix_west_2_st, planes=mxm_requests[1], time=20))					
-					weights_list.append(g.install_weights(permute_matrix_east_1_st, planes=mxm_requests[2], time=-26)) #TODO make it time=0
-					weights_list.append(g.install_weights(permute_matrix_east_2_st, planes=mxm_requests[3], time=20-26)) #TODO make it time=20
-					
-					for byte_idx in range(4):
-					
-						# Real part
-						permuted_state_real_st = Psi_transformed_real_mt_list[byte_idx].matmul(weights_list[byte_idx%2+2], planes=mxm_requests[byte_idx%2+2], time=time_list[byte_idx])
-						permuted_state_real_st = g.reinterpret(permuted_state_real_st, dtype=g.int8)
-						# we only need the last byte from the MXM result
-						permuted_state_real_st = g.split(permuted_state_real_st, dim=-2, num_splits=g.int32.size)[0]
-						permuted_state_real_st.write(storage_req=Psi_transformed_real_copy_mt_list[byte_idx].storage_request)
-
-						# Imag part
-						permuted_state_imag_st = Psi_transformed_imag_mt_list[byte_idx].matmul(weights_list[byte_idx%2], planes=mxm_requests[byte_idx%2], time=time_list[byte_idx])
-						permuted_state_imag_st = g.reinterpret(permuted_state_imag_st, dtype=g.int8)
-						# we only need the last byte from the MXM result
-						permuted_state_imag_st = g.split(permuted_state_imag_st, dim=-2, num_splits=g.int32.size)[0]
-						permuted_state_imag_st.write(storage_req=Psi_transformed_imag_copy_mt_list[byte_idx].storage_request)
-
-					Psi_transformed_real_copy_mt = g.reinterpret(Psi_transformed_real_copy_mt, dtype=g.float32)
-					Psi_transformed_imag_copy_mt = g.reinterpret(Psi_transformed_imag_copy_mt, dtype=g.float32)
-
-					permuted_state_real_mt = g.constant_tensor(Psi_transformed_real_copy_mt.shape, g.float32, name="permuted_result_real", storage_req=self.state_real_copy_request, initialized=False)
-					permuted_state_imag_mt = g.constant_tensor(Psi_transformed_imag_copy_mt.shape, g.float32, name="permuted_result_imag", storage_req=self.state_imag_copy_request, initialized=False)
-
-				else: # if permutor is used
-
-					state_permute_map_selector_west_st = state_permute_map_selector_list[0].read(streams=[g.SG1_W[24]])
-					state_permute_map_selector_east_st = state_permute_map_selector_list[0].read(streams=[g.SG1_E[24]])
-					permute_map_west_st                = g.mem_gather(permute_maps_mt_west_shared, state_permute_map_selector_west_st, output_streams=[g.SG1_W[24]])
-					permute_map_east_st                = g.mem_gather(permute_maps_mt_east_shared, state_permute_map_selector_east_st, output_streams=[g.SG1_E[24]])
-
-					state_real_mt_8 = g.reinterpret(Psi_transformed_real_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
-					state_imag_mt_8 = g.reinterpret(Psi_transformed_imag_mt, g.uint8 ) # reinterpret float32 as 4 uint8 values for permuter input
-
-					state_real_st_8 = state_real_mt_8.read( streams=g.SG1_E[4] )
-					state_imag_st_8 = state_imag_mt_8.read( streams=g.SG1_W[4] )
-
-					
-					permuted_state_real_st_8 = g.permute_inner(state_real_st_8, permute_map_west_st, permutor_req=permutor_requests[1], input_streams=[g.SG1_E[0], g.SG1_E[24]], output_streams=g.SG1[12], time=0 )
-					permuted_state_imag_st_8 = g.permute_inner(state_imag_st_8, permute_map_east_st, permutor_req=permutor_requests[0], input_streams=[g.SG1_W[0], g.SG1_W[24]], output_streams=g.SG1[4], time=0 )
-
-					permuted_state_real_st_8 = g.reshape(permuted_state_real_st_8, [memory_slices, 4, matrix_size] )
-					permuted_state_imag_st_8 = g.reshape(permuted_state_imag_st_8, [memory_slices, 4, matrix_size] )
-				
-					permuted_state_real_st = g.reinterpret(permuted_state_real_st_8, g.float32 )
-					permuted_state_imag_st = g.reinterpret(permuted_state_imag_st_8, g.float32 )
-
-					permuted_state_real_mt = permuted_state_real_st.write(name=f"permuted_result_real", storage_req=self.state_real_copy_request)
-					permuted_state_imag_mt = permuted_state_imag_st.write(name=f"permuted_result_imag", storage_req=self.state_imag_copy_request)
-
+					permuted_state_real_mt, permuted_state_imag_mt = self.permutation_of_S_qubits(Psi_transformed_real_mt, 
+                                                                                                                          Psi_transformed_imag_mt, 
+                                                                                                                          Psi_transformed_real_copy_mt, 
+                                                                                                                          Psi_transformed_imag_copy_mt)
 
 				
 			#################################################################################
