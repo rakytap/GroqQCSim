@@ -14,6 +14,75 @@ class Gate_S_base(Split_gates):
 
 
 
+
+	def prepare_gate_data( self ):
+
+		# Creates a shared tensor to reuse the memory allocation made by program pgm1
+		State_input_real_shared      = g.shared_memory_tensor(self.State_input_real_mt, name="State_input_real_shared")
+		State_input_imag_shared      = g.shared_memory_tensor(self.State_input_imag_mt, name="State_input_imag_shared")
+		State_input_real_copy_shared = g.shared_memory_tensor(self.State_input_real_copy_mt, name="State_input_real_copy_shared")
+		State_input_imag_copy_shared = g.shared_memory_tensor(self.State_input_imag_copy_mt, name="State_input_imag_copy_shared")
+
+			
+			
+		# state_1_mt: if target_qubit_loc at the idx-th element is in state_1 |1> then all the 8 bits of the idx-th element is set to 1, thus state_1[idx] = 255
+		# state_0_mt: if target_qubit_loc at the idx-th element is in state_0 |0> then all the 8 bits of the idx-th element is set to 1, thus state_0[idx] = 255
+		# Creates a shared tensor to reuse the memory allocation made by program pgm1
+		state_1_broadcasted_shared = g.shared_memory_tensor(self.state_1_broadcasted_mt, name="state_1_broadcasted_shared")
+		state_0_broadcasted_shared = g.shared_memory_tensor(self.state_0_broadcasted_mt, name="state_0_broadcasted_shared")
+
+		# Creates a shared tensor to reuse the memory allocation made by program pgm2
+
+		# real and imag components of the broadcasted 00, 01, 10, 11 elements of the gate kernels (each element of a 320 vector contains either the 00,01,10 or 11 element)
+		gate_kernels_broadcasted_real_shared_dict = {}
+		gate_kernels_broadcasted_imag_shared_dict = {}
+		gate_kernels_broadcasted_real_shared_copy_dict = {}
+		gate_kernels_broadcasted_imag_shared_copy_dict = {}
+			
+		for label in gate_kernel_element_labels:
+
+			key = label
+			gate_kernel_broadcasted_real_mt = self.gate_kernels_broadcasted_real_dict[key]
+			gate_kernel_broadcasted_imag_mt = self.gate_kernels_broadcasted_imag_dict[key]
+
+			gate_kernels_broadcasted_real_shared = g.shared_memory_tensor(gate_kernel_broadcasted_real_mt, name=gate_kernel_broadcasted_real_mt.name+"_shared")
+			gate_kernels_broadcasted_imag_shared = g.shared_memory_tensor(gate_kernel_broadcasted_imag_mt, name=gate_kernel_broadcasted_imag_mt.name+"_shared")
+
+			gate_kernels_broadcasted_real_shared_dict[key] = gate_kernels_broadcasted_real_shared
+			gate_kernels_broadcasted_imag_shared_dict[key] = gate_kernels_broadcasted_imag_shared
+					
+			gate_kernel_broadcasted_real_copy_mt = self.gate_kernels_broadcasted_real_copy_dict[key]
+			gate_kernel_broadcasted_imag_copy_mt = self.gate_kernels_broadcasted_imag_copy_dict[key]
+
+			gate_kernels_broadcasted_real_shared_copy = g.shared_memory_tensor(gate_kernel_broadcasted_real_copy_mt, name=gate_kernel_broadcasted_real_copy_mt.name+"_shared")
+			gate_kernels_broadcasted_imag_shared_copy = g.shared_memory_tensor(gate_kernel_broadcasted_imag_copy_mt, name=gate_kernel_broadcasted_imag_copy_mt.name+"_shared")
+
+			gate_kernels_broadcasted_real_shared_copy_dict[key] = gate_kernels_broadcasted_real_shared_copy
+			gate_kernels_broadcasted_imag_shared_copy_dict[key] = gate_kernels_broadcasted_imag_shared_copy				
+
+
+
+
+			
+		address_offset = 4*gate_count
+
+		layout_real_diag     = layout_gate_kernels_real + f", A1({address_offset})"
+		layout_imag_diag     = layout_gate_kernels_imag + f", A1({address_offset})"		
+		layout_real_off_diag = layout_gate_kernels_real_copy + f", A1({address_offset})"
+		layout_imag_off_diag = layout_gate_kernels_imag_copy + f", A1({address_offset})"	
+				
+		storage_req_real_diag     = g.tensor.create_storage_request( layout = layout_real_diag )
+		storage_req_imag_diag     = g.tensor.create_storage_request( layout = layout_imag_diag )
+		storage_req_real_off_diag = g.tensor.create_storage_request( layout = layout_real_off_diag )
+		storage_req_imag_off_diag = g.tensor.create_storage_request( layout = layout_imag_off_diag )
+
+
+		return State_input_real_shared, State_input_imag_shared, State_input_real_copy_shared, State_input_imag_copy_shared, \
+                       state_1_broadcasted_shared, state_0_broadcasted_shared, \
+                       gate_kernels_broadcasted_real_shared_dict, gate_kernels_broadcasted_imag_shared_dict, gate_kernels_broadcasted_real_shared_copy_dict, gate_kernels_broadcasted_imag_shared_copy_dict, \
+                       storage_req_real_diag, storage_req_imag_diag, storage_req_real_off_diag, storage_req_imag_off_diag 
+
+
 	def gather_permutation_matrix( self, mxm_permute_map_selector, mxm_permute_matrices):
 
 		### split the permutation matrices over slices ###

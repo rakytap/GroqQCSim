@@ -26,14 +26,14 @@ class Gate(Gate_S_base):
 			State_input_real_copy_shared = g.shared_memory_tensor(self.State_input_real_copy_mt, name="State_input_real_copy_shared")
 			State_input_imag_copy_shared = g.shared_memory_tensor(self.State_input_imag_copy_mt, name="State_input_imag_copy_shared")
 
-			
-			
+
 			# state_1_mt: if target_qubit_loc at the idx-th element is in state_1 |1> then all the 8 bits of the idx-th element is set to 1, thus state_1[idx] = 255
 			# state_0_mt: if target_qubit_loc at the idx-th element is in state_0 |0> then all the 8 bits of the idx-th element is set to 1, thus state_0[idx] = 255
 			# Creates a shared tensor to reuse the memory allocation made by program pgm1
 			state_1_broadcasted_shared = g.shared_memory_tensor(self.state_1_broadcasted_mt, name="state_1_broadcasted_shared")
 			state_0_broadcasted_shared = g.shared_memory_tensor(self.state_0_broadcasted_mt, name="state_0_broadcasted_shared")
 
+			
 			# Creates a shared tensor to reuse the memory allocation made by program pgm2
 
 			# real and imag components of the broadcasted 00, 01, 10, 11 elements of the gate kernels (each element of a 320 vector contains either the 00,01,10 or 11 element)
@@ -63,18 +63,6 @@ class Gate(Gate_S_base):
 				gate_kernels_broadcasted_real_shared_copy_dict[key] = gate_kernels_broadcasted_real_shared_copy
 				gate_kernels_broadcasted_imag_shared_copy_dict[key] = gate_kernels_broadcasted_imag_shared_copy				
 
-
-
-			# the transformed states are interated further from gate to gate, but for the first gate they are set to the initial state
-			Psi_transformed_real_mt = State_input_real_shared
-			Psi_transformed_imag_mt = State_input_imag_shared
-			Psi_transformed_real_copy_mt = State_input_real_copy_shared
-			Psi_transformed_imag_copy_mt = State_input_imag_copy_shared
-
-			tm = 0
-			# we can only start the prepare_gate_kernel_scope after the weights have been install because of stream limitations
-			tm_pgk = 25
-			
 			
 			address_offset = 4*gate_count
 
@@ -87,12 +75,13 @@ class Gate(Gate_S_base):
 			storage_req_imag_diag  = g.tensor.create_storage_request( layout = layout_imag_diag )
 			storage_req_real_off_diag = g.tensor.create_storage_request( layout = layout_real_off_diag )
 			storage_req_imag_off_diag = g.tensor.create_storage_request( layout = layout_imag_off_diag )
+		
 
 					
 							
 			
 				
-			with g.ResourceScope(name=f"prepare_state_pair_scope", is_buffered=True, time=tm) as prepare_state_pair_scope :
+			with g.ResourceScope(name=f"prepare_state_pair_scope", is_buffered=True, time=0) as prepare_state_pair_scope :
 
 				# make a copy of the real part somewhere else on the chip (just for testing, will be removed)
 				print('gatescope')   
@@ -100,24 +89,29 @@ class Gate(Gate_S_base):
 					
 				if ( self.mxm_permutation ): # if MXM is used to generate qubit pairs
 
-					permuted_state_real_mt, permuted_state_imag_mt = self.MXM_permutation_of_S_qubits(Psi_transformed_real_mt, 
-                                                                                                                          Psi_transformed_imag_mt, 
-                                                                                                                          Psi_transformed_real_copy_mt, 
-                                                                                                                          Psi_transformed_imag_copy_mt)
+					permuted_state_real_mt, permuted_state_imag_mt = self.MXM_permutation_of_S_qubits(State_input_real_shared, 
+                                                                                                                          State_input_imag_shared, 
+                                                                                                                          State_input_real_copy_shared, 
+                                                                                                                          State_input_imag_copy_shared)
+
+					# we can only start the prepare_gate_kernel_scope after the weights have been install because of stream limitations
+					tm_pkg = 25
 
 				else: # if permutor is used to generate qubit pairs
 
-					permuted_state_real_mt, permuted_state_imag_mt = self.permutation_of_S_qubits(Psi_transformed_real_mt, 
-                                                                                                                          Psi_transformed_imag_mt, 
-                                                                                                                          Psi_transformed_real_copy_mt, 
-                                                                                                                          Psi_transformed_imag_copy_mt)
+					permuted_state_real_mt, permuted_state_imag_mt = self.permutation_of_S_qubits(State_input_real_shared, 
+                                                                                                                          State_input_imag_shared, 
+                                                                                                                          State_input_real_copy_shared, 
+                                                                                                                          State_input_imag_copy_shared)
+
+					tm_pkg = 0
 
 
 				
 			#################################################################################
 			# component to perform the gate operation
 				
-			with g.ResourceScope(name=f"prepare_gate_kernel_scope", is_buffered=True, time=tm_pgk) as prepare_gate_kernel_scope :
+			with g.ResourceScope(name=f"prepare_gate_kernel_scope", is_buffered=True, time=tm_pkg) as prepare_gate_kernel_scope :
 
 		
 				# combine the rows of the gate kernel to be used in the transformation on target qubits < 8
@@ -202,8 +196,8 @@ class Gate(Gate_S_base):
 			
 			with g.ResourceScope(name=f"apply_gate_scope", is_buffered=True, predecessors=[prepare_state_pair_scope], time=None) as apply_gate_scope :
 
-				Psi_transformed_imag_mt, Psi_transformed_imag_mt = self.VXM_S_round_trip(  Psi_transformed_real_mt, 
-                                                                                                      Psi_transformed_imag_mt, 
+				State_input_imag_shared, State_input_imag_shared = self.VXM_S_round_trip(  State_input_real_shared, 
+                                                                                                      State_input_imag_shared, 
                                                                                                       permuted_state_real_mt, 
                                                                                                       permuted_state_imag_mt, 
                                                                                                       gate_diag_real_mt, 

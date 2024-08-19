@@ -34,10 +34,10 @@ if __name__ == "__main__":
 	
 		# define quantum circuit
 		circuit = Circuit(qbit_num)
-		circuit.add_CZ( target_qbit, control_qbit )
+		circuit.add_adaptive( target_qbit, control_qbit )
 	
 		circuit_1 = Circuit( 1 )
-		circuit_1.add_Z( 0  )	
+		circuit_1.add_RY( 0  )	
 		
 		
 		
@@ -84,7 +84,7 @@ if __name__ == "__main__":
 	#State_orig_real_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
 	#State_orig_imag_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
 
-	real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbit, control_qbit, gate_kernels, mxm_permutation = True)
+	real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbit, control_qbit, gate_kernels, mxm_permutation = False)
 	print(' ')
 	print( 'difference between CPU oracle and Groq chip (real part): ', scipy.linalg.norm( real_part - np.real( State_transformed_oracle ) , 2), '(imag part): ', scipy.linalg.norm( imag_part - np.imag( State_transformed_oracle ) , 2) )
 
