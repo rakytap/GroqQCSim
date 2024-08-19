@@ -12,7 +12,7 @@ qbit_num = groqQCsim.qbit_num
 
 if __name__ == "__main__":
 	target_qbit  = 6
-	control_qbit = 2 #i.e. no control qubit is involved
+	control_qbit = -1 #i.e. no control qubit is involved
 
 	# determine the soze of the unitary to be decomposed
 	matrix_size = 1 << qbit_num
@@ -68,7 +68,7 @@ if __name__ == "__main__":
 	print( 'The singla qubit gate kernel is:')
 	print( gate_kernel_single )
 
-	gate_kernels = np.zeros((80, 2, 2,), dtype=np.complex64) 	#np.array([[[0,1],[1,0]]])
+	gate_kernels = np.zeros((80, 2, 2,), dtype=np.complex64)
 	for idx in range(80):
 		gate_kernels[idx] = gate_kernel_single
 

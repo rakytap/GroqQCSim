@@ -1,4 +1,4 @@
-from gate import Gate as Gate_S
+from gate_S import Gate as Gate_S
 from gate_SS import Gate as Gate_SS
 from memory_layouts import *
 import groq.api as g
