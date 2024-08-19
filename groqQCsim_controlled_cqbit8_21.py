@@ -11,6 +11,8 @@ from typing import List
 import utils
 from memory_layouts import *
 
+import time
+
 try:
     import groq.runtime.driver as runtime
 except ImportError:
@@ -189,7 +191,17 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 
 	# run the second program
 	index_of_gate_program = 2
-	pgm_3_output = invoke(device, iop, index_of_gate_program, 0, {})
+	
+	dim_LL_gate_map_selector = 1 << (qbit_num-small_qbit_num_limit-4-4) # each 320 vector can store 4 independent addresses
+	LL_gate_map_selector_np = np.zeros( (dim_LL_gate_map_selector*16,320,), dtype=np.uint8) 
+	
+	start = time.time()
+	pgm_3_output = invoke(device, iop, index_of_gate_program, 0, {"LL_gate_map_selector": LL_gate_map_selector_np})
+	#pgm_3_output = invoke(device, iop, index_of_gate_program, 0, {})	
+	end = time.time()
+	print("time elapsed for computation: ", end - start)
+	
+	
 	#print(pgm_3_output["tmp_imag_mt"] == pgm_3_output["tmp_imag_mt2"])
 	#print(pgm_3_output["tmp_real_mt"] == pgm_3_output["tmp_real_mt2"])
 	# print(pgm_3_output["gate_diag_real_0"])

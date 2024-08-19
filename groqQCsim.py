@@ -3,7 +3,8 @@ import groq.api.nn as nn
 import groq.runner.tsp as tsp;
 from groq.api import instruction as inst
 import numpy as np
-from gate import Gate
+from QCsim_IOP import Gate_IOP
+
 
 import os
 import shutil
@@ -35,12 +36,17 @@ def compile(mxm_permutation = True) -> List[str]:
 
 	
 
-	program = Gate(pgm_pkg, mxm_permutation = mxm_permutation)
+	program = Gate_IOP(pgm_pkg, mxm_permutation = mxm_permutation)
 	# Defines a program to upload the inputs
 	program.upload_program()
+	program.download_state_program()
 	program.split_gates_program()
-	# program to perform gate operation in a target qubit less than small_qbit_num_limit
-	program.gate_program()
+
+	# program to perform gate_S operation
+	program.gate_S_program()
+
+	# program to perform gate_SS operation
+	program.gate_SS_program()
 	
 	iops = pgm_pkg.assemble()
 
@@ -48,12 +54,12 @@ def compile(mxm_permutation = True) -> List[str]:
 
 
 
-def invoke(device, iop, pgm_num, ep_num, tensors):
+def invoke(device, iop, pgm_num, ep, tensors):
 	"""Low level interface to the device driver to access multiple programs. A higher level abstraction
     will be provided in a future release that offers access to multiple programs and entry points."""
 
 	pgm = iop[pgm_num]
-	ep = pgm.entry_points[ep_num]
+	#ep = pgm.entry_points[ep_num]
 	input_buffer = runtime.BufferArray(ep.input, 1)[0]
 	output_buffer = runtime.BufferArray(ep.output, 1)[0]
 
@@ -97,6 +103,8 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	device.load(iop[0], unsafe_keep_entry_points=True)
 	device.load(iop[1], unsafe_keep_entry_points=True)
 	device.load(iop[2], unsafe_keep_entry_points=True)
+	device.load(iop[3], unsafe_keep_entry_points=True)
+	device.load(iop[4], unsafe_keep_entry_points=True)
 	
 	if target_qbit >= small_qbit_num_limit :
 		raise ValueError( "the target qubit in this program should be less than 8" )
@@ -149,70 +157,42 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	gate_kernels_imag_packed = np.ascontiguousarray( gate_kernels_imag.reshape( (-1,) ) )
 
 
-	# run the first program
-	pgm_1_output = invoke(device, iop, 0, 0, {"State_input_real": input_real, "State_input_imag": input_imag, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector})
-	
+	# run the upload program
+	entry_point = iop["upload"]["mono"]
+	pgm_1_output = invoke(device, iop, 0, entry_point, {"State_input_real": input_real, "State_input_imag": input_imag, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector})
 	
 	# run the gate split program
-	index_of_split_program = 1
-	pgm_2_output = invoke(device, iop, index_of_split_program, 0, {})
-	#print( pgm_2_output.keys() )
-	'''
-	print( pgm_2_output["gate_kernel_broadcasted_real_00"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_00"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_01"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_01"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_10"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_10"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_11"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_11"] )
-	'''
+	index_of_split_program = 2
+	entry_point = iop["split_gates"]["compute"] #4*index_of_split_program + 1
+	pgm_2_output = invoke(device, iop, index_of_split_program, entry_point, {})
 	
 
-	# run the second program
-	index_of_gate_program = 2
-	pgm_3_output = invoke(device, iop, index_of_gate_program, 0, {})
-	#print(pgm_3_output["tmp_imag_mt"] == pgm_3_output["tmp_imag_mt2"])
-	#print(pgm_3_output["tmp_real_mt"] == pgm_3_output["tmp_real_mt2"])
-	#print(pgm_3_output["gate_first_column_real"])
-	#print(pgm_3_output["gate_first_column_imag"])
-	#print(pgm_3_output["Psi_transformed_real"])
-	#print(pgm_3_output["Psi_transformed_imag"])
-	'''
-	print(pgm_3_output["test"])
-	print(np.sum(pgm_3_output["test"], axis=1) )
-	
-	tmp = pgm_3_output["test"]
-	
-	identity                 = np.identity(320, dtype=np.int8)
-	target_qbit_pair_diff = 1 << target_qbit
+	# run the gate program
+	if target_qbit >= 0 and target_qbit < 8 and control_qbit == -1: 
+		# pogram perfroming the Gate_S operation
+		index_of_gate_program = 3
+		entry_point = iop["gate_S"]["compute"]
+		gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})	
 
-	matrix_row_indexes = np.zeros( (320,), dtype=np.int32 )
-	for idx in range(320):
-		if (idx < matrix_size):
-			matrix_row_indexes[idx] = idx ^ target_qbit_pair_diff
-		else:
-			matrix_row_indexes[idx] = idx
-					
-	mxm_permutation_matrix = identity[matrix_row_indexes,:]
+	elif target_qbit >= 0 and target_qbit < 8 and control_qbit < 8 and control_qbit >= 0: 
+
+		# pogram perfroming the Gate_SS operation
+		index_of_gate_program = 4
+		entry_point = iop["gate_SS"]["compute"]
+		gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})	
 	
-	#mxm_permutation_matrix = mxm_permutation_matrix[0:3,:]
-	
-	print( tmp[0,:] - mxm_permutation_matrix )
-	print( tmp[0,:] )
-	print( tmp[1,:] )	
-	print( mxm_permutation_matrix[16,:] )
-	print( mxm_permutation_matrix[17,:] )	
-	'''	
-			
-	Psi_transformed_real = pgm_3_output[f"Psi_transformed_real"]
+
+	# download the transformed state vector
+	index_of_download_program = 1
+	entry_point = iop["download_state_vector"]["output"]
+	download_program_output = invoke(device, iop, index_of_download_program, entry_point, {})
+
+	Psi_transformed_real = download_program_output["State_transformed_real"]
 	Psi_transformed_real = np.reshape( Psi_transformed_real, (Psi_transformed_real.size,) )
 	
-	Psi_transformed_imag = pgm_3_output[f"Psi_transformed_imag"]
+	Psi_transformed_imag = download_program_output["State_transformed_imag"]
 	Psi_transformed_imag = np.reshape( Psi_transformed_imag, (Psi_transformed_imag.size,) )	
+	
 	return Psi_transformed_real, Psi_transformed_imag
 
 

@@ -15,7 +15,13 @@ class Gate(Split_gates):
 
 			#g.reserve_tensor(pgm1, pgm2, State_input_real_mt)
 				
-			control_qbit = [9]
+			control_qbit = 9
+			
+			row_number_memory_map = 1 << (qbit_num-small_qbit_num_limit-4-4) #if the memory map is destributed over 2^4=16 slices and each 320 vector can store 4 independent addresses
+			layout_LL_gate_map_selector = f"H1(W), A{row_number_memory_map}({small_qbit_num_limit*20}-{small_qbit_num_limit*20+row_number_memory_map-1}), S16(18-36)"
+
+			dim_LL_gate_map_selector = 1 << (qbit_num-small_qbit_num_limit-4-4) # each 320 vector can store 4 independent addresses
+			LL_gate_map_selector_mt = g.input_tensor(shape=(dim_LL_gate_map_selector*16,320,), dtype=g.uint8, name="LL_gate_map_selector", layout=layout_LL_gate_map_selector)
 
 			# create reusable permutor requests
 			permutor_requests = []
@@ -46,6 +52,10 @@ class Gate(Split_gates):
 			ones_shared   = g.shared_memory_tensor(self.ones_mt, name="ones_shared")
 			zeros_shared  = g.shared_memory_tensor(self.zeros_mt, name="zeros_shared")
 			ones_zeros_mt = g.concat([ones_shared, zeros_shared], dim=0, name="ones_zeros_mt")
+			
+			
+			
+			g.add_mem_constraints([LL_gate_map_selector_mt], [permute_maps_mt_west_shared], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
 
 
 			# Creates a shared tensor to reuse the memory allocation made by program pgm2
@@ -87,29 +97,13 @@ class Gate(Split_gates):
 
 
 
-			Psi_transformed_real_mt_list = g.split( Psi_transformed_real_mt, 1 )
-			Psi_transformed_imag_mt_list = g.split( Psi_transformed_imag_mt, 1 )
-
+			Psi_transformed_real_mt_list      = g.split( Psi_transformed_real_mt, 1 )
+			Psi_transformed_imag_mt_list      = g.split( Psi_transformed_imag_mt, 1 )
 			Psi_transformed_real_copy_mt_list = g.split( Psi_transformed_real_copy_mt, 1 )
 			Psi_transformed_imag_copy_mt_list = g.split( Psi_transformed_imag_copy_mt, 1 )
 
-			index_pair = 1 << (control_qbit[0] - small_qbit_num_limit)
+			index_pair = 1 << (control_qbit - small_qbit_num_limit)
 
-			half_memory_slices = memory_slices >> 1
-
-			stagger_time = 20
-
-			if (stagger_time % 2 ) > 0:
-				raise('Stegger time should be a multiple of 2')
-
-			stagger_cycles = half_memory_slices // stagger_time
-			if ( memory_slices % stagger_time ) > 0:
-				stagger_cycles = stagger_cycles + 1 
-
-			mask_lower_bits = index_pair - 1 
-			mask_upper_bits = 1 << ( qbit_num - control_qbit[0] )
-			mask_upper_bits = mask_upper_bits - 1
-			mask_upper_bits = mask_upper_bits << (control_qbit[0] - small_qbit_num_limit )
 
 			
 			address_offset = 4*gate_count
@@ -119,8 +113,8 @@ class Gate(Split_gates):
 			layout_real_off_diag = layout_gate_kernels_real_copy + f", A1({address_offset})"
 			layout_imag_off_diag = layout_gate_kernels_imag_copy + f", A1({address_offset})"	
 				
-			storage_req_real_diag  = g.tensor.create_storage_request( layout = layout_real_diag )
-			storage_req_imag_diag  = g.tensor.create_storage_request( layout = layout_imag_diag )
+			storage_req_real_diag     = g.tensor.create_storage_request( layout = layout_real_diag )
+			storage_req_imag_diag     = g.tensor.create_storage_request( layout = layout_imag_diag )
 			storage_req_real_off_diag = g.tensor.create_storage_request( layout = layout_real_off_diag )
 			storage_req_imag_off_diag = g.tensor.create_storage_request( layout = layout_imag_off_diag )	
 
@@ -138,37 +132,35 @@ class Gate(Split_gates):
 				permute_map_west_st = g.mem_gather(permute_maps_mt_west_shared, state_permute_map_selector_west_st, output_streams=[g.SG1_W[24]])
 				permute_map_east_st = g.mem_gather(permute_maps_mt_east_shared, state_permute_map_selector_east_st, output_streams=[g.SG1_E[24]])
 
-				states_real_mt_list = []
-				states_imag_mt_list = []
+				states_real_mt_list      = []
+				states_imag_mt_list      = []
 				states_real_copy_mt_list = []
 				states_imag_copy_mt_list = []
-				index = 0
-				for outer_idx in range(stagger_cycles):
 
-					index_loc = index
-					# gathering the elements where the control qbit is 1
-					for stagger_idx in range(stagger_time):
+				mask_lower_bits = index_pair - 1 
+				mask_upper_bits = 1 << ( qbit_num - control_qbit )
+				mask_upper_bits = mask_upper_bits - 1
+				mask_upper_bits = mask_upper_bits << (control_qbit - small_qbit_num_limit )
 
-						lower_bits  = index_loc & mask_lower_bits
-						higher_bits = index_loc & mask_upper_bits
+				half_memory_slices = memory_slices >> 1
+				for memory_idx in range(half_memory_slices):
 
-						state_index_control_qubit_0 = (higher_bits << 1) + lower_bits
-						state_index_control_qubit_1 = state_index_control_qubit_0 + index_pair
+					lower_bits  = memory_idx & mask_lower_bits
+					higher_bits = memory_idx & mask_upper_bits
 
-						states_real_mt_list.append(Psi_transformed_real_mt_list[state_index_control_qubit_1])
-						states_imag_mt_list.append(Psi_transformed_imag_mt_list[state_index_control_qubit_1])
-						states_real_copy_mt_list.append(Psi_transformed_real_copy_mt_list[state_index_control_qubit_1])
-						states_imag_copy_mt_list.append(Psi_transformed_imag_copy_mt_list[state_index_control_qubit_1])
+					# index where the control qubit is in state 0
+					state_index_control_qubit_0 = (higher_bits << 1) + lower_bits
 
-						index_loc += 1
+					# index where the control qubit is in state 1
+					state_index_control_qubit_1 = state_index_control_qubit_0 + index_pair
 
-						if index_loc >= half_memory_slices:
-							break
 					
-					index = index_loc
+					states_real_mt_list.append(Psi_transformed_real_mt_list[state_index_control_qubit_1])
+					states_imag_mt_list.append(Psi_transformed_imag_mt_list[state_index_control_qubit_1])
+					states_real_copy_mt_list.append(Psi_transformed_real_copy_mt_list[state_index_control_qubit_1])
+					states_imag_copy_mt_list.append(Psi_transformed_imag_copy_mt_list[state_index_control_qubit_1])
 
-					if index >= half_memory_slices:
-						break
+
 
 				states_real_mt      = g.concat(states_real_mt_list)
 				states_imag_mt      = g.concat(states_imag_mt_list)
@@ -246,8 +238,6 @@ class Gate(Split_gates):
 					gate_diag_st = g.add(gate_00_st, gate_11_st, alus=alu_requests[2], output_streams=g.SG4[3])
 
 
-							
-					print("layout: ", layout_imag_diag)
 					
 					gate_diag_real_st, gate_diag_imag_st = g.split( gate_diag_st, num_splits=2, dim=0 )
 
@@ -282,8 +272,8 @@ class Gate(Split_gates):
 					gate_off_diag_st = g.add(gate_01_st, gate_10_st, alus=alu_requests[2], output_streams=g.SG4[3])
 					
 					gate_off_diag_st_list	= g.split( gate_off_diag_st, num_splits=2, dim=0 )
-					gate_off_diag_real_mt 	= gate_off_diag_st_list[0].write(name=f"gate_off_diag_real", storage_req=storage_req_real_off_diag, program_output=True)
-					gate_off_diag_imag_mt 	= gate_off_diag_st_list[1].write(name=f"gate_off_diag_imag", storage_req=storage_req_imag_off_diag, program_output=True)
+					gate_off_diag_real_mt 	= gate_off_diag_st_list[0].write(name=f"gate_off_diag_real", storage_req=storage_req_real_off_diag)
+					gate_off_diag_imag_mt 	= gate_off_diag_st_list[1].write(name=f"gate_off_diag_imag", storage_req=storage_req_imag_off_diag)
 
 
 			#################################################################################

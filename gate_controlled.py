@@ -6,12 +6,12 @@ class Gate(Split_gates):
 	def __init__(self, pgm_pkg, mxm_permutation=True):
 		super().__init__(pgm_pkg, mxm_permutation = mxm_permutation)
 	
-	def gate_program(self):
+	def gate_SS_program(self):
 		#############################################################################################################x		
 		# program to perform gate operation in a target qubit less than small_qbit_num_limit
-		name = "gate"
+		name = "gate_SS"
 		
-		with self.pgm_pkg.create_program_context(name) as pgm3:
+		with self.pgm_pkg.create_program_context(name) as pgm4:
 
 			#g.reserve_tensor(pgm1, pgm2, State_input_real_mt)
 
@@ -330,16 +330,16 @@ class Gate(Split_gates):
 					
 					
 				# calculate Psi_permuted_real * gate_off_diag_real
-				state_permuted_real_st 			   = permuted_state_real_mt.read( streams=[g.SG4_E[6]] )
+				state_permuted_real_st 			            	= permuted_state_real_mt.read( streams=[g.SG4_E[6]] )
 				gate_off_diag_real_mt_256                  = g.constant_tensor((1,256,), g.float32, storage_req=storage_req_real_off_diag, name="gate_off_diag_real_mt_256", initialized=False)					
-				gate_off_diag_real_st 			   = gate_off_diag_real_mt_256.read( streams=[g.SG4_W[6]] )
-				state_permuted_real__gate_off_diag_real_st = g.mul( state_permuted_real_st, gate_off_diag_real_st, alus=[13], output_streams=g.SG4_E[6] )
+				gate_off_diag_real_st 			         	= gate_off_diag_real_mt_256.read( streams=[g.SG4_W[6]] )
+				state_permuted_real__gate_off_diag_real_st	= g.mul( state_permuted_real_st, gate_off_diag_real_st, alus=[13], output_streams=g.SG4_E[6] )
 
 				# calculate Psi_permuted_imag * gate_off_diag_imag
-				state_permuted_imag_st 			   = permuted_state_imag_mt.read( streams=[g.SG4[4]] )
+				state_permuted_imag_st 				            = permuted_state_imag_mt.read( streams=[g.SG4[4]] )
 				gate_off_diag_imag_mt_256                  = g.constant_tensor((1,256,), g.float32, storage_req=storage_req_imag_off_diag, name="gate_off_diag_imag_mt_256", initialized=False)					
 				gate_off_diag_imag_st                      = gate_off_diag_imag_mt_256.read( streams=[g.SG4_W[5]] )
-				state_permuted_imag__gate_off_diag_imag_st = g.mul( state_permuted_imag_st, gate_off_diag_imag_st, alus=[5], output_streams=g.SG4_E[5] )			
+				state_permuted_imag__gate_off_diag_imag_st	= g.mul( state_permuted_imag_st, gate_off_diag_imag_st, alus=[5], output_streams=g.SG4_E[5] )			
 
 				# calculate Psi_permuted_real * gate_off_diag_real - Psi_permuted_imag * gate_off_diag_imag
 				state_permuted__gate_off_diag_real_st	= g.sub( state_permuted_real__gate_off_diag_real_st, state_permuted_imag__gate_off_diag_imag_st, alus=[10], output_streams=g.SG4_E[5]  )
@@ -359,15 +359,7 @@ class Gate(Split_gates):
 				# calculate Psi_permuted_real * gate_off_diag_imag + Psi_permuted_imag * gate_off_diag_real
 				state_permuted__gate_off_diag_imag_st	= g.add( state_permuted_imag__gate_off_diag_real_st, state_permuted_real__gate_off_diag_imag_st, alus=[11], output_streams=g.SG4_W[7]  )
 				
-				#res4_mt = state_permuted__gate_off_diag_imag_st.write(name=f"test2", layout="H1(W), -1, S4", program_output=True)	
-					
-
-				# number of memory slices to store the transformed state		
-
-				layout_transformed_state_real_copy = layout_State_input_real_copy
-				layout_transformed_state_imag_copy = layout_State_input_imag_copy
-
-				print( g.vxm_identity.__doc__ )
+		
 
 				# calculate (Psi*gate_diag).real + (Psi_permuted*gate_off_diag).real
 				Psi_transformed_real_st	= g.add( state__gate_diag_real_st,  state_permuted__gate_off_diag_real_st, alus=[7], output_streams=g.SG4_W[2] )
@@ -397,7 +389,7 @@ class Gate(Split_gates):
 				Psi_transformed_imag_copy_list.append( Psi_transformed_imag_copy_mt )
 					
 					
-			self.pgm_pkg.compile_program_context(pgm3)
+			self.pgm_pkg.compile_program_context(pgm4)
 			
 			#g.compile(base_name="QCsim", result_tensor=result)
 			g.write_visualizer_data("QCsim_"+name)		

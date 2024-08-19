@@ -42,7 +42,7 @@ def compile(mxm_permutation = True) -> List[str]:
 	program.upload_program()
 	program.split_gates_program()
 	# program to perform gate operation in a target qubit less than small_qbit_num_limit
-	program.gate_program()
+	program.gate_SL_program()
 	
 	iops = pgm_pkg.assemble()
 
@@ -94,7 +94,7 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 
 
 	iop = runtime.IOProgram(iop_file)
-	device = runtime.devices[0]
+	device = runtime.devices[1]
 	device.open()
 	device.load(iop[0], unsafe_keep_entry_points=True)
 	device.load(iop[1], unsafe_keep_entry_points=True)
@@ -158,34 +158,7 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	index_of_split_program = 1
 	pgm_2_output = invoke(device, iop, index_of_split_program, 0, {})
 	#print( pgm_2_output.keys() )
-	'''
-	print( pgm_2_output["gate_kernel_broadcasted_real_0_00"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_0_00"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_0_01"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_0_01"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_0_11"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_0_11"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_0_10"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_0_10"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_1_01"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_1_01"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_imag_1_00"] )
-	print( pgm_2_output["gate_kernel_broadcasted_real_1_00"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_1_10"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_1_10"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_1_11"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_1_11"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_real_0"] )
-	print( pgm_2_output["gate_kernel_imag_0"] )
-	'''
+	
 
 	# run the second program
 	index_of_gate_program = 2

@@ -1,10 +1,10 @@
-from upload import Upload
+from QCsim_IO import IO
 from memory_layouts import *
 import groq.api as g
 import numpy as np
 from groq.api import instruction as inst
 
-class Split_gates(Upload):
+class Split_gates(IO):
 
 	def __init__(self, pgm_pkg, mxm_permutation=True):
 	
@@ -16,7 +16,7 @@ class Split_gates(Upload):
 
 	def split_gates_program(self):
 		name = "split_gates"
-		with self.pgm_pkg.create_program_context(name) as pgm2:
+		with self.pgm_pkg.create_program_context(name) as pgm3:
 
 			# create reusable permutor requests
 			permutor_request = g.tensor.create_permutor_request( [1], 1 ) # EAST
@@ -165,6 +165,6 @@ class Split_gates(Upload):
 			
 
 
-			self.pgm_pkg.compile_program_context(pgm2)
+			self.pgm_pkg.compile_program_context(pgm3)
 
 			g.write_visualizer_data("QCsim_"+name)	

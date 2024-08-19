@@ -3,7 +3,7 @@ import groq.api as g
 import numpy as np
 from groq.api import instruction as inst
 
-class Upload:
+class IO:
 	def __init__(self, pgm_pkg, mxm_permutation=True):
 
 		self.pgm_pkg = pgm_pkg
@@ -350,3 +350,20 @@ class Upload:
 			g.write_visualizer_data("QCsim_"+name)
 		#############################################################################################################x
 		# program to split the gate kernels and other metada between the EAST-WAST hemispheres 
+
+
+	
+	def download_state_program(self):
+		# Defines a program to upload the inputs
+		name = "download_state_vector"
+		with self.pgm_pkg.create_program_context(name) as pgm2:
+
+
+			# Creates a shared tensor to reuse the memory allocation made by program pgm1
+			State_input_real_shared = g.shared_memory_tensor(self.State_input_real_mt, name="State_transformed_real")
+			State_input_imag_shared = g.shared_memory_tensor(self.State_input_imag_mt, name="State_transformed_imag")
+
+
+			State_input_real_shared.set_program_output()
+			State_input_imag_shared.set_program_output()
+	
