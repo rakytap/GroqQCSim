@@ -93,30 +93,23 @@ class Gate(Split_gates):
 
 			###################################################################################
 			# the transformed states are interated further from gate to gate, but for the first gate they are set to the initial state
-			Psi_transformed_real_mt      = State_input_real_shared
-			Psi_transformed_imag_mt      = State_input_imag_shared
-			Psi_transformed_real_copy_mt = State_input_real_copy_shared
-			Psi_transformed_imag_copy_mt = State_input_imag_copy_shared
 
 
-
-			Psi_transformed_real_mt_list      = g.split( Psi_transformed_real_mt, 1 )
-			Psi_transformed_imag_mt_list      = g.split( Psi_transformed_imag_mt, 1 )
-			Psi_transformed_real_copy_mt_list = g.split( Psi_transformed_real_copy_mt, 1 )
-			Psi_transformed_imag_copy_mt_list = g.split( Psi_transformed_imag_copy_mt, 1 )
+			Psi_transformed_real_mt_list      = g.split( State_input_real_shared, 1 )
+			Psi_transformed_imag_mt_list      = g.split( State_input_imag_shared, 1 )
+			Psi_transformed_real_copy_mt_list = g.split( State_input_real_copy_shared, 1 )
+			Psi_transformed_imag_copy_mt_list = g.split( State_input_imag_copy_shared, 1 )
 
 			index_pair = 1 << (control_qbit - small_qbit_num_limit)
 
-
-			states_real_mt_list      = []
-			states_imag_mt_list      = []
-			states_real_copy_mt_list = []
-			states_imag_copy_mt_list = []
 
 			mask_lower_bits = index_pair - 1 
 			mask_upper_bits = 1 << ( qbit_num - control_qbit )
 			mask_upper_bits = mask_upper_bits - 1
 			mask_upper_bits = mask_upper_bits << (control_qbit - small_qbit_num_limit )
+
+
+			control_qubit_state_1_indices = []
 
 			half_memory_slices = memory_slices >> 1
 			for memory_idx in range(half_memory_slices):
@@ -130,23 +123,15 @@ class Gate(Split_gates):
 				# index where the control qubit is in state 1
 				state_index_control_qubit_1 = state_index_control_qubit_0 + index_pair
 
+				control_qubit_state_1_indices.append( state_index_control_qubit_1 )
+
 					
-				states_real_mt_list.append(Psi_transformed_real_mt_list[state_index_control_qubit_1])
-				states_imag_mt_list.append(Psi_transformed_imag_mt_list[state_index_control_qubit_1])
-				states_real_copy_mt_list.append(Psi_transformed_real_copy_mt_list[state_index_control_qubit_1])
-				states_imag_copy_mt_list.append(Psi_transformed_imag_copy_mt_list[state_index_control_qubit_1])
 
-
-
-			states_real_mt      = g.concat(states_real_mt_list)
-			states_imag_mt      = g.concat(states_imag_mt_list)
-			states_real_copy_mt = g.concat(states_real_copy_mt_list)
-			states_imag_copy_mt = g.concat(states_imag_copy_mt_list)
-
-			storage_req_real = states_real_copy_mt.storage_request
-			storage_req_imag = states_imag_copy_mt.storage_request
-
-							
+			states_real_mt      = g.concat([Psi_transformed_real_mt_list[index] for index in control_qubit_state_1_indices] )
+			states_imag_mt      = g.concat([Psi_transformed_imag_mt_list[index] for index in control_qubit_state_1_indices] )
+			states_real_copy_mt = g.concat([Psi_transformed_real_copy_mt_list[index] for index in control_qubit_state_1_indices] )
+			states_imag_copy_mt = g.concat([Psi_transformed_imag_copy_mt_list[index] for index in control_qubit_state_1_indices] )
+			########################################################################################x				
 			with g.ResourceScope(name=f"prepare_state_pair_scope", is_buffered=True, time=0) as prepare_state_pair_scope :
 
 				# make a copy of the real part somewhere else on the chip (just for testing, will be removed)
