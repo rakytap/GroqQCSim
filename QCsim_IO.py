@@ -148,14 +148,14 @@ class IO:
 				
 
 				
-			print( half_memory_slices,  control_qubit_state_1_indices )
+			#print( half_memory_slices,  control_qubit_state_1_indices )
 			
 			row_min = vertical_offset_in_memory_map						
 			row_max = vertical_offset_in_memory_map+half_memory_slices
 			for superlane_idx in range(20):
 				col_min = horizontal_offset_in_memory_map + 16*superlane_idx
 				col_max = horizontal_offset_in_memory_map+2 + 16*superlane_idx
-				print( row_min, row_max, col_min, col_max )
+				#print( row_min, row_max, col_min, col_max )
 				mem_gather_map[ row_min:row_max, col_min:col_max ] = control_qubit_state_1_indices
 				
 
@@ -379,9 +379,9 @@ class IO:
 			
 			
 			
-			# generate control qubit memory maps for SL gate
+			# generate control qubit memory maps for SL gate (to select the correct elements from the state vector if SL gate is performed)
 			mem_gather_map = self.generate_control_qbit_maps_for_SL()
-			print(mem_gather_map)
+			self.control_qubit_address_maps_SL_mt = g.from_data(mem_gather_map, layout=control_qubit_address_maps_SL_layout)
 			
 
 			with g.ResourceScope(name="distribute_state_indices_scope", is_buffered=True, time=0) as distribute_state_indices_scope :
