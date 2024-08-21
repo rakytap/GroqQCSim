@@ -18,10 +18,10 @@ memory_slices = 1 << (qbit_num-small_qbit_num_limit)
 # maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
 # maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_slices+1,...,memory_slices)
 # each 2-byte column in the 16-byte blocks of the map tensor corresponds to a specific control qbit 	
-control_qubit_address_maps_SL_layout = f"A{memory_slices}(0-{memory_slices-1}), H1(W), S1(39)"
+control_qubit_address_maps_SL_west_layout = f"H1(W), A{memory_slices}(0-{memory_slices-1}), S1(39)"
 
 # permute maps used to reorder the state vector elements according to the given target qubit (permute map is also stored on the easter hemisphere)
-layout_permute_maps_west = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(37)"
+layout_permute_maps_west = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(36)"
 
 # if MXM is used to permute the state vector the single memory address need to be extended to address 20 memory addresses where the MXM permutation matrices are stored
 layout_expanded_mxm_permute_map_selector = "H1(W), S1(17)"
@@ -86,7 +86,15 @@ layout_zeros = f"H1(E), A1({320+2*gate_count}), S4(27-31)"
 layout_ones = f"H1(E), A1({320+2*gate_count}), S4(32-35)"
 
 # permute maps used to reorder the state vector elements according to the given target qubit (permute map is also stored on the western hemisphere)
-layout_permute_maps_east = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(E), S1(39)"
+layout_permute_maps_east = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(E), S1(37)"
+
+
+# memory address maps to read out state vector components with control qbit = 1 state 
+# maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
+# maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_slices+1,...,memory_slices)
+# each 2-byte column in the 16-byte blocks of the map tensor corresponds to a specific control qbit 	
+control_qubit_address_maps_SL_east_layout_a = f"H1(E), A{memory_slices}(0-{memory_slices-1}), S1(39)"
+control_qubit_address_maps_SL_east_layout_b = f"H1(E), A{memory_slices}(0-{memory_slices-1}), S1(38)"
 
 
 layout_gate_kernels_real_packed ="H1(E), A1(320), S4(40-43)"

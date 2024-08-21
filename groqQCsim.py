@@ -126,7 +126,7 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	if ( control_qbit < small_qbit_num_limit and control_qbit >= 0 ) :
 		control_state_1_selector[0,0:320:16] = control_qbit
 	else :
-		control_state_1_selector[0,0:320:16] = 8  # no contron qubit is used when filetring the gate kernels
+		control_state_1_selector[0,0:320:16] = 8  # no control qubit is used when filetring the gate kernels
 	control_state_0_selector = control_state_1_selector	
 	
 	
@@ -192,8 +192,11 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 
 		# pogram perfroming the Gate_SL operation
 		index_of_gate_program = 5
-		entry_point = iop["gate_SL"]["compute"]
-		gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})	
+		entry_point = iop["gate_SL"]["mono"]
+		gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+		#print( gate_output["test"] )	
+		#print( gate_output["test"].dtype )	
+		#print( gate_output["test"].shape )		
 
 	else:
 
@@ -210,7 +213,7 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	
 	Psi_transformed_imag = download_program_output["State_transformed_imag"]
 	Psi_transformed_imag = np.reshape( Psi_transformed_imag, (Psi_transformed_imag.size,) )	
-	
+	print('ppppppppppppppppp ', input_real[512:522 ] )
 	return Psi_transformed_real, Psi_transformed_imag
 
 

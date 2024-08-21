@@ -93,19 +93,19 @@ class IO:
 		mem_gather_map = np.zeros( (half_memory_slices << 1, 320,), dtype=np.uint8 )
 	
 	
-		for control_qbit in range(8, qbit_num+1):
+		for control_qbit in range(9, 10):#qbit_num+1):
 	
 			index_pair = 1 << (control_qbit - small_qbit_num_limit)
 			
 			# each 2-byte column in the 16-byte blocks of the map tensor corresponds to a specific control qbit 
 			if control_qbit < 16:
-				horizontal_offset_in_memory_map = (control_qbit-8)*2 
+				horizontal_offset_in_memory_map = (control_qbit-9)*2 
 			else:
-				horizontal_offset_in_memory_map = (control_qbit-16)*2 
+				horizontal_offset_in_memory_map = (control_qbit-17)*2 
 				
 				
-			# maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
-			# maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_slices+1,...,memory_slices)		
+			# maps for control_qbits for 9,10,...,16 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
+			# maps for control_qbits for 17,...,21 on the lower half of the memory tensor (addresses half_memory_slices+1,...,memory_slices)		
 			if control_qbit < 16:
 				vertical_offset_in_memory_map = 0
 			else:
@@ -136,7 +136,9 @@ class IO:
 				
 				# odd indices are stored on bank2
 				if state_index_control_qubit_1 % 2 == 1:
-					state_index_control_qubit_1 = state_index_control_qubit_1 + half_of_slice
+					state_index_control_qubit_1 = (state_index_control_qubit_1 >> 1 ) + half_of_slice
+				else :
+					state_index_control_qubit_1 = state_index_control_qubit_1 >> 1
 
 
 				# the 2-byte (16-bit) memory offset needs to be splitted into two bytes
@@ -149,6 +151,8 @@ class IO:
 
 				
 			#print( half_memory_slices,  control_qubit_state_1_indices )
+			print( "uuuu ")			
+			print( control_qubit_state_1_indices[:,0].astype(np.uint16) + (control_qubit_state_1_indices[:,1].astype(np.uint16) << 8) )
 			
 			row_min = vertical_offset_in_memory_map						
 			row_max = vertical_offset_in_memory_map+half_memory_slices
@@ -160,7 +164,7 @@ class IO:
 				
 
 				
-				
+		print(mem_gather_map)		
 		return mem_gather_map
 			
 	
@@ -381,7 +385,13 @@ class IO:
 			
 			# generate control qubit memory maps for SL gate (to select the correct elements from the state vector if SL gate is performed)
 			mem_gather_map = self.generate_control_qbit_maps_for_SL()
-			self.control_qubit_address_maps_SL_mt = g.from_data(mem_gather_map, layout=control_qubit_address_maps_SL_layout)
+			print( 'uiiiiiiiiiiiiiiiii ', mem_gather_map.dtype )
+			self.control_qubit_address_maps_SL_west_mt   = g.from_data(mem_gather_map, layout=control_qubit_address_maps_SL_west_layout)
+			self.control_qubit_address_maps_SL_east_a_mt = g.from_data(mem_gather_map, layout=control_qubit_address_maps_SL_east_layout_a)			
+			self.control_qubit_address_maps_SL_east_b_mt = g.from_data(mem_gather_map, layout=control_qubit_address_maps_SL_east_layout_b)			
+			self.control_qubit_address_maps_SL_west_mt.is_static = True	
+			self.control_qubit_address_maps_SL_east_a_mt.is_static = True						
+			self.control_qubit_address_maps_SL_east_b_mt.is_static = True
 			
 
 			with g.ResourceScope(name="distribute_state_indices_scope", is_buffered=True, time=0) as distribute_state_indices_scope :
