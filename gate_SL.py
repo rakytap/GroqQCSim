@@ -115,29 +115,60 @@ class Gate(Split_gates):
 					Psi_transformed_imag_copy_mt_list = g.split(state_permuted_imag_mt, dim=-2, num_splits=g.float32.size)
 						
 					
+					half_memory_slices = memory_slices >> 1
+										
 					# 20 cycles to read the permute matrix, 8 for installing the weights and each matmul operation takes "memory_slices" cycles
-					time_list = [8, 28, 8+memory_slices, 28+memory_slices]
+					time_list = [0, 0, half_memory_slices, half_memory_slices]
 					weights_list = []
 					weights_list.append(g.install_weights(permute_matrix_west_1_st, planes=mxm_requests[0], time=0))
 					weights_list.append(g.install_weights(permute_matrix_west_2_st, planes=mxm_requests[1], time=20))					
 					weights_list.append(g.install_weights(permute_matrix_east_1_st, planes=mxm_requests[2], time=-26)) #TODO make it time=0
 					weights_list.append(g.install_weights(permute_matrix_east_2_st, planes=mxm_requests[3], time=20-26)) #TODO make it time=20
+
+
+
+					control_qubit_address_maps_SL_west_tmp   = g.concat( control_qubit_address_maps_SL_west_list[0:half_memory_slices] )
+					control_qubit_address_maps_SL_east_tmp_a = g.concat( control_qubit_address_maps_SL_east_list_a[0:half_memory_slices] )
+					control_qubit_address_maps_SL_east_tmp_b = g.concat( control_qubit_address_maps_SL_east_list_b[0:half_memory_slices] )
+					
 					
 					for byte_idx in range(4):
-					
-						# Real part
-						permuted_state_real_st = Psi_transformed_real_mt_list[byte_idx].matmul(weights_list[byte_idx%2+2], planes=mxm_requests[byte_idx%2+2], time=time_list[byte_idx])
+
+						if byte_idx % 2 == 0:
+							control_qubit_address_maps_SL_west_st = control_qubit_address_maps_SL_west_tmp.read( streams = g.SG1_E[31], time=time_list[byte_idx])
+							control_qubit_address_maps_SL_east_a_st = control_qubit_address_maps_SL_east_tmp_a.read( streams = g.SG1_W[31] )					
+							control_qubit_address_maps_SL_east_b_st = control_qubit_address_maps_SL_east_tmp_b.read( streams = g.SG1_W[30] )		
+
+
+						### Real part
+
+						permuted_state_real_st = g.mem_gather(Psi_transformed_real_mt_list[byte_idx], control_qubit_address_maps_SL_west_st, output_streams=[g.SG1_E[24+byte_idx%2]] )
+						permuted_state_real_st = permuted_state_real_st.matmul(weights_list[byte_idx%2+2], planes=mxm_requests[byte_idx%2+2])
+
+						#permuted_state_real_st = Psi_transformed_real_mt_list[byte_idx].matmul(weights_list[byte_idx%2+2], planes=mxm_requests[byte_idx%2+2], time=time_list[byte_idx])
 						permuted_state_real_st = g.reinterpret(permuted_state_real_st, dtype=g.int8)
+
 						# we only need the last byte from the MXM result
 						permuted_state_real_st = g.split(permuted_state_real_st, dim=-2, num_splits=g.int32.size)[0]
-						permuted_state_real_st.write(storage_req=Psi_transformed_real_copy_mt_list[byte_idx].storage_request)
 
-						# Imag part
-						permuted_state_imag_st = Psi_transformed_imag_mt_list[byte_idx].matmul(weights_list[byte_idx%2], planes=mxm_requests[byte_idx%2], time=time_list[byte_idx])
+						g.mem_scatter(permuted_state_real_st, Psi_transformed_real_copy_mt_list[byte_idx], control_qubit_address_maps_SL_east_a_st)
+						#permuted_state_real_st.write(storage_req=Psi_transformed_real_copy_mt_list[byte_idx].storage_request)
+
+
+
+						### Imag part
+
+						permuted_state_imag_st = g.mem_gather(Psi_transformed_imag_mt_list[byte_idx], control_qubit_address_maps_SL_west_st, output_streams=[g.SG1_W[24+byte_idx%2]] )
+						permuted_state_imag_st = permuted_state_imag_st.matmul(weights_list[byte_idx%2], planes=mxm_requests[byte_idx%2])
+
+						#permuted_state_imag_st = Psi_transformed_imag_mt_list[byte_idx].matmul(weights_list[byte_idx%2], planes=mxm_requests[byte_idx%2], time=time_list[byte_idx])
 						permuted_state_imag_st = g.reinterpret(permuted_state_imag_st, dtype=g.int8)
+
 						# we only need the last byte from the MXM result
 						permuted_state_imag_st = g.split(permuted_state_imag_st, dim=-2, num_splits=g.int32.size)[0]
-						permuted_state_imag_st.write(storage_req=Psi_transformed_imag_copy_mt_list[byte_idx].storage_request)
+
+						g.mem_scatter(permuted_state_imag_st, Psi_transformed_imag_copy_mt_list[byte_idx], control_qubit_address_maps_SL_east_b_st)
+						#permuted_state_imag_st.write(storage_req=Psi_transformed_imag_copy_mt_list[byte_idx].storage_request)
 
 					state_permuted_real_mt = g.reinterpret(state_permuted_real_mt, dtype=g.float32)
 					state_permuted_imag_mt = g.reinterpret(state_permuted_imag_mt, dtype=g.float32)
