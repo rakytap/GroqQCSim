@@ -485,19 +485,6 @@ class Gate(Split_gates):
 
 
 
-
-
-
-				#states_real_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real", storage_req=states_real_mt.storage_request)				
-				#Psi_transformed_real_copy_mt = Psi_transformed_real_st.write(name=f"Psi_transformed_real_copy", storage_req=permuted_state_real_mt.storage_request)
-
-
-				
-
-
-				#states_imag_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag", storage_req=states_imag_mt.storage_request)
-				#Psi_transformed_imag_copy_mt = Psi_transformed_imag_st.write(name=f"Psi_transformed_imag_copy", storage_req=permuted_state_imag_mt.storage_request)
-				
 					
 					
 			self.pgm_pkg.compile_program_context(pgm5)
