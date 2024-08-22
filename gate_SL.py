@@ -266,66 +266,18 @@ class Gate(Split_gates):
 
 
 
-			Psi_real_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=State_input_real_shared.storage_request, initialized=False)		
-			Psi_imag_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=State_input_imag_shared.storage_request, initialized=False)
-			Psi_real_copy_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=State_input_real_copy_shared.storage_request, initialized=False)
-			Psi_imag_copy_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=State_input_imag_copy_shared.storage_request, initialized=False)
-
-			Psi_real_mt_list      = g.split( Psi_real_mt_320, 1 )
-			Psi_imag_mt_list      = g.split( Psi_imag_mt_320, 1 )
-			Psi_real_copy_mt_list = g.split( Psi_real_copy_mt_320, 1 )
-			Psi_imag_copy_mt_list = g.split( Psi_imag_copy_mt_320, 1 )
-
-			index_pair = 1 << (control_qbit - small_qbit_num_limit)
-
-
-			mask_lower_bits = index_pair - 1 
-			mask_upper_bits = 1 << ( qbit_num - control_qbit )
-			mask_upper_bits = mask_upper_bits - 1
-			mask_upper_bits = mask_upper_bits << (control_qbit - small_qbit_num_limit )
-
-
-			control_qubit_state_1_indices = []
-
-			half_memory_slices = memory_slices >> 1
-			for memory_idx in range(half_memory_slices):
-
-				lower_bits  = memory_idx & mask_lower_bits
-				higher_bits = memory_idx & mask_upper_bits
-
-				# index where the control qubit is in state 0
-				state_index_control_qubit_0 = (higher_bits << 1) + lower_bits
-
-				# index where the control qubit is in state 1
-				state_index_control_qubit_1 = state_index_control_qubit_0 + index_pair
-
-				control_qubit_state_1_indices.append( state_index_control_qubit_1 )
-					
 			
-			states_real_mt      = g.concat([Psi_real_mt_list[index] for index in control_qubit_state_1_indices] )
-			states_imag_mt      = g.concat([Psi_imag_mt_list[index] for index in control_qubit_state_1_indices] )
-			states_real_copy_mt = g.concat([Psi_real_copy_mt_list[index] for index in control_qubit_state_1_indices] )
-			states_imag_copy_mt = g.concat([Psi_imag_copy_mt_list[index] for index in control_qubit_state_1_indices] )
 
-			permuted_state_real_mt, permuted_state_imag_mt = states_real_copy_mt, states_imag_copy_mt
 				
 			with g.ResourceScope(name=f"apply_gate_scope", is_buffered=True, predecessors=[prepare_state_pair_scope], time=None) as apply_gate_scope :
 
+				# define state with 320 vectors instead of 256 inner splits
+				Psi_real_mt_320      = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=State_input_real_shared.storage_request, initialized=False)		
+				Psi_imag_mt_320      = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=State_input_imag_shared.storage_request, initialized=False)
+				Psi_real_copy_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=State_input_real_copy_shared.storage_request, initialized=False)
+				Psi_imag_copy_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=State_input_imag_copy_shared.storage_request, initialized=False)
+
 				
-				alu_rq_0  = g.tensor.create_alu_request( alus=[0] )
-				alu_rq_1  = g.tensor.create_alu_request( alus=[1] )
-				alu_rq_4  = g.tensor.create_alu_request( alus=[4] )			
-				alu_rq_5  = g.tensor.create_alu_request( alus=[5] )				
-				alu_rq_8  = g.tensor.create_alu_request( alus=[8] )				
-				alu_rq_9  = g.tensor.create_alu_request( alus=[9] )							
-				alu_rq_11 = g.tensor.create_alu_request( alus=[11] )			
-				alu_rq_12 = g.tensor.create_alu_request( alus=[12] )
-				alu_rq_13 = g.tensor.create_alu_request( alus=[13] )	
-
-
-
-				###############################
-
 				# separating the tensors along the slice dimension (separating the bytes)
 				Psi_real_mt_320_8       = g.reinterpret(Psi_real_mt_320, dtype=g.int8)
 				Psi_imag_mt_320_8       = g.reinterpret(Psi_imag_mt_320, dtype=g.int8)			
@@ -342,21 +294,18 @@ class Gate(Split_gates):
 				half_memory_slices = memory_slices >> 1
 				control_qubit_address_maps_SL_west_tmp   = g.concat( control_qubit_address_maps_SL_west_list[0:half_memory_slices] )
 				control_qubit_address_maps_SL_east_tmp_a = g.concat( control_qubit_address_maps_SL_east_list_a[0:half_memory_slices] )
-				control_qubit_address_maps_SL_east_tmp_b = g.concat( control_qubit_address_maps_SL_east_list_b[0:half_memory_slices] )
-			
-			
-				state_permute_map_selector_shared = g.shared_memory_tensor(self.state_permute_map_selector_mt, name="state_permute_map_selector_shared")		
-				state_permute_map_selector_list   = g.split_vectors(input=state_permute_map_selector_shared, splits=[1]*gate_count)
-					
+								
 
-				memory_addresses = control_qubit_address_maps_SL_west_tmp.shape[0]
-
-				control_qubit_address_maps_SL_west_st = control_qubit_address_maps_SL_west_tmp.read( streams = g.SG1_E[31], time=0 )
+				control_qubit_address_maps_SL_west_st   = control_qubit_address_maps_SL_west_tmp.read( streams = g.SG1_E[31], time=0 )
 				control_qubit_address_maps_SL_east_a_st = control_qubit_address_maps_SL_east_tmp_a.read( streams = g.SG1_W[27] )
-				state_real_bytes_st_list = []
-				state_imag_bytes_st_list = []
+
+
+				# read out the states byte-wise with mem-gather
+				state_real_bytes_st_list      = []
+				state_imag_bytes_st_list      = []
 				state_real_copy_bytes_st_list = []
 				state_imag_copy_bytes_st_list = []
+
 				for byte_idx in range(4):
 					
 					# Real part
@@ -398,79 +347,18 @@ class Gate(Split_gates):
 				state_imag_copy_st = g.concat( state_imag_copy_bytes_st_list, dim=1 )
 				state_permuted_imag_st = g.reinterpret(state_imag_copy_st, dtype=g.float32)
 				
-				##############################
 
-				# calculate Psi_real * gate_diag_real				
-				#state_real_st 		       = states_real_mt.read( streams=[g.SG4[0]] )	
-				gate_diag_real_mt_256         = gate_diag_real_mt#g.constant_tensor((1,256,), g.float32, storage_req=storage_req_real_diag, name="gate_diag_real_mt_256", initialized=False)	
-				gate_diag_real_st 	       = gate_diag_real_mt_256.read( streams=[g.SG4_W[0]] )
-				state_real__gate_diag_real_st = g.mul( state_real_st, gate_diag_real_st, alus=alu_rq_12, output_streams=g.SG4_E[0] )#, time=150 )
-				
+				Psi_transformed_real_st, Psi_transformed_imag_st = self.VXM_S_round_trip_st(state_real_st, 
+                                                                                                            state_imag_st, 
+                                                                                                            state_permuted_real_st, 
+                                                                                                            state_permuted_imag_st, 
+                                                                                                            gate_diag_real_mt, 
+                                                                                                            gate_diag_imag_mt, 
+                                                                                                            gate_off_diag_real_mt, 
+                                                                                                            gate_off_diag_imag_mt)
 
-				# calculate Psi_imag * gate_diag_imag
-				#state_imag_st 		       = states_imag_mt.read( streams=[g.SG4[3]] )
-				gate_diag_imag_mt_256         = gate_diag_imag_mt#g.constant_tensor((1,256,), g.float32, storage_req=storage_req_imag_diag, name="gate_diag_imag_mt_256", initialized=False)	
-				gate_diag_imag_st 	       = gate_diag_imag_mt_256.read( streams=[g.SG4_W[3]] )
-				state_imag__gate_diag_imag_st = g.mul( state_imag_st, gate_diag_imag_st, alus=[4], output_streams=g.SG4_E[2] )	
-				
 
-				# calculate Psi_real * gate_diag_real - Psi_imag * gate_diag_imag
-				state__gate_diag_real_st	= g.sub( state_real__gate_diag_real_st, state_imag__gate_diag_imag_st, alus=[2], output_streams=g.SG4_E[2] )
-						
-				
-
-	
-					
-					
-				# calculate Psi_imag * gate_diag_real
-				state_imag__gate_diag_real_st	= g.mul( state_imag_st, gate_diag_real_st, alus=alu_rq_1, output_streams=g.SG4_E[3] )		
-						
-				# calculate Psi_real * gate_diag_imag
-				state_real__gate_diag_imag_st	= g.mul( state_real_st, gate_diag_imag_st, alus=[0], output_streams=g.SG4_E[1] )
-				
-
-				# calculate Psi_real * gate_diag_imag + Psi_imag * gate_diag_real
-				state__gate_diag_imag_st	= g.add( state_imag__gate_diag_real_st, state_real__gate_diag_imag_st, alus=[3], output_streams=g.SG4_W[1]  )
-				
-					
-						
-					
-				# calculate Psi_permuted_real * gate_off_diag_real
-				#state_permuted_real_st     = permuted_state_real_mt.read( streams=[g.SG4_E[6]] )
-				gate_off_diag_real_mt_256 = gate_off_diag_real_mt#g.constant_tensor((1,256,), g.float32, storage_req=storage_req_real_off_diag, name="gate_off_diag_real_mt_256", initialized=False)
-				gate_off_diag_real_st 	                    = gate_off_diag_real_mt_256.read( streams=[g.SG4_W[6]] )
-				state_permuted_real__gate_off_diag_real_st = g.mul( state_permuted_real_st, gate_off_diag_real_st, alus=[13], output_streams=g.SG4_E[6] )
-
-				# calculate Psi_permuted_imag * gate_off_diag_imag
-				#state_permuted_imag_st 	   = permuted_state_imag_mt.read( streams=[g.SG4[4]] )
-				gate_off_diag_imag_mt_256 = gate_off_diag_imag_mt#g.constant_tensor((1,256,), g.float32, storage_req=storage_req_imag_off_diag, name="gate_off_diag_imag_mt_256", initialized=False)					
-				gate_off_diag_imag_st                      = gate_off_diag_imag_mt_256.read( streams=[g.SG4_W[5]] )
-				state_permuted_imag__gate_off_diag_imag_st = g.mul( state_permuted_imag_st, gate_off_diag_imag_st, alus=[5], output_streams=g.SG4_E[5] )	
-
-				# calculate Psi_permuted_real * gate_off_diag_real - Psi_permuted_imag * gate_off_diag_imag
-				state_permuted__gate_off_diag_real_st	= g.sub( state_permuted_real__gate_off_diag_real_st, state_permuted_imag__gate_off_diag_imag_st, alus=[10], output_streams=g.SG4_E[5]  )	
-
-					
-				
-				# calculate Psi_permuted_imag * gate_off_diag_real
-				state_permuted_imag__gate_off_diag_real_st	= g.mul( state_permuted_imag_st, gate_off_diag_real_st, alus=[9], output_streams=g.SG4_E[4] )
-					
-				# calculate Psi_permuted_real * gate_diag_imag
-				state_permuted_real__gate_off_diag_imag_st	= g.mul( state_permuted_real_st, gate_off_diag_imag_st, alus=[8], output_streams=g.SG4_E[7] )
-				
-				# calculate Psi_permuted_real * gate_off_diag_imag + Psi_permuted_imag * gate_off_diag_real
-				state_permuted__gate_off_diag_imag_st	= g.add( state_permuted_imag__gate_off_diag_real_st, state_permuted_real__gate_off_diag_imag_st, alus=[11], output_streams=g.SG4_W[7]  )
-				
-		
-
-				# calculate (Psi*gate_diag).real + (Psi_permuted*gate_off_diag).real
-				Psi_transformed_real_st	= g.add( state__gate_diag_real_st,  state_permuted__gate_off_diag_real_st, alus=[7], output_streams=g.SG4_W[2] )
-				Psi_transformed_real_st = g.vxm_identity( Psi_transformed_real_st, alus=[6], output_streams=g.SG4_W[2] )
-
-				# calculate (Psi*gate_diag).imag + (Psi_permuted*gate_off_diag).imag
-				Psi_transformed_imag_st	    = g.add( state__gate_diag_imag_st,  state_permuted__gate_off_diag_imag_st, alus=[14], output_streams=g.SG4_E[6] )
-				Psi_transformed_imag_st = g.vxm_identity( Psi_transformed_imag_st, alus=[15], output_streams=g.SG4_W[0] )
-
+				# write the calculated states into the memory with mem scatter
 				Psi_transformed_real_mt_320_8       = g.reinterpret(Psi_transformed_real_st, dtype=g.int8)
 				Psi_transformed_imag_mt_320_8       = g.reinterpret(Psi_transformed_imag_st, dtype=g.int8)			
 				Psi_transformed_real_bytes_mt_list  = g.split(Psi_transformed_real_mt_320_8, dim=-2, num_splits=g.float32.size)

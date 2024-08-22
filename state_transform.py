@@ -12,7 +12,7 @@ qbit_num = groqQCsim.qbit_num
 
 if __name__ == "__main__":
 	target_qbit  = 4
-	control_qbit = 9 #i.e. no control qubit is involved
+	control_qbit = -1 #i.e. no control qubit is involved
 
 	# determine the soze of the unitary to be decomposed
 	matrix_size = 1 << qbit_num
