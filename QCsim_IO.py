@@ -78,8 +78,8 @@ class IO:
 	def generate_control_qbit_maps_for_SL(self):
 	
 		
-		control_qbit_min = 8
-		control_qbit_max = 21		
+		control_qbit_min = 9
+		control_qbit_max = qbit_num		
 
 	
 
@@ -93,13 +93,13 @@ class IO:
 		mem_gather_map = np.zeros( (half_memory_slices << 1, 320,), dtype=np.uint8 )
 	
 	
-		for control_qbit in range(9, 10):#qbit_num+1):
+		for control_qbit in range(control_qbit_min, control_qbit_max+1):
 	
 			index_pair = 1 << (control_qbit - small_qbit_num_limit)
 			
 			# each 2-byte column in the 16-byte blocks of the map tensor corresponds to a specific control qbit 
 			if control_qbit < 16:
-				horizontal_offset_in_memory_map = (control_qbit-9)*2 
+				horizontal_offset_in_memory_map = (control_qbit-control_qbit_min)*2 
 			else:
 				horizontal_offset_in_memory_map = (control_qbit-17)*2 
 				
@@ -150,9 +150,7 @@ class IO:
 				
 
 				
-			#print( half_memory_slices,  control_qubit_state_1_indices )
-			print( "uuuu ")			
-			print( control_qubit_state_1_indices[:,0].astype(np.uint16) + (control_qubit_state_1_indices[:,1].astype(np.uint16) << 8) )
+			#print( control_qubit_state_1_indices[:,0].astype(np.uint16) + (control_qubit_state_1_indices[:,1].astype(np.uint16) << 8) )
 			
 			row_min = vertical_offset_in_memory_map						
 			row_max = vertical_offset_in_memory_map+half_memory_slices
@@ -163,8 +161,6 @@ class IO:
 				mem_gather_map[ row_min:row_max, col_min:col_max ] = control_qubit_state_1_indices
 				
 
-				
-		print(mem_gather_map)		
 		return mem_gather_map
 			
 	
@@ -385,15 +381,21 @@ class IO:
 			
 			# generate control qubit memory maps for SL gate (to select the correct elements from the state vector if SL gate is performed)
 			mem_gather_map = self.generate_control_qbit_maps_for_SL()
-			print( 'uiiiiiiiiiiiiiiiii ', mem_gather_map.dtype )
-			self.control_qubit_address_maps_SL_west_mt   = g.from_data(mem_gather_map, layout=control_qubit_address_maps_SL_west_layout)
-			self.control_qubit_address_maps_SL_east_a_mt = g.from_data(mem_gather_map, layout=control_qubit_address_maps_SL_east_layout_a)			
-			self.control_qubit_address_maps_SL_east_b_mt = g.from_data(mem_gather_map, layout=control_qubit_address_maps_SL_east_layout_b)			
-			self.control_qubit_address_maps_SL_west_mt.is_static = True	
-			self.control_qubit_address_maps_SL_east_a_mt.is_static = True						
-			self.control_qubit_address_maps_SL_east_b_mt.is_static = True
-			
 
+			self.control_qubit_address_maps_SL_west_mt = g.from_data(mem_gather_map, layout=control_qubit_address_maps_SL_west_layout)
+			self.control_qubit_address_maps_SL_east_mt = g.from_data(mem_gather_map, layout=control_qubit_address_maps_SL_east_layout_a)			
+			self.control_qubit_address_maps_SL_west_mt.is_static = True	
+			self.control_qubit_address_maps_SL_east_mt.is_static = True
+			'''
+			distributor_map_np = np.zeros( (320,), dtype=np.uint8 )
+			distributor_map_np[0:320:16] = 0
+			distributor_map_np[1:320:16] = 1
+			self.distributor_map_mt   = g.from_data(distributor_map_np, layout=layout_distributor_maps_west)
+			'''
+
+			self.distributor_map_mt = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="control_qubit_distributor_maps", layout=layout_distributor_maps_west)	
+			
+			
 			with g.ResourceScope(name="distribute_state_indices_scope", is_buffered=True, time=0) as distribute_state_indices_scope :
 
 				state_1_selector_st = state_1_selector_mt.read(streams=[g.SG1[0]])

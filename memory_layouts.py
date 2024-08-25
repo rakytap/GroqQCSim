@@ -20,11 +20,12 @@ memory_slices = 1 << (qbit_num-small_qbit_num_limit)
 # each 2-byte column in the 16-byte blocks of the map tensor corresponds to a specific control qbit 	
 control_qubit_address_maps_SL_west_layout = f"H1(W), A{memory_slices}(0-{memory_slices-1}), S1(39)"
 
+# control qubit dependent distributor map for SL gate
+layout_distributor_maps_west = "H1(W), -1, S1(37)" 
+
 # permute maps used to reorder the state vector elements according to the given target qubit (permute map is also stored on the easter hemisphere)
 layout_permute_maps_west = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(36)"
 
-# if MXM is used to permute the state vector the single memory address need to be extended to address 20 memory addresses where the MXM permutation matrices are stored
-layout_expanded_mxm_permute_map_selector = "H1(W), S1(17)"
 
 
 # memory layout for the mxm permutation marices (identical permutation matrices are also stored on the easterns hemisphere)
@@ -36,6 +37,8 @@ layout_constant_1_address_offset         = f"H1(W), A{1}(320), S1(18)"
 layout_state_permute_map_selector        = f"H1(W), A{gate_count}(320-{320+gate_count-1}), S1(17)"
 layout_mxm_permute_map_selector          = f"H1(W), A{gate_count}(320-{320+gate_count-1}), S1(17)" #either state permute map selector or mxm_permute_map selctor is used on the chip, but not booth
 
+# if MXM is used to permute the state vector the single memory address need to be extended to address 20 memory addresses where the MXM permutation matrices are stored
+layout_expanded_mxm_permute_map_selector = "H1(W), S1(17)"
 
 
 
@@ -94,7 +97,7 @@ layout_permute_maps_east = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1})
 # maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_slices+1,...,memory_slices)
 # each 2-byte column in the 16-byte blocks of the map tensor corresponds to a specific control qbit 	
 control_qubit_address_maps_SL_east_layout_a = f"H1(E), A{memory_slices}(0-{memory_slices-1}), S1(39)"
-control_qubit_address_maps_SL_east_layout_b = f"H1(E), A{memory_slices}(0-{memory_slices-1}), S1(38)"
+control_qubit_address_maps_SL_east_layout_b = f"H1(E), -1, S1(38)"
 
 
 layout_gate_kernels_real_packed ="H1(E), A1(320), S4(40-43)"

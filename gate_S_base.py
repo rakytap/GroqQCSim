@@ -89,8 +89,8 @@ class Gate_S_base(Split_gates):
 							
 		# split the stored permutation matrices into 16-line chunks
 		# one permute matrix will occupy 20 addresses
-		mxm_permute_rows = g.reshape( mxm_permute_matrices, [ small_qbit_num_limit*320, 1, 320 ] )
-		mxm_permute_rows_list = g.split( mxm_permute_rows, dim=0, num_splits=small_qbit_num_limit*320 )
+		mxm_permute_rows           = g.reshape( mxm_permute_matrices, [ small_qbit_num_limit*320, 1, 320 ] )
+		mxm_permute_rows_list      = g.split( mxm_permute_rows, dim=0, num_splits=small_qbit_num_limit*320 )
 		mxm_permute_mt_slices_list = []
 					
 		for slice_idx in range(16):
@@ -104,7 +104,10 @@ class Gate_S_base(Split_gates):
 		# the permutation matrix occupy 20 adresses over 16 slices
 		for permute_selector_idx in range(20):
                                        
-			mxm_permute_row_selector_st = mxm_permute_row_selectors_list[permute_selector_idx].read( streams = g.SG1[31])
+			if mxm_permute_row_selectors_list[permute_selector_idx].is_memory_tensor :                          
+				mxm_permute_row_selector_st = mxm_permute_row_selectors_list[permute_selector_idx].read( streams = g.SG1[31])
+			else:
+				mxm_permute_row_selector_st = mxm_permute_row_selectors_list[permute_selector_idx]  # already given by a stream tensor
 						                
 			for stream_idx in range(16):
 

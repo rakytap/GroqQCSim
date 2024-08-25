@@ -12,7 +12,7 @@ qbit_num = groqQCsim.qbit_num
 
 if __name__ == "__main__":
 	target_qbit  = 4
-	control_qbit = 9 #i.e. no control qubit is involved
+	control_qbit = 12 #i.e. no control qubit is involved
 
 	# determine the soze of the unitary to be decomposed
 	matrix_size = 1 << qbit_num
@@ -99,7 +99,7 @@ if __name__ == "__main__":
 	#State_orig_real_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
 	#State_orig_imag_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
 
-	real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbit, control_qbit, gate_kernels, mxm_permutation = True)
+	real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbit, control_qbit, gate_kernels, mxm_permutation = False)
 	print(' ')
 	print( 'difference between CPU oracle and Groq chip (real part): ', scipy.linalg.norm( real_part - np.real( State_transformed_oracle ) , 2), '(imag part): ', scipy.linalg.norm( imag_part - np.imag( State_transformed_oracle ) , 2) )
 
@@ -118,5 +118,13 @@ if __name__ == "__main__":
 	print( np.real( State_transformed_oracle[0:] ) )
 	print(' ')
 	print( real_part[0:] )
+	isnan = np.isnan( real_part ) 
+	for idx in range(real_part.size):
+		if isnan[idx] == True:
+			print( idx, real_part[idx] )
+	#print( imag_part[0:512] )	
+	
 
+	scipy.linalg.norm( real_part , 2)
+	scipy.linalg.norm( real_part - np.real( State_transformed_oracle ) , 2)
 

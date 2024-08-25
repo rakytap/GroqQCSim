@@ -2,9 +2,68 @@ from split_gates import Split_gates
 from memory_layouts import *
 import groq.api as g
 
+import numpy as np
+
 class Gate(Split_gates):
 	def __init__(self, pgm_pkg, mxm_permutation=True):
 		super().__init__(pgm_pkg, mxm_permutation = mxm_permutation)
+
+		# only permutator is supported to do permuattion is SL gate due to stream conflicts with MXM and transposer
+		self.mxm_permutation = False
+
+
+	def select_L_control_qubit_map_east(self, time=None):
+
+		half_memory_slices = memory_slices >> 1
+
+		control_qubit_address_maps_SL_east_list = g.split( self.control_qubit_address_maps_SL_east_shared, 1 )
+
+		control_qubit_address_maps_SL_east_mt   = g.concat( control_qubit_address_maps_SL_east_list[0:half_memory_slices] )
+		control_qubit_address_maps_SL_east_st   = control_qubit_address_maps_SL_east_mt.read( streams = g.SG1[27], time=time )
+
+
+		control_qubit_address_maps_SL_east_st = g.distribute_8( control_qubit_address_maps_SL_east_st, 
+									self.distributor_map_mt,
+									distributor_req=self.distributor_request_east,
+									map_stream_req=g.SG1[12],
+									bypass8=0b11110111,
+									)	
+
+
+		control_qubit_address_maps_SL_east_st = g.transpose_null(control_qubit_address_maps_SL_east_st, 
+					                                                         transposer_req=self.transposer_request_east, 
+					                                                         stream_order=[11])			
+
+		return control_qubit_address_maps_SL_east_st
+
+
+
+
+	def select_L_control_qubit_map_west(self, time=None):
+
+		half_memory_slices = memory_slices >> 1
+
+		control_qubit_address_maps_SL_west_list = g.split( self.control_qubit_address_maps_SL_west_shared, 1 )
+
+		control_qubit_address_maps_SL_west_mt   = g.concat( control_qubit_address_maps_SL_west_list[0:half_memory_slices] )
+		control_qubit_address_maps_SL_west_st   = control_qubit_address_maps_SL_west_mt.read( streams = g.SG1[31], time=time )
+
+
+		control_qubit_address_maps_SL_west_st = g.distribute_8( control_qubit_address_maps_SL_west_st, 
+									self.distributor_map_mt,
+									distributor_req=self.distributor_request_west,
+									map_stream_req=g.SG1[12],
+									bypass8=0b01111111,
+									)	
+
+
+		control_qubit_address_maps_SL_west_st = g.transpose_null(control_qubit_address_maps_SL_west_st, 
+					                                                         transposer_req=self.transposer_request_west, 
+					                                                         stream_order=[15])			
+
+		return control_qubit_address_maps_SL_west_st
+
+
 	
 	def gate_SL_program(self):
 		#############################################################################################################x		
@@ -51,19 +110,30 @@ class Gate(Split_gates):
 			# real and imag components of the broadcasted 00, 01, 10, 11 elements of the gate kernels (each element of a 320 vector contains either the 00,01,10 or 11 element)
 			
 			#########################################
-			control_qubit_address_maps_SL_west_shared = 	g.shared_memory_tensor(self.control_qubit_address_maps_SL_west_mt, name="control_qubit_address_maps_SL_west_shared")		
-			control_qubit_address_maps_SL_west_list = g.split( control_qubit_address_maps_SL_west_shared, 1 )
+			self.control_qubit_address_maps_SL_west_shared = g.shared_memory_tensor(self.control_qubit_address_maps_SL_west_mt, name="control_qubit_address_maps_SL_west_shared")		
+			self.control_qubit_address_maps_SL_east_shared = g.shared_memory_tensor(self.control_qubit_address_maps_SL_east_mt, name="control_qubit_address_maps_SL_east_shared")		
 			
-			control_qubit_address_maps_SL_east_shared_a = 	g.shared_memory_tensor(self.control_qubit_address_maps_SL_east_a_mt, name="control_qubit_address_maps_SL_east_shared_a")		
-			control_qubit_address_maps_SL_east_list_a = g.split( control_qubit_address_maps_SL_east_shared_a, 1 )
-			
-			control_qubit_address_maps_SL_east_shared_b = 	g.shared_memory_tensor(self.control_qubit_address_maps_SL_east_b_mt, name="control_qubit_address_maps_SL_east_shared_b")		
-			control_qubit_address_maps_SL_east_list_b = g.split( control_qubit_address_maps_SL_east_shared_b, 1 )
 
 			
 			
+
+			self.transposer_request_west  = g.tensor.create_transposer_request( [1], 1) # request transposer on the west side
+			self.transposer_request_east  = g.tensor.create_transposer_request( [3], 1) # request transposer on the east side
+			self.distributor_request_west = g.tensor.create_distributor_request( [3], 1 )  # West side	
+			self.distributor_request_east = g.tensor.create_distributor_request( [7], 1 )  # East side	
+			
+
 			#################################################################################
-			with g.ResourceScope(name=f"prepare_state_pair_scope", is_buffered=True, time=0) as prepare_state_pair_scope :
+			with g.ResourceScope(name=f"prepare_second_control_qubit_map_scope", is_buffered=True, time=0) as prepare_second_control_qubit_map_scope :
+
+
+				control_qubit_address_maps_SL_east_st   = self.select_L_control_qubit_map_east()
+						                                                         
+				control_qubit_address_maps_SL_east_copy_mt = control_qubit_address_maps_SL_east_st.write( name='control_qubit_address_map_SL_east_copy', layout=control_qubit_address_maps_SL_east_layout_b, time=0 )
+			
+			
+			#################################################################################
+			with g.ResourceScope(name=f"prepare_state_pair_scope", is_buffered=True, predecessors=[prepare_second_control_qubit_map_scope], time=None) as prepare_state_pair_scope :
 
 
 				if ( self.mxm_permutation ): # if MXM is used to generate qubit pairs
@@ -115,29 +185,48 @@ class Gate(Split_gates):
 					Psi_transformed_imag_copy_mt_list = g.split(state_permuted_imag_mt, dim=-2, num_splits=g.float32.size)
 						
 					
-					half_memory_slices = memory_slices >> 1
+					
 										
 					# 20 cycles to read the permute matrix, 8 for installing the weights and each matmul operation takes "memory_slices" cycles
-					time_list = [0, 0, half_memory_slices, half_memory_slices]
+					time_list = [0, 0, 1*half_memory_slices, 1*half_memory_slices]
 					weights_list = []
 					weights_list.append(g.install_weights(permute_matrix_west_1_st, planes=mxm_requests[0], time=0))
 					weights_list.append(g.install_weights(permute_matrix_west_2_st, planes=mxm_requests[1], time=20))					
 					weights_list.append(g.install_weights(permute_matrix_east_1_st, planes=mxm_requests[2], time=-26)) #TODO make it time=0
 					weights_list.append(g.install_weights(permute_matrix_east_2_st, planes=mxm_requests[3], time=20-26)) #TODO make it time=20
 
-
-
+				
+					control_qubit_address_maps_SL_east_list_a = g.split( self.control_qubit_address_maps_SL_east_shared, 1 )
 					control_qubit_address_maps_SL_west_tmp   = g.concat( control_qubit_address_maps_SL_west_list[0:half_memory_slices] )
 					control_qubit_address_maps_SL_east_tmp_a = g.concat( control_qubit_address_maps_SL_east_list_a[0:half_memory_slices] )
-					control_qubit_address_maps_SL_east_tmp_b = g.concat( control_qubit_address_maps_SL_east_list_b[0:half_memory_slices] )
+					#control_qubit_address_maps_SL_east_tmp_b = g.concat( control_qubit_address_maps_SL_east_list_b[0:half_memory_slices] )
+					
+###############################################
+					# create reusable distributor requests
+					distributor_request = g.tensor.create_distributor_request( [3], 1 )  # West side	
+					transposer_request = g.tensor.create_transposer_request( [1], 1)
+					
+					
+					
+				###############################################x					
 					
 					
 					for byte_idx in range(4):
 
 						if byte_idx % 2 == 0:
-							control_qubit_address_maps_SL_west_st = control_qubit_address_maps_SL_west_tmp.read( streams = g.SG1_E[31], time=time_list[byte_idx])
+							if byte_idx % 2 == 0:
+								control_qubit_address_maps_SL_west_st = control_qubit_address_maps_SL_west_tmp.read( streams = g.SG1[26], time=time_list[byte_idx])
+								
+								control_qubit_address_maps_SL_west_st = g.transpose_null(control_qubit_address_maps_SL_west_st, 
+							                                                         transposer_req=transposer_request, 
+							                                                         stream_order=[10])						
+							else:
+								control_qubit_address_maps_SL_west_st = control_qubit_address_maps_SL_west_tmp.read( streams = g.SG1_E[31], time=time_list[byte_idx])
+
 							control_qubit_address_maps_SL_east_a_st = control_qubit_address_maps_SL_east_tmp_a.read( streams = g.SG1_W[31] )					
-							control_qubit_address_maps_SL_east_b_st = control_qubit_address_maps_SL_east_tmp_b.read( streams = g.SG1_W[30] )		
+							control_qubit_address_maps_SL_east_b_st = control_qubit_address_maps_SL_east_tmp_b.read( streams = g.SG1_W[30] )
+							
+							
 
 
 						### Real part
@@ -200,10 +289,7 @@ class Gate(Split_gates):
 					permutor_requests.append( g.tensor.create_permutor_request( [0], 1 ) )
 					permutor_requests.append( g.tensor.create_permutor_request( [1], 1 ) )			
 			
-					half_memory_slices = memory_slices >> 1
-					control_qubit_address_maps_SL_west_tmp   = g.concat( control_qubit_address_maps_SL_west_list[0:half_memory_slices] )
-					control_qubit_address_maps_SL_east_tmp_a = g.concat( control_qubit_address_maps_SL_east_list_a[0:half_memory_slices] )
-					control_qubit_address_maps_SL_east_tmp_b = g.concat( control_qubit_address_maps_SL_east_list_b[0:half_memory_slices] )
+
 			
 			
 					state_permute_map_selector_shared = g.shared_memory_tensor(self.state_permute_map_selector_mt, name="state_permute_map_selector_shared")		
@@ -214,32 +300,44 @@ class Gate(Split_gates):
 					permute_maps_mt_west_shared = g.shared_memory_tensor(self.permute_maps_mt_west, name="permute_maps_west_shared")
 					permute_maps_mt_east_shared = g.shared_memory_tensor(self.permute_maps_mt_east, name="permute_maps_east_shared")			
 
-					memory_addresses = control_qubit_address_maps_SL_west_tmp.shape[0]
-					permutation_time_starts = [0, memory_addresses, 2*memory_addresses, 3*memory_addresses]
+
+					half_memory_slices = memory_slices >> 1
+					permutation_time_starts = [0, half_memory_slices, 2*half_memory_slices, 3*half_memory_slices]
+
+# create reusable distributor requests
+					distributor_request = g.tensor.create_distributor_request( [3], 1 )  # West side	
+					transposer_request_west = g.tensor.create_transposer_request( [1], 1) # request transposer on the west side side										
+				
+
 					for byte_idx in range(4):
 					
 						# Real part
-						control_qubit_address_maps_SL_west_st = control_qubit_address_maps_SL_west_tmp.read( streams = g.SG1_E[31] )
-						control_qubit_address_maps_SL_east_a_st = control_qubit_address_maps_SL_east_tmp_a.read( streams = g.SG1_W[31] )
-				
+						#control_qubit_address_maps_SL_west_st = control_qubit_address_maps_SL_west_tmp.read( streams = g.SG1_E[31] )
+						control_qubit_address_maps_SL_west_st = self.select_L_control_qubit_map_west()		
+						
+						
+
+						control_qubit_address_maps_SL_east_copy_st = control_qubit_address_maps_SL_east_copy_mt.read( streams = g.SG1_W[30] )		
+						
 						state_real_byte_st                 = g.mem_gather(Psi_real_mt_list[byte_idx], control_qubit_address_maps_SL_west_st, output_streams=[g.SG1_E[0]] )
 						state_permute_map_selector_east_st = state_permute_map_selector_list[0].read(streams=[g.SG1_E[24]])	
 						permute_map_west_st                = g.mem_gather(permute_maps_mt_east_shared, state_permute_map_selector_east_st, output_streams=[g.SG1_E[24]])		
 						permuted_state_real_st_8           = g.permute_inner(state_real_byte_st, permute_map_west_st, permutor_req=permutor_requests[1], input_streams=[g.SG1_E[0], g.SG1_E[24]], output_streams=g.SG1[4], time=permutation_time_starts[byte_idx] )
 				
 
-						g.mem_scatter(permuted_state_real_st_8, Psi_real_copy_mt_list[byte_idx], control_qubit_address_maps_SL_east_a_st)
+						g.mem_scatter(permuted_state_real_st_8, Psi_real_copy_mt_list[byte_idx], control_qubit_address_maps_SL_east_copy_st)
 				
 						# Imag part
-						control_qubit_address_maps_SL_east_b_st = control_qubit_address_maps_SL_east_tmp_b.read( streams = g.SG1_W[30] )				
-				
+						#control_qubit_address_maps_SL_east_b_st = control_qubit_address_maps_SL_east_tmp_b.read( streams = g.SG1_W[31] )
+						control_qubit_address_maps_SL_east_st = self.select_L_control_qubit_map_east()
+						
 						state_imag_byte_st                 = g.mem_gather(Psi_imag_mt_list[byte_idx], control_qubit_address_maps_SL_west_st, output_streams=[g.SG1_W[0]] )
 						state_permute_map_selector_east_st = state_permute_map_selector_list[0].read(streams=[g.SG1_W[24]])	
 						permute_map_west_st                = g.mem_gather(permute_maps_mt_west_shared, state_permute_map_selector_east_st, output_streams=[g.SG1_W[24]])
 						permuted_state_imag_st_8           = g.permute_inner(state_imag_byte_st, permute_map_west_st, permutor_req=permutor_requests[0], input_streams=[g.SG1_W[0], g.SG1_E[24]], output_streams=g.SG1[4])#, time=permutation_time_starts[byte_idx]+0*memory_addresses )
 				
 
-						g.mem_scatter(permuted_state_imag_st_8, Psi_imag_copy_mt_list[byte_idx], control_qubit_address_maps_SL_east_b_st)
+						g.mem_scatter(permuted_state_imag_st_8, Psi_imag_copy_mt_list[byte_idx], control_qubit_address_maps_SL_east_st)
 				
 				
 					
@@ -291,8 +389,8 @@ class Gate(Split_gates):
 				
 			#################################################################################
 			# component to perform the gate operation
-				
-			with g.ResourceScope(name=f"prepare_gate_kernel_scope", is_buffered=True, time=0) as prepare_gate_kernel_scope :
+			
+			with g.ResourceScope(name=f"prepare_gate_kernel_scope", is_buffered=True, predecessors=[prepare_second_control_qubit_map_scope], time=None) as prepare_gate_kernel_scope :
 					
 				# filter the elements in the vector according to the indices standig for output states |0> and |1> 
 
@@ -380,7 +478,7 @@ class Gate(Split_gates):
 
 
 			
-
+			
 				
 			with g.ResourceScope(name=f"apply_gate_scope", is_buffered=True, predecessors=[prepare_state_pair_scope], time=None) as apply_gate_scope :
 
@@ -403,14 +501,10 @@ class Gate(Split_gates):
 				Psi_real_bytes_copy_mt_list  = g.split(Psi_real_copy_mt_320_8, dim=-2, num_splits=g.float32.size)
 				Psi_imag_bytes_copy_mt_list  = g.split(Psi_imag_copy_mt_320_8, dim=-2, num_splits=g.float32.size)
 
-
-				half_memory_slices = memory_slices >> 1
-				control_qubit_address_maps_SL_west_tmp   = g.concat( control_qubit_address_maps_SL_west_list[0:half_memory_slices] )
-				control_qubit_address_maps_SL_east_tmp_a = g.concat( control_qubit_address_maps_SL_east_list_a[0:half_memory_slices] )
 								
 
-				control_qubit_address_maps_SL_west_st   = control_qubit_address_maps_SL_west_tmp.read( streams = g.SG1_E[31], time=0 )
-				control_qubit_address_maps_SL_east_a_st = control_qubit_address_maps_SL_east_tmp_a.read( streams = g.SG1_W[27] )
+				control_qubit_address_maps_SL_west_st = self.select_L_control_qubit_map_west(time=0) #control_qubit_address_maps_SL_west_tmp.read( streams = g.SG1_E[31], time=0 )
+				control_qubit_address_maps_SL_east_st = self.select_L_control_qubit_map_east()
 
 
 				# read out the states byte-wise with mem-gather
@@ -479,10 +573,10 @@ class Gate(Split_gates):
 
 				for byte_idx in range(4):
 					
-					g.mem_scatter( Psi_transformed_real_bytes_mt_list[byte_idx], Psi_real_bytes_mt_list[byte_idx], control_qubit_address_maps_SL_east_a_st)
-					g.mem_scatter( Psi_transformed_real_bytes_mt_list[byte_idx], Psi_real_bytes_copy_mt_list[byte_idx], control_qubit_address_maps_SL_east_a_st)
-					g.mem_scatter( Psi_transformed_imag_bytes_mt_list[byte_idx], Psi_imag_bytes_mt_list[byte_idx], control_qubit_address_maps_SL_east_a_st)
-					g.mem_scatter( Psi_transformed_imag_bytes_mt_list[byte_idx], Psi_imag_bytes_copy_mt_list[byte_idx], control_qubit_address_maps_SL_east_a_st)
+					g.mem_scatter( Psi_transformed_real_bytes_mt_list[byte_idx], Psi_real_bytes_mt_list[byte_idx], control_qubit_address_maps_SL_east_st)
+					g.mem_scatter( Psi_transformed_real_bytes_mt_list[byte_idx], Psi_real_bytes_copy_mt_list[byte_idx], control_qubit_address_maps_SL_east_st)
+					g.mem_scatter( Psi_transformed_imag_bytes_mt_list[byte_idx], Psi_imag_bytes_mt_list[byte_idx], control_qubit_address_maps_SL_east_st)
+					g.mem_scatter( Psi_transformed_imag_bytes_mt_list[byte_idx], Psi_imag_bytes_copy_mt_list[byte_idx], control_qubit_address_maps_SL_east_st)
 
 
 

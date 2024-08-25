@@ -101,7 +101,7 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 
 
 	iop = runtime.IOProgram(iop_file)
-	device = runtime.devices[1]
+	device = runtime.devices[0]
 	device.open()
 	device.load(iop[0], unsafe_keep_entry_points=True)
 	device.load(iop[1], unsafe_keep_entry_points=True)
@@ -123,10 +123,10 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	state_0_selector = target_qbit_selector.copy()#np.zeros( (2,320,), dtype=np.uint8 )	
 	
 	control_state_1_selector = np.zeros( (1,320,), dtype=np.uint8 )
-	if ( control_qbit < small_qbit_num_limit and control_qbit >= 0 ) :
+	if ( control_qbit < small_qbit_num_limit and control_qbit >= 0 and control_qbit<8) :
 		control_state_1_selector[0,0:320:16] = control_qbit
 	else :
-		control_state_1_selector[0,0:320:16] = 8  # no control qubit is used when filetring the gate kernels
+		control_state_1_selector[0,0:320:16] = 0  # no control qubit is used when filetring the gate kernels
 	control_state_0_selector = control_state_1_selector	
 	
 	
@@ -137,8 +137,14 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	else: 
 		# in case the permutor is used for permutation
 		permutation_selector = target_qbit_selector	
-			
 
+
+	# control qubit distributor maps for SL gates
+	distributor_map_np = np.zeros( (320,), dtype=np.uint8 )
+	if control_qbit > 8 and control_qbit <= 16:
+		distributor_map_np[0:320:16] = 2*(control_qbit - small_qbit_num_limit - 1)
+		distributor_map_np[1:320:16] = 2*(control_qbit - small_qbit_num_limit - 1) + 1
+			
 
 	# generate packed gate kernel data
 	gate_kernels_real_packed = np.zeros( (320,), dtype=np.float32 )
@@ -160,10 +166,13 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	gate_kernels_real_packed = np.ascontiguousarray( gate_kernels_real.reshape( (-1,) ) )
 	gate_kernels_imag_packed = np.ascontiguousarray( gate_kernels_imag.reshape( (-1,) ) )
 
+	
+
+
 
 	# run the upload program
 	entry_point = iop["upload"]["mono"]
-	pgm_1_output = invoke(device, iop, 0, entry_point, {"State_input_real": input_real, "State_input_imag": input_imag, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector})
+	pgm_1_output = invoke(device, iop, 0, entry_point, {"State_input_real": input_real, "State_input_imag": input_imag, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector, "control_qubit_distributor_maps": distributor_map_np})
 	
 	# run the gate split program
 	index_of_split_program = 2
@@ -174,6 +183,12 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	# run the gate program
 	if target_qbit == control_qbit:
 		error("QCsim::run: The control qubit and target qubit should be different")
+
+	elif target_qbit >= qbit_num:
+		error("QCsim::run: The target qubit should be less than teh number of qubits")
+
+	elif control_qbit >= qbit_num:
+		error("QCsim::run: The control qubit should be less than teh number of qubits")
 
 	elif target_qbit >= 0 and target_qbit < 8 and control_qbit == -1: 
 		# pogram perfroming the Gate_S operation
@@ -188,11 +203,11 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 		entry_point = iop["gate_SS"]["compute"]
 		gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})	
 
-	elif target_qbit >= 0 and target_qbit < 8 and control_qbit > 8 and control_qbit <= 21:
+	elif target_qbit >= 0 and target_qbit < 8 and control_qbit > 8 and control_qbit <= 16:
 
 		# pogram perfroming the Gate_SL operation
 		index_of_gate_program = 5
-		entry_point = iop["gate_SL"]["mono"]
+		entry_point = iop["gate_SL"]["compute"]
 		gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
 		#print( gate_output["test"] )	
 		#print( gate_output["test"].dtype )	
@@ -202,9 +217,10 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 
 		error("QCsim::run: Unimplemented case wit target qubit and control qubit.")
 	
-
+	
 	# download the transformed state vector
 	index_of_download_program = 1
+	
 	entry_point = iop["download_state_vector"]["output"]
 	download_program_output = invoke(device, iop, index_of_download_program, entry_point, {})
 
@@ -213,7 +229,7 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	
 	Psi_transformed_imag = download_program_output["State_transformed_imag"]
 	Psi_transformed_imag = np.reshape( Psi_transformed_imag, (Psi_transformed_imag.size,) )	
-	print('ppppppppppppppppp ', input_real[512:522 ] )
+	
 	return Psi_transformed_real, Psi_transformed_imag
 
 
