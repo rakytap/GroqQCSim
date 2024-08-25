@@ -5,7 +5,30 @@ import groq.api as g
 import numpy as np
 
 class Gate(Split_gates):
+	"""
+    A class used to implement the gate operation on qubits S with control qubits L.
+    L qubits are 9,10,11,...17
+
+
+    Attributes
+    ----------
+    
+    mxm_permutation : bool
+    	If true, MXM planes are used to generate permuted state pairs for the linear transfromation. If False, the permutor is used for the same task. 
+        Permutor takes twice as much time as the MXM. Gate SL does not support MXM permutation because of stream overlaps of tranposer and MXM planes.
+
+    """
+    
 	def __init__(self, pgm_pkg, mxm_permutation=True):
+		"""
+        Parameters
+        ----------
+        pgm_pkg : ProgramPackage
+            The program package in which the gate operation program is generated
+        mxm_permutation : bool
+            If true, MXM planes are used to generate permuted state pairs for the linear transfromation. If False, the permutor is used for the same task. 
+            Permutor takes twice as much time as the MXM. Gate SL does not support MXM permutation because of stream overlaps of tranposer and MXM planes.
+        """
 		super().__init__(pgm_pkg, mxm_permutation = mxm_permutation)
 
 		# only permutator is supported to do permuattion is SL gate due to stream conflicts with MXM and transposer
@@ -13,7 +36,28 @@ class Gate(Split_gates):
 
 
 	def select_L_control_qubit_map_east(self, time=None):
+		"""
+		Function used to read out the correct control qubit map on the east hemisphere.
+		The control qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
+		The control memory maps of control qubits 9, ..., 17 are stored in the lower half of one slice (addresses 0,1,..., 2^12).
+		The control memory maps of control qubits 18, ..., 20 are stored in the upper half of one slice (addresses 2^12,..., 2^13). 		
+		The 320-byte vector is splitted into 20 16-byte superlanes. 
+		In each 16-byte segments the first two bytes are used to address a memory on a slice. 
+		Thus, 8 memory maps can be stored in a single 16-byte superlane. Distributors are used to move the memory addresses into the position of the first two bytes.
+		 
+       
+        Parameters
+        ----------
+        time : int, optional
+            The time when the first read instruction in the function should be scheduled. 
+            If None, the timing is deriven from components out of the scope of the function.
 
+        Return
+        ------
+        Returns with the stream tensor of the control qubits memory map.
+        """
+
+		# half of the memory slices on which the state is stored
 		half_memory_slices = memory_slices >> 1
 
 		control_qubit_address_maps_SL_east_list = g.split( self.control_qubit_address_maps_SL_east_shared, 1 )
@@ -40,7 +84,28 @@ class Gate(Split_gates):
 
 
 	def select_L_control_qubit_map_west(self, time=None):
+		"""
+		Function used to read out the correct control qubit map on the west hemisphere.
+		The control qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
+		The control memory maps of control qubits 9, ..., 17 are stored in the lower half of one slice (addresses 0,1,..., 2^12).
+		The control memory maps of control qubits 18, ..., 20 are stored in the upper half of one slice (addresses 2^12,..., 2^13). 		
+		The 320-byte vector is splitted into 20 16-byte superlanes. 
+		In each 16-byte segments the first two bytes are used to address a memory on a slice. 
+		Thus, 8 memory maps can be stored in a single 16-byte superlane. Distributors are used to move the memory addresses into the position of the first two bytes.
+		 
+       
+        Parameters
+        ----------
+        time : int, optional
+            The time when the first read instruction in the function should be scheduled. 
+            If None, the timing is deriven from components out of the scope of the function.
 
+        Return
+        ------
+        Returns with the stream tensor of the control qubits memory map.
+        """
+
+		# half of the memory slices on which the state is stored
 		half_memory_slices = memory_slices >> 1
 
 		control_qubit_address_maps_SL_west_list = g.split( self.control_qubit_address_maps_SL_west_shared, 1 )
@@ -66,23 +131,17 @@ class Gate(Split_gates):
 
 	
 	def gate_SL_program(self):
+		"""
+		Function implementing the SL gate operation on the Groq chip
+        """
+
+	
 		#############################################################################################################x		
 		# program to perform gate operation in a target qubit less than small_qbit_num_limit
 		name = "gate_SL"
 		
 		with self.pgm_pkg.create_program_context(name) as pgm5:
-
-			#g.reserve_tensor(pgm1, pgm2, State_input_real_mt)
-				
-			control_qbit = 9
-			'''
-			row_number_memory_map = 1 << (qbit_num-small_qbit_num_limit-4-4) #if the memory map is destributed over 2^4=16 slices and each 320 vector can store 4 independent addresses
-			layout_LL_gate_map_selector = f"H1(W), A{row_number_memory_map}({small_qbit_num_limit*20}-{small_qbit_num_limit*20+row_number_memory_map-1}), S16(18-36)"
-
-			dim_LL_gate_map_selector = 1 << (qbit_num-small_qbit_num_limit-4-4) # each 320 vector can store 8 independent addresses
-			LL_gate_map_selector_mt = g.input_tensor(shape=(dim_LL_gate_map_selector*16,320,), dtype=g.uint8, name="LL_gate_map_selector", layout=layout_LL_gate_map_selector)
-			'''
-			
+		
 
 			# Creates a shared tensor to reuse the memory allocation made by program pgm1
 			State_input_real_shared      = g.shared_memory_tensor(self.State_input_real_mt, name="State_input_real_shared")
@@ -91,8 +150,7 @@ class Gate(Split_gates):
 			State_input_imag_copy_shared = g.shared_memory_tensor(self.State_input_imag_copy_mt, name="State_input_imag_copy_shared")
 
 			
-			
-			
+				
 
 			# state_1_mt: if target_qubit_loc at the idx-th element is in state_1 |1> then all the 8 bits of the idx-th element is set to 1, thus state_1[idx] = 255
 			# state_0_mt: if target_qubit_loc at the idx-th element is in state_0 |0> then all the 8 bits of the idx-th element is set to 1, thus state_0[idx] = 255
@@ -101,21 +159,14 @@ class Gate(Split_gates):
 			state_0_broadcasted_shared = g.shared_memory_tensor(self.state_0_broadcasted_mt, name="state_0_broadcasted_shared")
 	
 			
-			
-			#g.add_mem_constraints([LL_gate_map_selector_mt], [permute_maps_mt_west_shared], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
 
-
-			# Creates a shared tensor to reuse the memory allocation made by program pgm2
+			# Creates a shared tensor to reuse the memory allocation made by program pgm5
 
 			# real and imag components of the broadcasted 00, 01, 10, 11 elements of the gate kernels (each element of a 320 vector contains either the 00,01,10 or 11 element)
 			
-			#########################################
+			
 			self.control_qubit_address_maps_SL_west_shared = g.shared_memory_tensor(self.control_qubit_address_maps_SL_west_mt, name="control_qubit_address_maps_SL_west_shared")		
-			self.control_qubit_address_maps_SL_east_shared = g.shared_memory_tensor(self.control_qubit_address_maps_SL_east_mt, name="control_qubit_address_maps_SL_east_shared")		
-			
-
-			
-			
+			self.control_qubit_address_maps_SL_east_shared = g.shared_memory_tensor(self.control_qubit_address_maps_SL_east_mt, name="control_qubit_address_maps_SL_east_shared")	
 
 			self.transposer_request_west  = g.tensor.create_transposer_request( [1], 1) # request transposer on the west side
 			self.transposer_request_east  = g.tensor.create_transposer_request( [3], 1) # request transposer on the east side
@@ -201,14 +252,7 @@ class Gate(Split_gates):
 					control_qubit_address_maps_SL_east_tmp_a = g.concat( control_qubit_address_maps_SL_east_list_a[0:half_memory_slices] )
 					#control_qubit_address_maps_SL_east_tmp_b = g.concat( control_qubit_address_maps_SL_east_list_b[0:half_memory_slices] )
 					
-###############################################
-					# create reusable distributor requests
-					distributor_request = g.tensor.create_distributor_request( [3], 1 )  # West side	
-					transposer_request = g.tensor.create_transposer_request( [1], 1)
-					
-					
-					
-				###############################################x					
+										
 					
 					
 					for byte_idx in range(4):
@@ -303,10 +347,7 @@ class Gate(Split_gates):
 
 					half_memory_slices = memory_slices >> 1
 					permutation_time_starts = [0, half_memory_slices, 2*half_memory_slices, 3*half_memory_slices]
-
-# create reusable distributor requests
-					distributor_request = g.tensor.create_distributor_request( [3], 1 )  # West side	
-					transposer_request_west = g.tensor.create_transposer_request( [1], 1) # request transposer on the west side side										
+									
 				
 
 					for byte_idx in range(4):
@@ -341,7 +382,7 @@ class Gate(Split_gates):
 				
 				
 					
-			#########################################
+			#################################################################################################################x
 			
 			
 			gate_kernels_broadcasted_real_shared_dict = {}
@@ -376,8 +417,8 @@ class Gate(Split_gates):
 			
 			address_offset = 4*gate_count
 
-			layout_real_diag = layout_gate_kernels_real + f", A1({address_offset})"
-			layout_imag_diag = layout_gate_kernels_imag + f", A1({address_offset})"		
+			layout_real_diag     = layout_gate_kernels_real + f", A1({address_offset})"
+			layout_imag_diag     = layout_gate_kernels_imag + f", A1({address_offset})"		
 			layout_real_off_diag = layout_gate_kernels_real_copy + f", A1({address_offset})"
 			layout_imag_off_diag = layout_gate_kernels_imag_copy + f", A1({address_offset})"	
 				

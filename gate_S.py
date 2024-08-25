@@ -7,12 +7,37 @@ import numpy as np
 	
 
 class Gate(Gate_S_base):
+	"""
+    A class used to implement the gate operation on qubits S with no control qubits
 
+
+    Attributes
+    ----------
+    
+    mxm_permutation : bool
+    	If true, MXM planes are used to generate permuted state pairs for the linear transfromation. If False, the permutor is used for the same task. 
+        Permutor takes twice as much time as the MXM.
+
+    """
 
 	def __init__(self, pgm_pkg, mxm_permutation=True):
+		"""
+        Parameters
+        ----------
+        pgm_pkg : ProgramPackage
+            The program package in which the gate operation program is generated
+        mxm_permutation : bool
+            If true, MXM planes are used to generate permuted state pairs for the linear transfromation. If False, the permutor is used for the same task. 
+            Permutor takes twice as much time as the MXM.
+        """
+        
 		super().__init__(pgm_pkg, mxm_permutation = mxm_permutation )
 	
 	def gate_S_program(self):
+		"""
+		Function implementing the S gate operation on the Groq chip
+        """
+        
 		#############################################################################################################x		
 		# program to perform gate operation in a target qubit less than small_qbit_num_limit
 		name = "gate_S"

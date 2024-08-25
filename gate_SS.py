@@ -7,12 +7,37 @@ import numpy as np
 	
 
 class Gate(Gate_S_base):
+	"""
+    A class used to implement the gate operation on qubits S with control qubits S
 
+
+    Attributes
+    ----------
+    
+    mxm_permutation : bool
+    	If true, MXM planes are used to generate permuted state pairs for the linear transfromation. If False, the permutor is used for the same task. 
+        Permutor takes twice as much time as the MXM.
+
+    """
 
 	def __init__(self, pgm_pkg, mxm_permutation=True):
+		"""
+        Parameters
+        ----------
+        pgm_pkg : ProgramPackage
+            The program package in which the gate operation program is generated
+        mxm_permutation : bool
+            If true, MXM planes are used to generate permuted state pairs for the linear transfromation. If False, the permutor is used for the same task. 
+            Permutor takes twice as much time as the MXM.
+        """
+        
 		super().__init__(pgm_pkg, mxm_permutation = mxm_permutation )
 	
 	def gate_SS_program(self):
+		"""
+		Function implementing the SS gate operation on the Groq chip
+        """
+        
 		#############################################################################################################x		
 		# program to perform gate operation in a target qubit less than small_qbit_num_limit
 		name = "gate_SS"
@@ -106,7 +131,7 @@ class Gate(Gate_S_base):
 				else: # if permutor is used to generate qubit pairs
 
 					permuted_state_real_mt, permuted_state_imag_mt = self.permutation_of_S_qubits(State_input_real_shared, 
-                                                                                                                          State_input_imag_shared, 
+                                                                                                                      State_input_imag_shared, 
                                                                                                                           State_input_real_copy_shared, 
                                                                                                                           State_input_imag_copy_shared)
 
