@@ -131,12 +131,13 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	
 	
 	# create memory maps to access the correct metadata on the chip to perform the gate operation on the chosen target_qubit
-	if mxm_permutation :
-		#in case the MXM is used, the individual permute mtrices will occupy 20 memory addresses
-		permutation_selector = target_qbit_selector*20
-	else: 
-		# in case the permutor is used for permutation
-		permutation_selector = target_qbit_selector	
+	#if mxm_permutation :
+	#in case the MXM is used, the individual permute mtrices will occupy 20 memory addresses
+	mxm_permutation_selector = target_qbit_selector*20
+	#else:  ##### !!! gate SL needs the permutor !!! #####
+	
+	# in case the permutor is used for permutation
+	permutation_selector = target_qbit_selector	
 
 
 	# control qubit distributor maps for SL gates
@@ -172,7 +173,7 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 
 	# run the upload program
 	entry_point = iop["upload"]["mono"]
-	pgm_1_output = invoke(device, iop, 0, entry_point, {"State_input_real": input_real, "State_input_imag": input_imag, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector, "control_qubit_distributor_maps": distributor_map_np})
+	pgm_1_output = invoke(device, iop, 0, entry_point, {"State_input_real": input_real, "State_input_imag": input_imag, "mxm_permutation_selector": mxm_permutation_selector, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector, "control_qubit_distributor_maps": distributor_map_np})
 	
 	# run the gate split program
 	index_of_split_program = 2

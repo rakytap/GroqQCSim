@@ -193,7 +193,10 @@ class IO:
 			
 			# the input vector containing the memory address for the correct target qubits. 
 			# TODO: cutrrently supports only a single target qubit, but need to support 80, as the number of the packed gate kernels		
-			self.state_permute_map_selector_mt 	= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="permutation_selector", layout=layout_state_permute_map_selector)				
+			self.state_permute_map_selector_mt 	    = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="permutation_selector", layout=layout_state_permute_map_selector)				
+			self.mxm_state_permute_map_selector_mt 	= g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="mxm_permutation_selector", layout=layout_mxm_permute_map_selector)				
+			g.add_mem_constraints([self.mxm_state_permute_map_selector_mt], [self.state_permute_map_selector_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+			
 			
 			# duplicate the state vector to do linear combinations associated with the unitary operation
 			State_input_real_st = self.State_input_real_mt.read(streams=[g.SG4[1]], time = 0)
@@ -232,7 +235,7 @@ class IO:
 					layout = layout_expanded_mxm_permute_map_selector + f", A{1}({320+gate_count+row_idx})"
 				
 					if row_idx == 0:
-						state_permute_map_selector_st = self.state_permute_map_selector_mt.read( streams=[g.SG1_E[16]], time=0 )
+						state_permute_map_selector_st = self.mxm_state_permute_map_selector_mt.read( streams=[g.SG1_E[16]], time=0 )
 						
 						state_permute_map_selector_st = g.vxm_identity( state_permute_map_selector_st, alus=alu_rq_8, output_streams=g.SG4_W[7] )
 						
@@ -252,7 +255,7 @@ class IO:
 						
 					state_permute_map_selector_new_mt = g.reshape( state_permute_map_selector_new_mt, [1,320] )
 					
-					g.add_mem_constraints([state_permute_map_selector_new_mt], [self.state_permute_map_selector_mt] + state_permute_map_selector_new_mt_list, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+					g.add_mem_constraints([state_permute_map_selector_new_mt], [self.mxm_state_permute_map_selector_mt, self.state_permute_map_selector_mt] + state_permute_map_selector_new_mt_list, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 
 					state_permute_map_selector_new_mt_list.append( state_permute_map_selector_new_mt )
 					
@@ -291,34 +294,34 @@ class IO:
 				self.permute_maps_mt_west = None
 				self.permute_maps_mt_east = None
 
-			else:	
-				# if the permutor is used to generate the permuted state vector
+			#else:	### !!!!!! gate the SL needs the permutor !!!!!!!!!
+			# if the permutor is used to generate the permuted state vector
 			
-				# generate permutation maps to reorder the state vector elements for qubits less than small_qbit_num_limit
-				permute_map = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint32 )
+			# generate permutation maps to reorder the state vector elements for qubits less than small_qbit_num_limit
+			permute_map = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint32 )
 
-				for target_qbit_loc in range(small_qbit_num_limit):
+			for target_qbit_loc in range(small_qbit_num_limit):
 
-					permute_map_np = np.zeros( (256,), dtype=np.uint32 )
-					target_qbit_pair_diff = 1 << target_qbit_loc
+				permute_map_np = np.zeros( (256,), dtype=np.uint32 )
+				target_qbit_pair_diff = 1 << target_qbit_loc
 				
-					for idx in range(256): # 256 = 2^8
-						if (idx < matrix_size):
-							permute_map_np[idx] = idx ^ target_qbit_pair_diff
-						else:
-							permute_map_np[idx] = idx
+				for idx in range(256): # 256 = 2^8
+					if (idx < matrix_size):
+						permute_map_np[idx] = idx ^ target_qbit_pair_diff
+					else:
+						permute_map_np[idx] = idx
 				
 
-					permute_map[target_qbit_loc,:] = inst.encode_permute_map(  permute_map_np.tolist() )
+				permute_map[target_qbit_loc,:] = inst.encode_permute_map(  permute_map_np.tolist() )
 
-				self.permute_maps_mt_west = g.from_data( np.asarray(permute_map, dtype=np.uint8), layout=layout_permute_maps_west )
-				self.permute_maps_mt_east = g.from_data( np.asarray(permute_map, dtype=np.uint8), layout=layout_permute_maps_east )
-				self.permute_maps_mt_west.is_static = True
-				self.permute_maps_mt_east.is_static = True
+			self.permute_maps_mt_west = g.from_data( np.asarray(permute_map, dtype=np.uint8), layout=layout_permute_maps_west )
+			self.permute_maps_mt_east = g.from_data( np.asarray(permute_map, dtype=np.uint8), layout=layout_permute_maps_east )
+			self.permute_maps_mt_west.is_static = True
+			self.permute_maps_mt_east.is_static = True
 
 
-				self.mxm_permute_matrices_mt_west = None
-				self.mxm_permute_matrices_mt_east = None
+				#self.mxm_permute_matrices_mt_west = None
+				#self.mxm_permute_matrices_mt_east = None
 				
 				
 			

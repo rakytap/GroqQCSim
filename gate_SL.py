@@ -31,8 +31,6 @@ class Gate(Split_gates):
 		"""
 		super().__init__(pgm_pkg, mxm_permutation = mxm_permutation)
 
-		# only permutator is supported to do permuattion is SL gate due to stream conflicts with MXM and transposer
-		self.mxm_permutation = False
 
 
 	def select_L_control_qubit_map_east(self, time=None):
@@ -187,7 +185,7 @@ class Gate(Split_gates):
 			with g.ResourceScope(name=f"prepare_state_pair_scope", is_buffered=True, predecessors=[prepare_second_control_qubit_map_scope], time=None) as prepare_state_pair_scope :
 
 
-				if ( self.mxm_permutation ): # if MXM is used to generate qubit pairs
+				if ( False ): #self.mxm_permutation ): # if MXM is used to generate qubit pairs
 
 
 					# we can only start the prepare_gate_kernel_scope after the weights have been install because of stream limitations

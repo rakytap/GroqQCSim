@@ -111,9 +111,8 @@ class Gate(Gate_S_base):
 				# make a copy of the real part somewhere else on the chip (just for testing, will be removed)
 				print('gatescope')   
 					
-					
 				if ( self.mxm_permutation ): # if MXM is used to generate qubit pairs
-
+					
 					permuted_state_real_mt, permuted_state_imag_mt = self.MXM_permutation_of_S_qubits(State_input_real_shared, 
                                                                                                                           State_input_imag_shared, 
                                                                                                                           State_input_real_copy_shared, 
