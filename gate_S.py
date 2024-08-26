@@ -69,7 +69,7 @@ class Gate(Gate_S_base):
 			
 			for label in gate_kernel_element_labels:
 
-				key = label
+				key = '0_' + label
 				gate_kernel_broadcasted_real_mt = self.gate_kernels_broadcasted_real_dict[key]
 				gate_kernel_broadcasted_imag_mt = self.gate_kernels_broadcasted_imag_dict[key]
 
@@ -150,8 +150,8 @@ class Gate(Gate_S_base):
 					
 				
 					# real and imaginary parts of the state concatenated into a unified tensor
-					gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["00"].read( streams=g.SG4[1], time=0 )
-					gate_00_imag_st = gate_kernels_broadcasted_imag_shared_dict["00"].read( streams=g.SG4[1], time=0 )
+					gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[1], time=0 )
+					gate_00_imag_st = gate_kernels_broadcasted_imag_shared_dict["0_00"].read( streams=g.SG4[1], time=0 )
 					gate_00_st 	= g.stack( [gate_00_real_st, gate_00_imag_st], dim=0 )
 
 					#gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[6] )
@@ -163,8 +163,8 @@ class Gate(Gate_S_base):
 
 
 					# real and imaginary parts of the state concatenated into a unified tensor
-					gate_11_real_st = gate_kernels_broadcasted_real_shared_copy_dict["11"].read( streams=g.SG4[3])#, time=2 )
-					gate_11_imag_st = gate_kernels_broadcasted_imag_shared_copy_dict["11"].read( streams=g.SG4[3])#, time=2 )
+					gate_11_real_st = gate_kernels_broadcasted_real_shared_copy_dict["0_11"].read( streams=g.SG4[3])#, time=2 )
+					gate_11_imag_st = gate_kernels_broadcasted_imag_shared_copy_dict["0_11"].read( streams=g.SG4[3])#, time=2 )
 					gate_11_st 	= g.stack( [gate_11_real_st, gate_11_imag_st], dim=0 )
 
 					gate_11_st = g.reinterpret( gate_11_st, g.uint32 )
@@ -187,8 +187,8 @@ class Gate(Gate_S_base):
 					state_0_broadcasted_st = state_0_broadcasted_shared.read( streams=g.SG4[0] )
 				
 					# real and imaginary parts of the state concatenated into a unified tensor
-					gate_01_real_st = gate_kernels_broadcasted_real_shared_dict["01"].read( streams=g.SG4[1])#, time=5 )
-					gate_01_imag_st = gate_kernels_broadcasted_imag_shared_dict["01"].read( streams=g.SG4[1])#, time=5 )
+					gate_01_real_st = gate_kernels_broadcasted_real_shared_dict["0_01"].read( streams=g.SG4[1])#, time=5 )
+					gate_01_imag_st = gate_kernels_broadcasted_imag_shared_dict["0_01"].read( streams=g.SG4[1])#, time=5 )
 					gate_01_st 	= g.stack( [gate_01_real_st, gate_01_imag_st], dim=0 )
 
 					#gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[6] )
@@ -197,8 +197,8 @@ class Gate(Gate_S_base):
 					gate_01_st = g.reinterpret( gate_01_st, g.float32 )
 
 					# real and imaginary parts of the state concatenated into a unified tensor
-					gate_10_real_st = gate_kernels_broadcasted_real_shared_copy_dict["10"].read( streams=g.SG4[3], time=7 )
-					gate_10_imag_st = gate_kernels_broadcasted_imag_shared_copy_dict["10"].read( streams=g.SG4[3], time=7 )
+					gate_10_real_st = gate_kernels_broadcasted_real_shared_copy_dict["0_10"].read( streams=g.SG4[3], time=7 )
+					gate_10_imag_st = gate_kernels_broadcasted_imag_shared_copy_dict["0_10"].read( streams=g.SG4[3], time=7 )
 					gate_10_st 	= g.stack( [gate_10_real_st, gate_10_imag_st], dim=0 )
 
 					gate_10_st = g.reinterpret( gate_10_st, g.uint32 )
