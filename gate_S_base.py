@@ -8,29 +8,29 @@ import numpy as np
 
 class Gate_S_base(Split_gates):
 	"""
-    A base class used to implement the gate operation on qubits S.
-    S qubits are qubits 0,1,2,...,7
+	A base class used to implement the gate operation on qubits S.
+	S qubits are qubits 0,1,2,...,7
 
 
-    Attributes
-    ----------
+	Attributes
+	----------
     
-    mxm_permutation : bool
-    	If true, MXM planes are used to generate permuted state pairs for the linear transfromation. If False, the permutor is used for the same task. 
-        Permutor takes twice as much time as the MXM.
+	mxm_permutation : bool
+		If true, MXM planes are used to generate permuted state pairs for the linear transfromation. If False, the permutor is used for the same task. 
+		Permutor takes twice as much time as the MXM.
 
-    """
+	"""
 
 	def __init__(self, pgm_pkg, mxm_permutation=True):
 		"""
-        Parameters
-        ----------
-        pgm_pkg : ProgramPackage
-            The program package in which the gate operation program is generated
-        mxm_permutation : bool
-            If true, MXM planes are used to generate permuted state pairs for the linear transfromation. If False, the permutor is used for the same task. 
-            Permutor takes twice as much time as the MXM.
-        """
+		Parameters
+		----------
+		pgm_pkg : ProgramPackage
+			The program package in which the gate operation program is generated
+		mxm_permutation : bool
+			If true, MXM planes are used to generate permuted state pairs for the linear transfromation. If False, the permutor is used for the same task. 
+			Permutor takes twice as much time as the MXM.
+		"""
 		super().__init__(pgm_pkg, mxm_permutation = mxm_permutation )
 
 
@@ -112,18 +112,18 @@ class Gate_S_base(Split_gates):
 		Function used to gather the permutation matrices for MXM permute via memory map uploaded from CPU for a specific target qubit S.
 		 
        
-        Parameters
-        ----------
-        mxm_permute_map_selector : MemoryTensor
-            The memory map to gather the permutation matrix
+		Parameters
+		----------
+		mxm_permute_map_selector : MemoryTensor
+			The memory map to gather the permutation matrix
             
-        mxm_permute_matrices : MemoryTensor
-            The memory tensor containing the permutation matrices
+		mxm_permute_matrices : MemoryTensor
+			The memory tensor containing the permutation matrices
 
-        Return
-        ------
-        Returns with the stream tensor of the permutation matrix.
-        """				
+		Return
+		------
+		Returns with the stream tensor of the permutation matrix.
+		"""				
 
 		### split the permutation matrices over slices ###
 							
@@ -168,25 +168,25 @@ class Gate_S_base(Split_gates):
 		Permutation is done by the two permutors on the chip: the real part on the east side, the imaginary part on the west side. 
 		 
        
-        Parameters
-        ----------
-        Psi_transformed_real_mt : MemoryTensor
-            The memory tensor of the real part of the state (float32)
+		Parameters
+		----------
+		Psi_transformed_real_mt : MemoryTensor
+			The memory tensor of the real part of the state (float32)
             
-        Psi_transformed_imag_mt : MemoryTensor
-            The memory tensor of the imaginary part of the state (float32)
+		Psi_transformed_imag_mt : MemoryTensor
+			The memory tensor of the imaginary part of the state (float32)
             
-        Psi_transformed_real_copy_mt : MemoryTensor
-            The memory tensor of the real part of the copy of the state (float32)
+		Psi_transformed_real_copy_mt : MemoryTensor
+			The memory tensor of the real part of the copy of the state (float32)
             
-        Psi_transformed_imag_copy_mt : MemoryTensor
-            The memory tensor of the imaginary part of the copy of the state (float32)            
+		Psi_transformed_imag_copy_mt : MemoryTensor
+			The memory tensor of the imaginary part of the copy of the state (float32)            
   
 
-        Return
-        ------
-        Returns with the memory tensors of the permuted state (real, imag)
-        """			
+		Return
+		------
+		Returns with the memory tensors of the permuted state (real, imag)
+		"""			
         
         
 		# create reusable permutor requests
@@ -240,25 +240,25 @@ class Gate_S_base(Split_gates):
 		Permutation is done by the four MXM planes on the chip. 
 		 
        
-        Parameters
-        ----------
-        Psi_transformed_real_mt : MemoryTensor
-            The memory tensor of the real part of the state (float32)
+		Parameters
+		----------
+		Psi_transformed_real_mt : MemoryTensor
+			The memory tensor of the real part of the state (float32)
             
-        Psi_transformed_imag_mt : MemoryTensor
-            The memory tensor of the imaginary part of the state (float32)
+		Psi_transformed_imag_mt : MemoryTensor
+			The memory tensor of the imaginary part of the state (float32)
             
-        Psi_transformed_real_copy_mt : MemoryTensor
-            The memory tensor of the real part of the copy of the state (float32)
+		Psi_transformed_real_copy_mt : MemoryTensor
+			The memory tensor of the real part of the copy of the state (float32)
             
-        Psi_transformed_imag_copy_mt : MemoryTensor
-            The memory tensor of the imaginary part of the copy of the state (float32)            
+		Psi_transformed_imag_copy_mt : MemoryTensor
+			The memory tensor of the imaginary part of the copy of the state (float32)            
   
 
-        Return
-        ------
+		Return
+		------
 		Returns with the memory tensors of the permuted state (real, imag)
-        """			
+		"""			
         
         
 		mxm_requests = []
@@ -346,6 +346,41 @@ class Gate_S_base(Split_gates):
 
 
 	def VXM_S_round_trip_st(self, state_real_st, state_imag_st, state_permuted_real_st, state_permuted_imag_st, gate_diag_real_mt, gate_diag_imag_mt, gate_off_diag_real_mt, gate_off_diag_imag_mt):
+		"""
+		Function used to calculate the unitary transformation on the state vector on target qubits S.
+
+		Parameters
+		----------
+		state_real_st : StreamTensor
+			The stream tensor of the real part of the state (float32) on g.SG4_E[0]
+            
+		state_imag_st : StreamTensor
+			The stream tensor of the imaginary part of the state (float32) on g.SG4_E[3]
+            
+		state_permuted_real_st : StreamTensor
+			The stream tensor of the real part of the copy of the state (float32) on g.SG4_E[6]
+            
+		state_permuted_imag_st : StreamTensor
+			The stream tensor of the imaginary part of the copy of the state (float32) on g.SG4_E[4]      
+
+		gate_diag_real_mt : MemoryTensor
+			The memory tensor of the real part of the state (float32)
+            
+		gate_diag_imag_mt : MemoryTensor
+			The memory tensor of the imaginary part of the state (float32)
+            
+		gate_off_diag_real_mt : MemoryTensor
+			The memory tensor of the real part of the copy of the state (float32)
+            
+		gate_off_diag_imag_mt : MemoryTensor
+			The memory tensor of the imaginary part of the copy of the state (float32)            
+        
+  
+
+		Return
+		------
+		Returns with the memory tensors of the permuted state (real, imag)
+		"""			
 
 		alu_rq_0  = g.tensor.create_alu_request( alus=[0] )
 		alu_rq_1  = g.tensor.create_alu_request( alus=[1] )
@@ -435,6 +470,41 @@ class Gate_S_base(Split_gates):
 
 
 	def VXM_S_round_trip(self, state_real_mt, state_imag_mt, permuted_state_real_mt, permuted_state_imag_mt, gate_diag_real_mt, gate_diag_imag_mt, gate_off_diag_real_mt, gate_off_diag_imag_mt):
+		"""
+		Function used to calculate the unitary transformation on the state vector on target qubits S.
+
+		Parameters
+		----------
+		state_real_st : MemoryTensor
+			The memory tensor of the real part of the state (float32).
+            
+		state_imag_st : MemoryTensor
+			The memory tensor of the imaginary part of the state (float32).
+            
+		state_permuted_real_st : MemoryTensor
+			The memory tensor of the real part of the copy of the state (float32).
+            
+		state_permuted_imag_st : MemoryTensor
+			The memory tensor of the imaginary part of the copy of the state (float32).
+
+		gate_diag_real_mt : MemoryTensor
+			The memory tensor of the real part of the state (float32)
+            
+		gate_diag_imag_mt : MemoryTensor
+			The memory tensor of the imaginary part of the state (float32)
+            
+		gate_off_diag_real_mt : MemoryTensor
+			The memory tensor of the real part of the copy of the state (float32)
+            
+		gate_off_diag_imag_mt : MemoryTensor
+			The memory tensor of the imaginary part of the copy of the state (float32)            
+        
+  
+
+		Return
+		------
+		Returns with the memory tensors of the permuted state (real, imag)
+		"""			
 
 		# the number of inner split over which the state is distributed
 		inner_splits = state_real_mt.shape[0]

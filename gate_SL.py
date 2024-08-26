@@ -6,29 +6,29 @@ import numpy as np
 
 class Gate(Split_gates):
 	"""
-    A class used to implement the gate operation on qubits S with control qubits L.
-    L qubits are 9,10,11,...17
+	A class used to implement the gate operation on qubits S with control qubits L.
+	L qubits are 9,10,11,...17
 
 
-    Attributes
-    ----------
+	Attributes
+	----------
     
-    mxm_permutation : bool
-    	If true, MXM planes are used to generate permuted state pairs for the linear transfromation. If False, the permutor is used for the same task. 
-        Permutor takes twice as much time as the MXM. Gate SL does not support MXM permutation because of stream overlaps of tranposer and MXM planes.
+	mxm_permutation : bool
+		If true, MXM planes are used to generate permuted state pairs for the linear transfromation. If False, the permutor is used for the same task. 
+		Permutor takes twice as much time as the MXM. Gate SL does not support MXM permutation because of stream overlaps of tranposer and MXM planes.
 
-    """
+	"""
     
 	def __init__(self, pgm_pkg, mxm_permutation=True):
 		"""
-        Parameters
-        ----------
-        pgm_pkg : ProgramPackage
-            The program package in which the gate operation program is generated
-        mxm_permutation : bool
-            If true, MXM planes are used to generate permuted state pairs for the linear transfromation. If False, the permutor is used for the same task. 
-            Permutor takes twice as much time as the MXM. Gate SL does not support MXM permutation because of stream overlaps of tranposer and MXM planes.
-        """
+		Parameters
+		----------
+		pgm_pkg : ProgramPackage
+			The program package in which the gate operation program is generated
+		mxm_permutation : bool
+			If true, MXM planes are used to generate permuted state pairs for the linear transfromation. If False, the permutor is used for the same task. 
+			Permutor takes twice as much time as the MXM. Gate SL does not support MXM permutation because of stream overlaps of tranposer and MXM planes.
+		"""
 		super().__init__(pgm_pkg, mxm_permutation = mxm_permutation)
 
 		# only permutator is supported to do permuattion is SL gate due to stream conflicts with MXM and transposer
@@ -46,16 +46,16 @@ class Gate(Split_gates):
 		Thus, 8 memory maps can be stored in a single 16-byte superlane. Distributors are used to move the memory addresses into the position of the first two bytes.
 		 
        
-        Parameters
-        ----------
-        time : int, optional
-            The time when the first read instruction in the function should be scheduled. 
-            If None, the timing is deriven from components out of the scope of the function.
+		Parameters
+		----------
+		time : int, optional
+			The time when the first read instruction in the function should be scheduled. 
+			If None, the timing is deriven from components out of the scope of the function.
 
-        Return
-        ------
-        Returns with the stream tensor of the control qubits memory map.
-        """
+		Return
+		------
+		Returns with the stream tensor of the control qubits memory map.
+		"""
 
 		# half of the memory slices on which the state is stored
 		half_memory_slices = memory_slices >> 1
@@ -94,16 +94,16 @@ class Gate(Split_gates):
 		Thus, 8 memory maps can be stored in a single 16-byte superlane. Distributors are used to move the memory addresses into the position of the first two bytes.
 		 
        
-        Parameters
-        ----------
-        time : int, optional
-            The time when the first read instruction in the function should be scheduled. 
-            If None, the timing is deriven from components out of the scope of the function.
+		Parameters
+		----------
+		time : int, optional
+			The time when the first read instruction in the function should be scheduled. 
+			If None, the timing is deriven from components out of the scope of the function.
 
-        Return
-        ------
-        Returns with the stream tensor of the control qubits memory map.
-        """
+		Return
+		------
+		Returns with the stream tensor of the control qubits memory map.
+		"""
 
 		# half of the memory slices on which the state is stored
 		half_memory_slices = memory_slices >> 1
@@ -133,7 +133,7 @@ class Gate(Split_gates):
 	def gate_SL_program(self):
 		"""
 		Function implementing the SL gate operation on the Groq chip
-        """
+		"""
 
 	
 		#############################################################################################################x		
