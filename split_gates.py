@@ -41,7 +41,6 @@ class Split_gates(IO):
 			gate_kernels_imag_list = []
 			gate_kernels_real_list = []
 
-			gate_count = 6 # TODO use from memory_layout.py  
 			for gate_idx in range(gate_count):
 
 				gate_kernels_packed_list = g.split_inner_splits( gate_kernels_packed_st )

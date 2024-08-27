@@ -167,6 +167,7 @@ class IO:
 
 
 	def upload_program(self):
+
 		# Defines a program to upload the inputs
 		name = "upload"
 		with self.pgm_pkg.create_program_context(name) as pgm1:
@@ -205,6 +206,11 @@ class IO:
 			self.State_input_real_copy_mt = State_input_real_st.write( name="State_input_real_copy", storage_req=self.state_real_copy_request)
 			self.State_input_imag_copy_mt = State_input_imag_st.write( name="State_input_imag_copy", storage_req=self.state_imag_copy_request)
 			
+			# constant tensor to update the address counters by one
+			constant_1_address_offset_np           = np.zeros( (320,), dtype=np.uint8 )
+			constant_1_address_offset_np[0:320:16] = 1
+			self.constant_1_address_offset_mt = g.from_data( np.asarray(constant_1_address_offset_np, dtype=np.uint8), layout=layout_constant_1_address_offset )
+			
 			self.State_input_real_mt.is_static 			 = True
 			self.State_input_imag_mt.is_static 			 = True
 			self.State_input_real_copy_mt.is_static 	 = True
@@ -217,47 +223,56 @@ class IO:
 			control_state_1_selector_mt.is_static        = True
 			control_state_0_selector_mt.is_static        = True
 			self.state_permute_map_selector_mt.is_static = True
+			self.constant_1_address_offset_mt.is_static  = True
 
 
 			if ( self.mxm_permutation ):
 				# if MXM is used to generate the permuted state vector
 				
-				# expand the permutation maps to query for the whol 320x320 permute matrix, not just for the first row
-				constant_1_address_offset_np           = np.zeros( (320,), dtype=np.uint8 )
-				constant_1_address_offset_np[0:320:16] = 1
-				constant_1_address_offset_mt = g.from_data( np.asarray(constant_1_address_offset_np, dtype=np.uint8), layout=layout_constant_1_address_offset )
+				# expand the permutation maps to query for the whole 320x320 permute matrix, not just for the first row
+				
 				
 				alu_rq_8 = g.tensor.create_alu_request( alus=[8] )
+
+				# split mxm_state_permute_map_selectors according to the gates
+				gate_resolved_mxm_state_permute_map_selectors_list = g.split( self.mxm_state_permute_map_selector_mt, num_splits=gate_count, dim=0 )
 				
 				state_permute_map_selector_new_mt_list = []
-				for row_idx in range(20) :
-				
-					layout = layout_expanded_mxm_permute_map_selector + f", A{1}({320+gate_count+row_idx})"
-				
-					if row_idx == 0:
-						state_permute_map_selector_st = self.mxm_state_permute_map_selector_mt.read( streams=[g.SG1_E[16]], time=0 )
-						
-						state_permute_map_selector_st = g.vxm_identity( state_permute_map_selector_st, alus=alu_rq_8, output_streams=g.SG4_W[7] )
-						
-						# save the offsetted memory address
-						state_permute_map_selector_new_mt = state_permute_map_selector_st.write(name=f"mxm_permute_selector_offset_{row_idx}", layout=layout)
-					else:
-					
-						constant_1_address_offset_st = constant_1_address_offset_mt.read( streams=[g.SG1_E[20]], time=row_idx*31 )
-						state_permute_map_selector_st = state_permute_map_selector_new_mt.read( streams=[g.SG1_E[16]] )
-				
-				
-						# offset the memory address by 1
-						state_permute_map_selector_new_st = g.add(constant_1_address_offset_st, state_permute_map_selector_st, alus=alu_rq_8, output_streams=g.SG4[7])
-				
-						# save the offsetted memory address
-						state_permute_map_selector_new_mt = state_permute_map_selector_new_st.write(name=f"mxm_permute_selector_offset_{row_idx}", layout=layout)
-						
-					state_permute_map_selector_new_mt = g.reshape( state_permute_map_selector_new_mt, [1,320] )
-					
-					g.add_mem_constraints([state_permute_map_selector_new_mt], [self.mxm_state_permute_map_selector_mt, self.state_permute_map_selector_mt] + state_permute_map_selector_new_mt_list, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+				for gate_idx in range(gate_count):
 
-					state_permute_map_selector_new_mt_list.append( state_permute_map_selector_new_mt )
+					mxm_state_permute_map_selector_mt = gate_resolved_mxm_state_permute_map_selectors_list[gate_idx]
+
+					for row_idx in range(20) :
+				
+						layout = layout_expanded_mxm_permute_map_selector + f", A{1}({320 + gate_count + gate_idx*20 + row_idx})"
+				
+						if row_idx == 0:
+							state_permute_map_selector_st = mxm_state_permute_map_selector_mt.read( streams=[g.SG1_E[16]], time=gate_idx*20*31 )
+							
+							state_permute_map_selector_st = g.vxm_identity( state_permute_map_selector_st, alus=alu_rq_8, output_streams=g.SG4_W[7] )
+						
+							# save the offsetted memory address
+							state_permute_map_selector_new_mt = state_permute_map_selector_st.write(name=f"mxm_permute_selector_offset_{row_idx}", layout=layout)
+						else:
+					
+							constant_1_address_offset_st = self.constant_1_address_offset_mt.read( streams=[g.SG1_E[20]], time=row_idx*31+gate_idx*20*31)
+							state_permute_map_selector_st = state_permute_map_selector_new_mt.read( streams=[g.SG1_E[16]] )
+				
+				
+							# offset the memory address by 1
+							state_permute_map_selector_new_st = g.add(constant_1_address_offset_st, state_permute_map_selector_st, alus=alu_rq_8, output_streams=g.SG4[7])
+				
+							# save the offsetted memory address
+							state_permute_map_selector_new_mt = state_permute_map_selector_new_st.write(name=f"mxm_permute_selector_offset_{row_idx}", layout=layout)
+						
+						state_permute_map_selector_new_mt = g.reshape( state_permute_map_selector_new_mt, [1,320] )
+					
+						g.add_mem_constraints([state_permute_map_selector_new_mt], \
+								      [self.mxm_state_permute_map_selector_mt, \
+                                                                       self.state_permute_map_selector_mt] + state_permute_map_selector_new_mt_list, \
+	   							       g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+
+						state_permute_map_selector_new_mt_list.append( state_permute_map_selector_new_mt )
 					
 					
 				# generate constant tensors from the offsetted memory addresses
@@ -293,9 +308,23 @@ class IO:
 
 				self.permute_maps_mt_west = None
 				self.permute_maps_mt_east = None
-
+			
 			#else:	### !!!!!! gate the SL needs the permutor !!!!!!!!!
 			# if the permutor is used to generate the permuted state vector
+			
+			
+			# expand the permutation maps to query for the whole 320x320 permute matrix, not just for the first row
+			gate_counter_perm_map_selector_np           = np.zeros( (320,), dtype=np.uint8 )
+			self.gate_counter_perm_map_selector_mt      = g.from_data( np.asarray(gate_counter_perm_map_selector_np, 
+											dtype=np.uint8),
+										 	layout=layout_gate_counter_perm_map_selector )
+
+			self.gate_counter_gate_filtering_selector_mt = g.from_data( np.asarray(gate_counter_perm_map_selector_np, 
+											dtype=np.uint8),
+										 	layout=layout_gate_counter_gate_filtering_selector )
+										 	
+			self.gate_counter_perm_map_selector_mt.is_static = True										 	
+			self.gate_counter_gate_filtering_selector_mt.is_static = True	
 			
 			# generate permutation maps to reorder the state vector elements for qubits less than small_qbit_num_limit
 			permute_map = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint32 )
@@ -359,7 +388,7 @@ class IO:
 			transposer_requests.append(  g.tensor.create_transposer_request( [2], 1 ) ) # EAST
 			transposer_requests.append(  g.tensor.create_transposer_request( [3], 1 ) ) # EAST	
 
-			# distribute maps to broadcast teh gate kernel elements over a vector
+			# distribute maps to broadcast the gate kernel elements over a vector
 			distribute_map_np = np.zeros( (320,), dtype=np.uint8 )
 			for idx in range(320):
 				distribute_map_np[idx] = idx % 16
@@ -389,15 +418,16 @@ class IO:
 			self.control_qubit_address_maps_SL_east_mt = g.from_data(mem_gather_map, layout=control_qubit_address_maps_SL_east_layout_a)			
 			self.control_qubit_address_maps_SL_west_mt.is_static = True	
 			self.control_qubit_address_maps_SL_east_mt.is_static = True
-			'''
-			distributor_map_np = np.zeros( (320,), dtype=np.uint8 )
-			distributor_map_np[0:320:16] = 0
-			distributor_map_np[1:320:16] = 1
-			self.distributor_map_mt   = g.from_data(distributor_map_np, layout=layout_distributor_maps_west)
-			'''
+			
+			#distributor_map_np = np.zeros( (320,), dtype=np.uint8 )
+			#distributor_map_np[0:320:16] = 0
+			#distributor_map_np[1:320:16] = 1
+			#self.distributor_map_mt   = g.from_data(distributor_map_np, layout=layout_distributor_maps_west)
+			
 
 			self.distributor_map_mt = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="control_qubit_distributor_maps", layout=layout_distributor_maps_west)	
 			
+			g.add_mem_constraints([self.gate_counter_perm_map_selector_mt], [self.distributor_map_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 			
 			with g.ResourceScope(name="distribute_state_indices_scope", is_buffered=True, time=0) as distribute_state_indices_scope :
 
@@ -427,10 +457,10 @@ class IO:
 				
 				# same as before but now for the control qbit
 				control_state_1_selector_st = control_state_1_selector_mt.read(streams=[g.SG1[0]])
-				control_state_1_st = g.mem_gather(states_1_mt, control_state_1_selector_st, output_streams=[g.SG1[0]], time=3)
+				control_state_1_st = g.mem_gather(states_1_mt, control_state_1_selector_st, output_streams=[g.SG1[0]], time=gate_count+1)
 				
 				control_state_0_selector_st = control_state_0_selector_mt.read(streams=[g.SG1[24]])
-				control_state_0_st = g.mem_gather(states_0_mt, control_state_0_selector_st, output_streams=[g.SG1[24]], time=3)
+				control_state_0_st = g.mem_gather(states_0_mt, control_state_0_selector_st, output_streams=[g.SG1[24]], time=gate_count+1)
 				
 								
 				control_state_1_broadcasted_st = self.broadcast_element(control_state_1_st,

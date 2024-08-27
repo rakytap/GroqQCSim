@@ -46,10 +46,10 @@ def compile(mxm_permutation = True) -> List[str]:
 	program.gate_S_program()
 
 	# program to perform gate_SS operation
-	program.gate_SS_program()
+	#program.gate_SS_program()
 
 	# program to perform gate_SL operation
-	program.gate_SL_program()
+	#program.gate_SL_program()
 	
 	iops = pgm_pkg.assemble()
 
@@ -83,7 +83,7 @@ def invoke(device, iop, pgm_num, ep, tensors):
 	return outs
 
 
-def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernels_real, gate_kernels_imag, mxm_permutation = True):
+def run(iop_file, input_real, input_imag, target_qbits, control_qbit, gate_kernels_real, gate_kernels_imag, mxm_permutation = True):
 	"""
     This function interacts with the device driver at a lower level to show
     the control of loading 2 programs and invoking each program through
@@ -98,7 +98,7 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 
 	print(f"Running programs from {iop_file}")
 
-
+	
 
 	iop = runtime.IOProgram(iop_file)
 	device = runtime.devices[0]
@@ -107,27 +107,29 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	device.load(iop[1], unsafe_keep_entry_points=True)
 	device.load(iop[2], unsafe_keep_entry_points=True)
 	device.load(iop[3], unsafe_keep_entry_points=True)
-	device.load(iop[4], unsafe_keep_entry_points=True)
-	device.load(iop[5], unsafe_keep_entry_points=True)
-	
+	#device.load(iop[4], unsafe_keep_entry_points=True)
+	#device.load(iop[5], unsafe_keep_entry_points=True)
+	'''
 	if target_qbit >= small_qbit_num_limit :
 		raise ValueError( "the target qubit in this program should be less than 8" )
-	
+
+	'''
 	
 	# maps for mem_gather to select the correct state_1 indices according to the target qubit
-	target_qbit_selector = np.zeros( (320,), dtype=np.uint8 )
-	target_qbit_selector[0:320:16] = target_qbit
-
+	target_qbit_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )
+	for gate_idx in range(gate_count):
+		target_qbit_selector[gate_idx, 0:320:16] = target_qbits[gate_idx]
 		
 	state_1_selector = target_qbit_selector.copy()#np.zeros( (2,320,), dtype=np.uint8 )
 	state_0_selector = target_qbit_selector.copy()#np.zeros( (2,320,), dtype=np.uint8 )	
 	
-	control_state_1_selector = np.zeros( (1,320,), dtype=np.uint8 )
-	if ( control_qbit < small_qbit_num_limit and control_qbit >= 0 and control_qbit<8) :
-		control_state_1_selector[0,0:320:16] = control_qbit
-	else :
-		control_state_1_selector[0,0:320:16] = 0  # no control qubit is used when filetring the gate kernels
-	control_state_0_selector = control_state_1_selector	
+	control_state_1_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )
+	for gate_idx in range(gate_count):
+		if ( control_qbit < small_qbit_num_limit and control_qbit >= 0 and control_qbit<8) :
+			control_state_1_selector[gate_idx,0:320:16] = control_qbit
+		else :
+			control_state_1_selector[gate_idx,0:320:16] = 0  # no control qubit is used when filetring the gate kernels
+	control_state_0_selector = control_state_1_selector
 	
 	
 	# create memory maps to access the correct metadata on the chip to perform the gate operation on the chosen target_qubit
@@ -141,10 +143,11 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 
 
 	# control qubit distributor maps for SL gates
-	distributor_map_np = np.zeros( (320,), dtype=np.uint8 )
-	if control_qbit > 8 and control_qbit <= 16:
-		distributor_map_np[0:320:16] = 2*(control_qbit - small_qbit_num_limit - 1)
-		distributor_map_np[1:320:16] = 2*(control_qbit - small_qbit_num_limit - 1) + 1
+	distributor_map_np = np.zeros( (gate_count, 320,), dtype=np.uint8 )
+	for gate_idx in range(gate_count):	
+		if control_qbit > 8 and control_qbit <= 16:
+			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - small_qbit_num_limit - 1)
+			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - small_qbit_num_limit - 1) + 1
 			
 
 	# generate packed gate kernel data
@@ -180,43 +183,46 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 	entry_point = iop["split_gates"]["compute"] #4*index_of_split_program + 1
 	pgm_2_output = invoke(device, iop, index_of_split_program, entry_point, {})
 	
+	for gate_idx in range(gate_count):
 
-	# run the gate program
-	if target_qbit == control_qbit:
-		error("QCsim::run: The control qubit and target qubit should be different")
+		target_qbit = target_qbits[gate_idx]
+	
+		# run the gate program
+		if target_qbit == control_qbit:
+			error("QCsim::run: The control qubit and target qubit should be different")
 
-	elif target_qbit >= qbit_num:
-		error("QCsim::run: The target qubit should be less than teh number of qubits")
+		elif target_qbit >= qbit_num:
+			error("QCsim::run: The target qubit should be less than teh number of qubits")
 
-	elif control_qbit >= qbit_num:
-		error("QCsim::run: The control qubit should be less than teh number of qubits")
+		elif control_qbit >= qbit_num:
+			error("QCsim::run: The control qubit should be less than teh number of qubits")
 
-	elif target_qbit >= 0 and target_qbit < 8 and control_qbit == -1: 
-		# pogram perfroming the Gate_S operation
-		index_of_gate_program = 3
-		entry_point = iop["gate_S"]["compute"]
-		gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})	
+		elif target_qbit >= 0 and target_qbit < 8 and control_qbit == -1: 
+			# pogram perfroming the Gate_S operation
+			index_of_gate_program = 3
+			entry_point = iop["gate_S"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
 
-	elif target_qbit >= 0 and target_qbit < 8 and control_qbit < 8 and control_qbit >= 0: 
+		elif target_qbit >= 0 and target_qbit < 8 and control_qbit < 8 and control_qbit >= 0: 
 
-		# pogram perfroming the Gate_SS operation
-		index_of_gate_program = 4
-		entry_point = iop["gate_SS"]["compute"]
-		gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})	
+			# pogram perfroming the Gate_SS operation
+			index_of_gate_program = 4
+			entry_point = iop["gate_SS"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})	
 
-	elif target_qbit >= 0 and target_qbit < 8 and control_qbit > 8 and control_qbit <= 16:
+		elif target_qbit >= 0 and target_qbit < 8 and control_qbit > 8 and control_qbit <= 16:
 
-		# pogram perfroming the Gate_SL operation
-		index_of_gate_program = 5
-		entry_point = iop["gate_SL"]["compute"]
-		gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
-		#print( gate_output["test"] )	
-		#print( gate_output["test"].dtype )	
-		#print( gate_output["test"].shape )		
+			# pogram perfroming the Gate_SL operation
+			index_of_gate_program = 5
+			entry_point = iop["gate_SL"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output["test"] )	
+			#print( gate_output["test"].dtype )	
+			#print( gate_output["test"].shape )		
 
-	else:
+		else:
 
-		error("QCsim::run: Unimplemented case wit target qubit and control qubit.")
+			error("QCsim::run: Unimplemented case wit target qubit and control qubit.")
 	
 	
 	# download the transformed state vector
@@ -235,7 +241,7 @@ def run(iop_file, input_real, input_imag, target_qbit, control_qbit, gate_kernel
 
 
 
-def main( State_orig_real_float32, State_orig_imag_float32, target_qbit, control_qbit, gate_kernels, mxm_permutation = True ):
+def main( State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbit, gate_kernels, mxm_permutation = True ):
 	"""Compiles and runs the example programs."""
 	
 	if qbit_num is None:
@@ -247,7 +253,7 @@ def main( State_orig_real_float32, State_orig_imag_float32, target_qbit, control
 	import time
 
 	start_time = time.time()
-	transformed_state = run(iop_files[0], State_orig_real_float32, State_orig_imag_float32, target_qbit, control_qbit, np.real(gate_kernels), np.imag(gate_kernels), mxm_permutation )
+	transformed_state = run(iop_files[0], State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbit, np.real(gate_kernels), np.imag(gate_kernels), mxm_permutation )
 
 	print("time elapsed with groq: ", time.time() - start_time )
 	

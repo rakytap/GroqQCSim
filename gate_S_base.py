@@ -193,9 +193,13 @@ class Gate_S_base(Split_gates):
 		permutor_requests = []
 		permutor_requests.append( g.tensor.create_permutor_request( [0], 1 ) )
 		permutor_requests.append( g.tensor.create_permutor_request( [1], 1 ) )
+		
+		gate_counter_perm_map_selector_shared = g.shared_memory_tensor(self.gate_counter_perm_map_selector_mt, name="gate_counter_perm_map_selector_shared" )
+		gate_counter_perm_map_selector_st_a   = gate_counter_perm_map_selector_shared.read(streams=[g.SG1_E[0]])
+		gate_counter_perm_map_selector_st_b   = gate_counter_perm_map_selector_shared.read(streams=[g.SG1_E[0]])		
 
 		state_permute_map_selector_shared = g.shared_memory_tensor(self.state_permute_map_selector_mt, name="state_permute_map_selector_shared")		
-		state_permute_map_selector_list   = g.split_vectors(input=state_permute_map_selector_shared, splits=[1]*gate_count)
+		state_permute_map_selector_list   = g.split_vectors(input=state_permute_map_selector_shared, splits=gate_count)
 			
 		# otherwise the permutor slices are used
 		permute_maps_mt_west_shared = g.shared_memory_tensor(self.permute_maps_mt_west, name="permute_maps_west_shared")
@@ -204,8 +208,11 @@ class Gate_S_base(Split_gates):
 		mxm_permute_matrices_west_shared = None
 		mxm_permute_matrices_east_shared = None
 
-		state_permute_map_selector_west_st = state_permute_map_selector_list[0].read(streams=[g.SG1_W[24]])
-		state_permute_map_selector_east_st = state_permute_map_selector_list[0].read(streams=[g.SG1_E[24]])
+
+		state_permute_map_selector_west_st = g.mem_gather(state_permute_map_selector_shared, gate_counter_perm_map_selector_st_a, output_streams=[g.SG1_W[24]])		
+		state_permute_map_selector_east_st = g.mem_gather(state_permute_map_selector_shared, gate_counter_perm_map_selector_st_b, output_streams=[g.SG1_E[24]])				
+		#state_permute_map_selector_west_st = state_permute_map_selector_list[0].read(streams=[g.SG1_W[24]])
+		#state_permute_map_selector_east_st = state_permute_map_selector_list[0].read(streams=[g.SG1_E[24]])
 		permute_map_west_st                = g.mem_gather(permute_maps_mt_west_shared, state_permute_map_selector_west_st, output_streams=[g.SG1_W[24]])
 		permute_map_east_st                = g.mem_gather(permute_maps_mt_east_shared, state_permute_map_selector_east_st, output_streams=[g.SG1_E[24]])
 
@@ -278,7 +285,7 @@ class Gate_S_base(Split_gates):
 					
 		# gathering the permutation matrices over the 16 slices with mem_gather 
 		# allows dynamic memory addressing according to the target qubit
-		permute_matrix_west_1_st = self.gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_west_shared)									
+		permute_matrix_west_1_st = self.gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_west_shared)
 		permute_matrix_west_2_st = self.gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_west_shared)
 		permute_matrix_east_1_st = self.gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_east_shared)	
 		permute_matrix_east_2_st = self.gather_permutation_matrix( mxm_permute_map_selector_shared, mxm_permute_matrices_east_shared)

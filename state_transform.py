@@ -11,8 +11,8 @@ import time
 qbit_num = groqQCsim.qbit_num
 
 if __name__ == "__main__":
-	target_qbit  = 4
-	control_qbit = 5 #i.e. no control qubit is involved
+	target_qbits  = [4, 6, 2, 0]
+	control_qbit = -1 #i.e. no control qubit is involved
 
 	# determine the soze of the unitary to be decomposed
 	matrix_size = 1 << qbit_num
@@ -22,31 +22,32 @@ if __name__ == "__main__":
 	State_orig = State_orig_real + 1j*State_orig_imag
 	State_orig = State_orig/np.linalg.norm(State_orig)
 
-	if target_qbit == control_qbit:
+	if target_qbits[0] == control_qbit:
 		error("The control qubit and target qubit should be different")
 
-	elif target_qbit >= 0 and target_qbit < 8 and control_qbit == -1:
+	elif target_qbits[0] >= 0 and target_qbits[0] < 8 and control_qbit == -1:
 		# define quantum circuit
 		circuit = Circuit(qbit_num)
-		circuit.add_U3( target_qbit )
+		for gate_idx in range( len(target_qbits) ):
+			circuit.add_U3( target_qbits[gate_idx] )
 
 		circuit_1 = Circuit( 1 )
 		circuit_1.add_U3( 0 )
 		
-	elif target_qbit >= 0 and target_qbit < 8 and control_qbit >= 0 and control_qbit < 8:	
+	elif target_qbits[0] >= 0 and target_qbits[0] < 8 and control_qbit >= 0 and control_qbit < 8:	
 	
 		# define quantum circuit
 		circuit = Circuit(qbit_num)
-		circuit.add_adaptive( target_qbit, control_qbit )
+		circuit.add_adaptive( target_qbits[0], control_qbit )
 	
 		circuit_1 = Circuit( 1 )
 		circuit_1.add_RY( 0  )	
 
-	elif target_qbit >= 0 and target_qbit < 8 and control_qbit > 8 and control_qbit <= 21:	
+	elif target_qbits[0] >= 0 and target_qbits[0] < 8 and control_qbit > 8 and control_qbit <= 21:	
 	
 		# define quantum circuit
 		circuit = Circuit(qbit_num)
-		circuit.add_adaptive( target_qbit, control_qbit )
+		circuit.add_adaptive( target_qbits[0], control_qbit )
 	
 		circuit_1 = Circuit( 1 )
 		circuit_1.add_RY( 0  )	
@@ -63,9 +64,13 @@ if __name__ == "__main__":
 
 	#create an array of random parameters
 	parameters = np.random.rand( parameter_num )*2*np.pi
+	
+	if parameters.size > 3:
+		for gate_idx in range( len(target_qbits)-1 ):
+			parameters[gate_idx*3:3*(gate_idx+1)] = parameters[(len(target_qbits)-1)*3:]
 	#parameters[2] = -parameters[1]
 
-
+	print( parameters )
 
 
 	# apply the circuit to a quantum state
@@ -99,7 +104,7 @@ if __name__ == "__main__":
 	#State_orig_real_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
 	#State_orig_imag_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
 
-	real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbit, control_qbit, gate_kernels, mxm_permutation = False)
+	real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbit, gate_kernels, mxm_permutation = False)
 	print(' ')
 	print( 'difference between CPU oracle and Groq chip (real part): ', scipy.linalg.norm( real_part - np.real( State_transformed_oracle ) , 2), '(imag part): ', scipy.linalg.norm( imag_part - np.imag( State_transformed_oracle ) , 2) )
 
