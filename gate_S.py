@@ -262,6 +262,18 @@ class Gate(Gate_S_base):
 					self.gate_counter_gate_element_selector_11_mt = g.from_data( gate_element_selector_11_np, layout="H1(E), -1, S1(40)" )
 					
 					
+					gate_element_selector_01_np                   = np.zeros( (320,), dtype=np.uint8 )
+					gate_element_selector_01_np[0:320:16]         = gate_count + small_qbit_num_limit*20
+					self.gate_counter_gate_element_selector_01_mt = g.from_data( gate_element_selector_01_np, layout="H1(E), -1, S1(36)" )
+
+					gate_element_selector_10_np                   = np.zeros( (320,), dtype=np.uint8 )
+					gate_element_selector_10_np[0:320:16]         = 2*gate_count + small_qbit_num_limit*20
+					self.gate_counter_gate_element_selector_10_mt = g.from_data( gate_element_selector_10_np, layout="H1(E), -1, S1(40)" )	
+					
+					g.add_mem_constraints([self.gate_counter_gate_element_selector_00_mt], [self.gate_counter_gate_element_selector_01_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+					g.add_mem_constraints([self.gate_counter_gate_element_selector_11_mt], [self.gate_counter_gate_element_selector_10_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)				
+					
+					
 					# real and imaginary parts of the gate element concatenated into a unified tensor
 					gate_00_st = self.gather_gate_elements(self.gate_counter_gate_element_selector_00_mt, \
 															g.SG1_W[30], \
@@ -276,6 +288,7 @@ class Gate(Gate_S_base):
 															self.gate_kernels_broadcasted_real_copy_mt, \
 															self.gate_kernels_broadcasted_imag_copy_mt, \
 															output_stream_offset = 12 )
+															
 					gate_00_st = g.reinterpret( gate_00_st, g.uint32 )
 					gate_00_st = g.bitwise_and( gate_00_st, state_0_broadcasted_st, alus=[12], output_streams=g.SG4[0] )
 					gate_00_st = g.reinterpret( gate_00_st, g.float32 )
@@ -302,21 +315,26 @@ class Gate(Gate_S_base):
 
 					# gather streams to filter and mix gate elements for the unitary transformation
 					state_1_broadcasted_st, state_0_broadcasted_st = self.gather_gate_filter_tensors()
-				
-					# real and imaginary parts of the state concatenated into a unified tensor
-					gate_01_real_st = gate_kernels_broadcasted_real_shared_dict["0_01"].read( streams=g.SG4[1])#, time=5 )
-					gate_01_imag_st = gate_kernels_broadcasted_imag_shared_dict["0_01"].read( streams=g.SG4[1])#, time=5 )
-					gate_01_st 	= g.stack( [gate_01_real_st, gate_01_imag_st], dim=0 )
-
-					#gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[6] )
+					
+					# real and imaginary parts of the gate element concatenated into a unified tensor
+					gate_01_st = self.gather_gate_elements(self.gate_counter_gate_element_selector_01_mt, \
+															g.SG1_W[30], \
+															self.gate_kernels_broadcasted_real_mt, \
+															self.gate_kernels_broadcasted_imag_mt, \
+															output_stream_offset = 4 )
+															
+					# real and imaginary parts of the gate element concatenated into a unified tensor								
+					gate_10_st = self.gather_gate_elements(self.gate_counter_gate_element_selector_10_mt, \
+															g.SG1_W[31], \
+															self.gate_kernels_broadcasted_real_copy_mt, \
+															self.gate_kernels_broadcasted_imag_copy_mt, \
+															output_stream_offset = 12, \
+															time = 7 )
+															
 					gate_01_st = g.reinterpret( gate_01_st, g.uint32 )
 					gate_01_st = g.bitwise_and( gate_01_st, state_0_broadcasted_st, alus=[14], output_streams=g.SG4[0] )
 					gate_01_st = g.reinterpret( gate_01_st, g.float32 )
 
-					# real and imaginary parts of the state concatenated into a unified tensor
-					gate_10_real_st = gate_kernels_broadcasted_real_shared_copy_dict["0_10"].read( streams=g.SG4[3], time=7 )
-					gate_10_imag_st = gate_kernels_broadcasted_imag_shared_copy_dict["0_10"].read( streams=g.SG4[3], time=7 )
-					gate_10_st 	= g.stack( [gate_10_real_st, gate_10_imag_st], dim=0 )
 
 					gate_10_st = g.reinterpret( gate_10_st, g.uint32 )
 					gate_10_st = g.bitwise_and( gate_10_st, state_1_broadcasted_st, alus=[6], output_streams=g.SG4[2] )
