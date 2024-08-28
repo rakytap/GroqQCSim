@@ -149,7 +149,10 @@ class Split_gates(IO):
 
 					layout_real = layout_real + f", A1({address_offset + gate_idx})"
 					layout_imag = layout_imag + f", A1({address_offset + gate_idx})"
+
+					gate_kernel_broadcasted_real_st = g.reshape( gate_kernel_broadcasted_real_st, [1,320] )
 					gate_kernels_broadcasted_real_mt = gate_kernel_broadcasted_real_st.write(name=f"gate_kernel_broadcasted_real_{gate_idx}_"+label, layout=layout_real)#, program_output=True)
+					gate_kernel_broadcasted_imag_st = g.reshape( gate_kernel_broadcasted_imag_st, [1,320] )
 					gate_kernels_broadcasted_imag_mt = gate_kernel_broadcasted_imag_st.write(name=f"gate_kernel_broadcasted_imag_{gate_idx}_"+label, layout=layout_imag)#, program_output=True)
 					
 					# copies of the gate elements to support read concurrency in forthcoming processeses
@@ -178,18 +181,24 @@ class Split_gates(IO):
 					g.add_mem_constraints(gate_kernels_real_list, [gate_kernels_broadcasted_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)    
 					g.add_mem_constraints(gate_kernels_imag_list, [gate_kernels_broadcasted_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
 
-
+					
 					gate_kernels_broadcasted_real_list.append( gate_kernels_broadcasted_real_mt )
 					gate_kernels_broadcasted_imag_list.append( gate_kernels_broadcasted_imag_mt )
 					self.gate_kernels_broadcasted_real_dict[f"{gate_idx}_"+label] = gate_kernels_broadcasted_real_mt
 					self.gate_kernels_broadcasted_imag_dict[f"{gate_idx}_"+label] = gate_kernels_broadcasted_imag_mt
 					print( f"{gate_idx}_"+label )
 
+					self.gate_kernels_broadcasted_real_mt = g.concat( gate_kernels_broadcasted_real_list )
+					self.gate_kernels_broadcasted_imag_mt = g.concat( gate_kernels_broadcasted_imag_list )
+					
 
 					gate_kernels_broadcasted_real_copy_list.append( gate_kernels_broadcasted_real_copy_mt )
 					gate_kernels_broadcasted_imag_copy_list.append( gate_kernels_broadcasted_imag_copy_mt )
 					self.gate_kernels_broadcasted_real_copy_dict[f"{gate_idx}_"+label] = gate_kernels_broadcasted_real_copy_mt
 					self.gate_kernels_broadcasted_imag_copy_dict[f"{gate_idx}_"+label] = gate_kernels_broadcasted_imag_copy_mt
+
+					self.gate_kernels_broadcasted_real_copy_mt = g.concat( gate_kernels_broadcasted_real_copy_list )
+					self.gate_kernels_broadcasted_imag_copy_mt = g.concat( gate_kernels_broadcasted_imag_copy_list )
 				
 				############################################################################################################x
 			'''
