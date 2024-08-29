@@ -177,12 +177,14 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbit, gate_kerne
 	# run the upload program
 	entry_point = iop["upload"]["mono"]
 	pgm_1_output = invoke(device, iop, 0, entry_point, {"State_input_real": input_real, "State_input_imag": input_imag, "mxm_permutation_selector": mxm_permutation_selector, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector, "control_qubit_distributor_maps": distributor_map_np})
-	
+
 	# run the gate split program
 	index_of_split_program = 2
 	entry_point = iop["split_gates"]["compute"] #4*index_of_split_program + 1
 	pgm_2_output = invoke(device, iop, index_of_split_program, entry_point, {})
-	
+
+	#print( pgm_2_output )
+
 	for gate_idx in range(gate_count):
 
 		target_qbit = target_qbits[gate_idx]
@@ -225,6 +227,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbit, gate_kerne
 			error("QCsim::run: Unimplemented case wit target qubit and control qubit.")
 	
 	
+
 	# download the transformed state vector
 	index_of_download_program = 1
 	

@@ -11,8 +11,10 @@ import time
 qbit_num = groqQCsim.qbit_num
 
 if __name__ == "__main__":
-	target_qbits  = [4, 6, 2, 0]
+	target_qbits  = [0, 0, 6, 4]
 	control_qbit = -1 #i.e. no control qubit is involved
+
+	gate_count = len(target_qbits)
 
 	# determine the soze of the unitary to be decomposed
 	matrix_size = 1 << qbit_num
@@ -22,6 +24,9 @@ if __name__ == "__main__":
 	State_orig = State_orig_real + 1j*State_orig_imag
 	State_orig = State_orig/np.linalg.norm(State_orig)
 
+
+	one_qubit_circuits = []
+
 	if target_qbits[0] == control_qbit:
 		error("The control qubit and target qubit should be different")
 
@@ -30,9 +35,10 @@ if __name__ == "__main__":
 		circuit = Circuit(qbit_num)
 		for gate_idx in range( len(target_qbits) ):
 			circuit.add_U3( target_qbits[gate_idx] )
-
-		circuit_1 = Circuit( 1 )
-		circuit_1.add_U3( 0 )
+		
+			circuit_1 = Circuit( 1 )
+			circuit_1.add_U3( 0 )
+			one_qubit_circuits.append( circuit_1 )
 		
 	elif target_qbits[0] >= 0 and target_qbits[0] < 8 and control_qbit >= 0 and control_qbit < 8:	
 	
@@ -64,12 +70,12 @@ if __name__ == "__main__":
 
 	#create an array of random parameters
 	parameters = np.random.rand( parameter_num )*2*np.pi
-	
+	'''
 	if parameters.size > 3:
 		for gate_idx in range( len(target_qbits)-1 ):
 			parameters[gate_idx*3:3*(gate_idx+1)] = parameters[(len(target_qbits)-1)*3:]
 	#parameters[2] = -parameters[1]
-
+	'''
 	print( parameters )
 
 
@@ -84,13 +90,16 @@ if __name__ == "__main__":
 	#####################################################
 	# get the gate kernel
 
-	gate_kernel_single = circuit_1.get_Matrix( parameters )
-	print( 'The singla qubit gate kernel is:')
-	print( gate_kernel_single )
+	print( 'The single qubit gate kernels are:')
 
 	gate_kernels = np.zeros((80, 2, 2,), dtype=np.complex64)
 	for idx in range(80):
-		gate_kernels[idx] = gate_kernel_single
+		if idx < gate_count:
+			parameters_1 = parameters[parameters.size-(idx+1)*3 : parameters.size + (idx)*3]
+			gate_kernel_single = one_qubit_circuits[idx].get_Matrix( parameters_1 )
+			gate_kernels[idx] = gate_kernel_single
+			print( gate_kernel_single )
+			print(' ')
 
 	print( "gate kernel shape: ", gate_kernels.shape )
 
@@ -112,11 +121,6 @@ if __name__ == "__main__":
 
 
 	print("time elapsed with C++: ", time_Cpp )
-
-
-	print( 'The singla qubit gate kernel is:')
-	print( gate_kernel_single )
-	print(' ' )
 
 	print( State_orig_real_float32[0:] )
 	print(' ' )

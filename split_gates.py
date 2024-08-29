@@ -17,6 +17,11 @@ class Split_gates(IO):
 	def split_gates_program(self):
 		name = "split_gates"
 		with self.pgm_pkg.create_program_context(name) as pgm3:
+
+			transposer_requests = []
+			transposer_requests.append( g.tensor.create_transposer_request( [0], 1) )# request transposer on the west side
+			transposer_requests.append( g.tensor.create_transposer_request( [2], 1) )# request transposer on the east side
+
 			
 			# create reusable permutor requests
 			permutor_requests = []
@@ -112,17 +117,23 @@ class Split_gates(IO):
 					label = gate_kernel_element_labels[idx]
 
 					# concat real and imag parts to pipeline them at once through a broadcaster
-					gate_kernel_real_st = gate_kernel_real_mt.read( streams=g.SG4[1], time=12 + 2*idx + ((gate_idx+1)//2)*loop_time_long_cycle + (gate_idx//2)*loop_time_short_cycle ) 
-					gate_kernel_imag_st = gate_kernel_imag_mt.read( streams=g.SG4[1], time=14 + 2*idx + ((gate_idx+1)//2)*loop_time_long_cycle + (gate_idx//2)*loop_time_short_cycle )		
-					gate_kernel_st = g.concat_inner_splits( [gate_kernel_real_st, gate_kernel_imag_st] )
+					gate_kernel_real_st = gate_kernel_real_mt.read( streams=g.SG4[1], time=12 + (gate_idx%2)*4 + 2*idx + ((gate_idx+1)//2)*loop_time_long_cycle + (gate_idx//2)*loop_time_short_cycle ) 
+					gate_kernel_imag_st = gate_kernel_imag_mt.read( streams=g.SG4[1], time=14 + 2*idx + ((gate_idx+1)//2)*loop_time_long_cycle + (gate_idx//2)*loop_time_short_cycle )
+		
+					
+					if gate_idx % 2 == 0 :
+						gate_kernel_st = g.concat_inner_splits( [gate_kernel_real_st, gate_kernel_imag_st] )
+					else: 
+						gate_kernel_st = g.concat_inner_splits( [gate_kernel_imag_st, gate_kernel_real_st] )
+					
 					distributor_request = distributor_requests[(gate_idx+1) % 2]
 					gate_kernel_broadcasted_st = g.distribute_8( gate_kernel_st, 
-							distribute_map_tensor_list[idx],
+							distribute_map_tensor_list[ idx ],
 							distributor_req=distributor_request,
 							map_stream_req=g.SG1[12],
 							bypass8=0b00001111,
 					)
-
+					
 					permutor_request = permutor_requests[(gate_idx+1) % 2]
 					gate_kernel_broadcasted_st = g.broadcast_lane_0( gate_kernel_broadcasted_st, 
 										permutor_request,
@@ -131,11 +142,26 @@ class Split_gates(IO):
 										input_streams=[g.SG4[3]], 
 										output_streams=[g.SG4[2]]
 					)
+					'''
+					transposer_request = transposer_requests[(gate_idx+1) % 2]
+					gate_kernel_broadcasted_st = g.transpose_null(gate_kernel_broadcasted_st, 
+							                                                         transposer_req=transposer_request, 
+							                                                         stream_order=[4,5,6,7])
+					
+					'''
 
 					# split into real ands imaginary parts	
 					gate_kernel_broadcasted_list = g.split_inner_splits( gate_kernel_broadcasted_st )
-					gate_kernel_broadcasted_real_st = gate_kernel_broadcasted_list[0]
-					gate_kernel_broadcasted_imag_st = gate_kernel_broadcasted_list[1]
+					if gate_idx % 2 == 0 :
+						gate_kernel_broadcasted_real_st = gate_kernel_broadcasted_list[0]
+						gate_kernel_broadcasted_imag_st = gate_kernel_broadcasted_list[1]
+					else:
+						gate_kernel_broadcasted_real_st = gate_kernel_broadcasted_list[1]
+						gate_kernel_broadcasted_imag_st = gate_kernel_broadcasted_list[0]				
+		
+					if idx == 3:					
+						gate_kernel_broadcasted_imag_st.write(name=f"iii_{gate_idx}")#, program_output=True )		
+						gate_kernel_broadcasted_real_st.write(name=f"rrr_{gate_idx}")#, program_output=True )	
 
 					######################## save broadcasted elements into memory and add memory exclusion rules #############################
 
@@ -160,6 +186,7 @@ class Split_gates(IO):
 					layout_imag = layout_imag_copy + f", A1({address_offset + gate_idx})"
 					gate_kernels_broadcasted_real_copy_mt = gate_kernel_broadcasted_real_st.write(name=f"gate_kernel_broadcasted_real_{gate_idx}_"+label, layout=layout_real)#, program_output=True)
 					gate_kernels_broadcasted_imag_copy_mt = gate_kernel_broadcasted_imag_st.write(name=f"gate_kernel_broadcasted_imag_{gate_idx}_"+label, layout=layout_imag)#, program_output=True)
+					
 
 					gate_kernels_broadcasted_real_mt.is_static = True
 					gate_kernels_broadcasted_imag_mt.is_static = True

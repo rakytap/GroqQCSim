@@ -252,42 +252,40 @@ class Gate(Gate_S_base):
 
 					#state_1_broadcasted_st = state_1_broadcasted_list[0].read( streams=g.SG4[2] )
 					#state_0_broadcasted_st = state_0_broadcasted_list[0].read( streams=g.SG4[0] )
-####################################################
-					gate_element_selector_00_np                   = np.zeros( (320,), dtype=np.uint8 )
-					gate_element_selector_00_np[0:320:16]         = 0 + small_qbit_num_limit*20
-					self.gate_counter_gate_element_selector_00_mt = g.from_data( gate_element_selector_00_np, layout="H1(E), -1, S1(36)" )
 
-					gate_element_selector_11_np                   = np.zeros( (320,), dtype=np.uint8 )
-					gate_element_selector_11_np[0:320:16]         = 3*gate_count + small_qbit_num_limit*20
-					self.gate_counter_gate_element_selector_11_mt = g.from_data( gate_element_selector_11_np, layout="H1(E), -1, S1(40)" )
-					
-					
-					gate_element_selector_01_np                   = np.zeros( (320,), dtype=np.uint8 )
-					gate_element_selector_01_np[0:320:16]         = gate_count + small_qbit_num_limit*20
-					self.gate_counter_gate_element_selector_01_mt = g.from_data( gate_element_selector_01_np, layout="H1(E), -1, S1(36)" )
+					gate_counter_gate_element_selector_00_shared = g.shared_memory_tensor( \
+									self.gate_counter_gate_element_selector_00_mt, \
+									name="gate_counter_gate_element_selector_00_shared") 
 
-					gate_element_selector_10_np                   = np.zeros( (320,), dtype=np.uint8 )
-					gate_element_selector_10_np[0:320:16]         = 2*gate_count + small_qbit_num_limit*20
-					self.gate_counter_gate_element_selector_10_mt = g.from_data( gate_element_selector_10_np, layout="H1(E), -1, S1(40)" )	
-					
-					g.add_mem_constraints([self.gate_counter_gate_element_selector_00_mt], [self.gate_counter_gate_element_selector_01_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
-					g.add_mem_constraints([self.gate_counter_gate_element_selector_11_mt], [self.gate_counter_gate_element_selector_10_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)				
+					gate_counter_gate_element_selector_01_shared = g.shared_memory_tensor( \
+									self.gate_counter_gate_element_selector_01_mt, \
+									name="gate_counter_gate_element_selector_01_shared") 
+
+
+					gate_counter_gate_element_selector_10_shared = g.shared_memory_tensor( \
+									self.gate_counter_gate_element_selector_10_mt, \
+									name="gate_counter_gate_element_selector_10_shared") 
+
+					gate_counter_gate_element_selector_11_shared = g.shared_memory_tensor( \
+									self.gate_counter_gate_element_selector_11_mt, \
+									name="gate_counter_gate_element_selector_11_shared") 
 					
 					
 					# real and imaginary parts of the gate element concatenated into a unified tensor
-					gate_00_st = self.gather_gate_elements(self.gate_counter_gate_element_selector_00_mt, \
+					gate_00_st = self.gather_gate_elements(gate_counter_gate_element_selector_00_shared, \
 															g.SG1_W[30], \
 															self.gate_kernels_broadcasted_real_mt, \
 															self.gate_kernels_broadcasted_imag_mt, \
 															output_stream_offset = 4, \
 															time = 0)
 															
-					# real and imaginary parts of the gate element concatenated into a unified tensor								
-					gate_11_st = self.gather_gate_elements(self.gate_counter_gate_element_selector_11_mt, \
+					# real and imaginary parts of the gate element concatenated into a unified tensor
+					gate_11_st = self.gather_gate_elements(gate_counter_gate_element_selector_11_shared, \
 															g.SG1_W[31], \
 															self.gate_kernels_broadcasted_real_copy_mt, \
 															self.gate_kernels_broadcasted_imag_copy_mt, \
 															output_stream_offset = 12 )
+
 															
 					gate_00_st = g.reinterpret( gate_00_st, g.uint32 )
 					gate_00_st = g.bitwise_and( gate_00_st, state_0_broadcasted_st, alus=[12], output_streams=g.SG4[0] )
@@ -305,8 +303,8 @@ class Gate(Gate_S_base):
 					
 					
 					gate_diag_st_list	= g.split( gate_diag_st, num_splits=2, dim=0 )
-					gate_diag_real_mt 	= gate_diag_st_list[0].write(name=f"gate_diag_real", storage_req=storage_req_real_diag)
-					gate_diag_imag_mt 	= gate_diag_st_list[1].write(name=f"gate_diag_imag", storage_req=storage_req_imag_diag)
+					gate_diag_real_mt 	= gate_diag_st_list[0].write(name=f"gate_diag_real", storage_req=storage_req_real_diag)#, program_output=True)
+					gate_diag_imag_mt 	= gate_diag_st_list[1].write(name=f"gate_diag_imag", storage_req=storage_req_imag_diag)#, program_output=True)
 					
 					g.add_mem_constraints([self.gate_kernels_broadcasted_real_mt], [gate_diag_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 					g.add_mem_constraints([self.gate_kernels_broadcasted_imag_mt], [gate_diag_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
@@ -317,14 +315,14 @@ class Gate(Gate_S_base):
 					state_1_broadcasted_st, state_0_broadcasted_st = self.gather_gate_filter_tensors()
 					
 					# real and imaginary parts of the gate element concatenated into a unified tensor
-					gate_01_st = self.gather_gate_elements(self.gate_counter_gate_element_selector_01_mt, \
+					gate_01_st = self.gather_gate_elements(gate_counter_gate_element_selector_01_shared, \
 															g.SG1_W[30], \
 															self.gate_kernels_broadcasted_real_mt, \
 															self.gate_kernels_broadcasted_imag_mt, \
 															output_stream_offset = 4 )
 															
 					# real and imaginary parts of the gate element concatenated into a unified tensor								
-					gate_10_st = self.gather_gate_elements(self.gate_counter_gate_element_selector_10_mt, \
+					gate_10_st = self.gather_gate_elements(gate_counter_gate_element_selector_10_shared, \
 															g.SG1_W[31], \
 															self.gate_kernels_broadcasted_real_copy_mt, \
 															self.gate_kernels_broadcasted_imag_copy_mt, \
@@ -384,27 +382,96 @@ class Gate(Gate_S_base):
 				# save the offsetted memory address
 				gate_counter_perm_map_selector_mt = gate_counter_perm_map_selector_st.write(name=f"gate_counter_perm_map_selector_mt", \
 													 storage_req=gate_counter_perm_map_selector_shared.storage_request, 
-													 time=0, program_output=True)
+													 time=0)#, program_output=False)
 				
 
-				#### increase the gate counter for gate filtering selector selector ####
+				#### increase the gate counter for gate filtering selector ####
 				alu_rq_15 = g.tensor.create_alu_request( alus=[15] )			
 			
 				
-				constant_1_address_offset_st     = constant_1_address_offset_shared.read(streams=[g.SG1_E[0]])				
+				#constant_1_address_offset_st     = constant_1_address_offset_shared.read(streams=[g.SG1_E[0]])				
 
 				gate_counter_gate_filtering_selector_shared = g.shared_memory_tensor(self.gate_counter_gate_filtering_selector_mt,   \
 												   	name="gate_counter_gate_filtering_selector_shared") 
 				gate_counter_gate_filtering_selector_st  = gate_counter_gate_filtering_selector_shared.read(streams=[g.SG1_W[4]])
-				gate_counter_gate_filtering_selector_st.write(name='test2', layout='H1,-1,S1', program_output=True)
 				
 				# offset the memory address by 1
 				gate_counter_gate_filtering_selector_st = g.add(constant_1_address_offset_st, gate_counter_gate_filtering_selector_st, alus=alu_rq_15, output_streams=g.SG4_E[6])
 				
 				# save the offsetted memory address
-				gate_counter_gate_filtering_selector_mt = gate_counter_gate_filtering_selector_st.write(name=f"gate_counter_gate_filtering_selector_mt", \
-																storage_req=gate_counter_gate_filtering_selector_shared.storage_request, 
-																time=1, program_output=True)
+				gate_counter_gate_filtering_selector_mt = gate_counter_gate_filtering_selector_st.write( \
+										name=f"gate_counter_gate_filtering_selector_mt", \
+										storage_req=gate_counter_gate_filtering_selector_shared.storage_request, 
+										time=None)#, program_output=False)
+
+
+
+
+				
+				#### increase the gate counter for gate element selectors ####
+				alu_rq_0  = g.tensor.create_alu_request( alus=[0] )	
+				alu_rq_1  = g.tensor.create_alu_request( alus=[1] )	
+				alu_rq_13 = g.tensor.create_alu_request( alus=[13] )	
+				alu_rq_14 = g.tensor.create_alu_request( alus=[14] )	
+
+				constant_1_address_offset_st_copy     = constant_1_address_offset_shared.read(streams=[g.SG1_E[0]])				
+
+				gate_counter_gate_element_selector_00_shared = g.shared_memory_tensor( \
+									self.gate_counter_gate_element_selector_00_mt, \
+									name="gate_counter_gate_element_selector_00_shared") 
+				
+				gate_counter_gate_element_selector_01_shared = g.shared_memory_tensor( \
+									self.gate_counter_gate_element_selector_01_mt, \
+									name="gate_counter_gate_element_selector_01_shared") 
+
+				
+				gate_counter_gate_element_selector_10_shared = g.shared_memory_tensor( \
+									self.gate_counter_gate_element_selector_10_mt, \
+									name="gate_counter_gate_element_selector_10_shared") 
+				
+				gate_counter_gate_element_selector_11_shared = g.shared_memory_tensor( \
+									self.gate_counter_gate_element_selector_11_mt, \
+									name="gate_counter_gate_element_selector_11_shared") 
+				
+				gate_counter_gate_element_selector_00_st  = gate_counter_gate_element_selector_00_shared.read(streams=[g.SG1_W[8]])
+				gate_counter_gate_element_selector_11_st  = gate_counter_gate_element_selector_11_shared.read(streams=[g.SG1_W[12]])
+				gate_counter_gate_element_selector_01_st  = gate_counter_gate_element_selector_01_shared.read(streams=[g.SG1_W[24]])
+				gate_counter_gate_element_selector_10_st  = gate_counter_gate_element_selector_10_shared.read(streams=[g.SG1_W[28]])
+
+				#gate_counter_gate_element_selector_11_st.write( name='wwww', layout='H1(W), -1, S1(42)')#, program_output=True )
+				
+				# offset the memory address by 1
+				gate_counter_gate_element_selector_00_st = g.add(constant_1_address_offset_st, gate_counter_gate_element_selector_00_st, alus=alu_rq_0, output_streams=g.SG4_E[3])
+				gate_counter_gate_element_selector_11_st = g.add(constant_1_address_offset_st, gate_counter_gate_element_selector_11_st, alus=alu_rq_1, output_streams=g.SG4_E[2])
+				gate_counter_gate_element_selector_01_st = g.add(constant_1_address_offset_st_copy, gate_counter_gate_element_selector_01_st, alus=alu_rq_14, output_streams=g.SG4_E[7])
+				gate_counter_gate_element_selector_10_st = g.add(constant_1_address_offset_st_copy, gate_counter_gate_element_selector_10_st, alus=alu_rq_13, output_streams=g.SG4_E[0])
+				
+				#gate_counter_gate_element_selector_11_st.write( name='rrrr', layout='H1(E), -1, S1(42)')#, program_output=True )
+
+
+				# save the offsetted memory address
+				gate_counter_gate_element_selector_00_mt = gate_counter_gate_element_selector_00_st.write( \
+										name=f"gate_counter_gate_element_selector_00_mt", \
+										storage_req=gate_counter_gate_element_selector_00_shared.storage_request, 
+										time=None)#, program_output=False)
+
+				gate_counter_gate_element_selector_11_mt = gate_counter_gate_element_selector_11_st.write( \
+										name=f"gate_counter_gate_element_selector_11_mt", \
+										storage_req=gate_counter_gate_element_selector_11_shared.storage_request, 
+										time=None)#, program_output=True)
+
+
+				gate_counter_gate_element_selector_01_mt = gate_counter_gate_element_selector_01_st.write( \
+										name=f"gate_counter_gate_element_selector_01_mt", \
+										storage_req=gate_counter_gate_element_selector_01_shared.storage_request, 
+										time=1)#, program_output=True)
+
+
+				gate_counter_gate_element_selector_10_mt = gate_counter_gate_element_selector_10_st.write( \
+										name=f"gate_counter_gate_element_selector_10_mt", \
+										storage_req=gate_counter_gate_element_selector_10_shared.storage_request, 
+										time=None)#, program_output=False)
+															
 
 				
 

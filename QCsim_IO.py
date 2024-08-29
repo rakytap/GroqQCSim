@@ -322,9 +322,34 @@ class IO:
 			self.gate_counter_gate_filtering_selector_mt = g.from_data( np.asarray(gate_counter_perm_map_selector_np, 
 											dtype=np.uint8),
 										 	layout=layout_gate_counter_gate_filtering_selector )
+
+
+			gate_element_selector_00_np                   = np.zeros( (320,), dtype=np.uint8 )
+			gate_element_selector_00_np[0:320:16]         = 0 + small_qbit_num_limit*20
+			self.gate_counter_gate_element_selector_00_mt = g.from_data( gate_element_selector_00_np, layout="H1(E), A1(0), S1(36)" )
+
+			gate_element_selector_11_np                   = np.zeros( (320,), dtype=np.uint8 )
+			gate_element_selector_11_np[0:320:16]         = 3*gate_count + small_qbit_num_limit*20
+			self.gate_counter_gate_element_selector_11_mt = g.from_data( gate_element_selector_11_np, layout="H1(E), A1(0), S1(35)" )
+					
+					
+			gate_element_selector_01_np                   = np.zeros( (320,), dtype=np.uint8 )
+			gate_element_selector_01_np[0:320:16]         = gate_count + small_qbit_num_limit*20
+			self.gate_counter_gate_element_selector_01_mt = g.from_data( gate_element_selector_01_np, layout="H1(E), A1(1), S1(36)" )
+
+			gate_element_selector_10_np                   = np.zeros( (320,), dtype=np.uint8 )
+			gate_element_selector_10_np[0:320:16]         = 2*gate_count + small_qbit_num_limit*20
+			self.gate_counter_gate_element_selector_10_mt = g.from_data( gate_element_selector_10_np, layout="H1(E), A1(1), S1(35)" )	
+					
+			g.add_mem_constraints([self.gate_counter_gate_element_selector_00_mt], [self.gate_counter_gate_element_selector_01_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+			g.add_mem_constraints([self.gate_counter_gate_element_selector_11_mt], [self.gate_counter_gate_element_selector_10_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)				
 										 	
 			self.gate_counter_perm_map_selector_mt.is_static = True										 	
 			self.gate_counter_gate_filtering_selector_mt.is_static = True	
+			self.gate_counter_gate_element_selector_00_mt.is_static = True
+			self.gate_counter_gate_element_selector_01_mt.is_static = True
+			self.gate_counter_gate_element_selector_10_mt.is_static = True
+			self.gate_counter_gate_element_selector_11_mt.is_static = True
 			
 			# generate permutation maps to reorder the state vector elements for qubits less than small_qbit_num_limit
 			permute_map = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint32 )
@@ -401,7 +426,8 @@ class IO:
 			g.add_mem_constraints([state_0_selector_mt], [control_state_0_selector_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 			
 			
-			# generate tensors full with float32 ones and zeros  this is needed later when manipulating the broadcates gate kernel elements with control qubits
+			# generate tensors full with float32 ones and zeros  
+			# this is needed later when manipulating the broadcates gate kernel elements with control qubits
 			self.ones_mt = g.full((1, 1, 320), 1.0, dtype=g.float32, name="ones_mt", layout=layout_ones)
 			self.zeros_mt = g.full((1, 1, 320), 0.0, dtype=g.float32, name="zeros_mt", layout=layout_zeros)
 			self.ones_mt = g.reinterpret( self.ones_mt, dtype=g.uint32)

@@ -66,6 +66,10 @@ layout_gate_kernels_real	="H1(E), S4(8-11)"
 layout_gate_kernels_imag	="H1(E), S4(12-15)"
 
 
+
+
+
+
 # memory layout to store the vectors describing states |0> and |1> for different target qubits within a single 320 element vector
 # addresses from 0 to small_qbit_num_limit-1       			are occupied by vectors describing states |0> and |1> for different target qubits (states |1> are labeled by bits 1)
 # addresses from small_qbit_num_limit to 2*small_qbit_num_limit-1 	are occupied by vectors describing states |0> and |1> for different target qubits (states |0> are labeled by bits 1)
@@ -89,8 +93,8 @@ layout_state_0_broadcasted		= f"H1(E), A{gate_count}(0-{gate_count-1}), S4(27-31
 layout_control_state_0_broadcasted	= f"H1(E), A{gate_count}({gate_count}-{2*gate_count-1}), S4(27-31)" # slice 28 is reserved
 
 # memory layout for the tensors full of ones and zeros
-layout_zeros = f"H1(E), A1({320+2*gate_count}), S4(27-31)"
-layout_ones = f"H1(E), A1({320+2*gate_count}), S4(32-35)"
+layout_zeros = f"H1(E), A1({320+2*gate_count}), S4(0-3)"
+layout_ones = f"H1(E), A1({320+2*gate_count}), S4(4-7)"
 
 # permute maps used to reorder the state vector elements according to the given target qubit (permute map is also stored on the western hemisphere)
 layout_permute_maps_east = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(E), S1(37)"
