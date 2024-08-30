@@ -53,6 +53,10 @@ layout_State_input_imag 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)
 layout_State_input_real_copy 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)-1}), B2, S4(8-11)"
 layout_State_input_imag_copy 	=f"H1(W), A{memory_slices >> 1}(0-{(memory_slices >> 1)-1}), B2, S4(12-15)"
 
+# memory layout for the mxm permutation marices (identical permutation matrices are also stored on the western hemisphere) 
+layout_mxm_permutation_matrices_east = f"H1(E), A{small_qbit_num_limit*20}(0-{small_qbit_num_limit*20-1}), S16(0-15)"
+
+
 
 # memory layouts for splitted gate operations (Each 320byte vector contains one gate kernel in the first 4 elements)
 # addresses from 0 to gate_count                   on each hemispheres are occupied with the broadcasted 00 (real or imag) element of the gate kernels
@@ -68,6 +72,9 @@ layout_gate_kernels_imag	="H1(E), S4(12-15)"
 
 
 
+# memory layout for the tensors full of ones and zeros
+layout_zeros = f"H1(E), A1({320+2*gate_count}), S4(32-35)"
+layout_ones = f"H1(E), A1({320+2*gate_count}), S4(32-35)"
 
 
 # memory layout to store the vectors describing states |0> and |1> for different target qubits within a single 320 element vector
@@ -92,9 +99,7 @@ layout_control_state_1_broadcasted	= f"H1(E), A{gate_count}({gate_count}-{2*gate
 layout_state_0_broadcasted		= f"H1(E), A{gate_count}(0-{gate_count-1}), S4(27-31)" # slice 28 is reserved
 layout_control_state_0_broadcasted	= f"H1(E), A{gate_count}({gate_count}-{2*gate_count-1}), S4(27-31)" # slice 28 is reserved
 
-# memory layout for the tensors full of ones and zeros
-layout_zeros = f"H1(E), A1({320+2*gate_count}), S4(0-3)"
-layout_ones = f"H1(E), A1({320+2*gate_count}), S4(4-7)"
+
 
 # permute maps used to reorder the state vector elements according to the given target qubit (permute map is also stored on the western hemisphere)
 layout_permute_maps_east = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(E), S1(37)"
@@ -116,5 +121,4 @@ layout_gate_kernels_imag_packed	="H1(E), A1(321), S4(40-43)"
 
 
 
-# memory layout for the mxm permutation marices (identical permutation matrices are also stored on the western hemisphere) 
-layout_mxm_permutation_matrices_east = f"H1(E), A{small_qbit_num_limit*20}(0-{small_qbit_num_limit*20-1}), S16(0-15)"
+

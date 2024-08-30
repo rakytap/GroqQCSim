@@ -9,10 +9,17 @@ import groqQCsim
 import time
 
 qbit_num = groqQCsim.qbit_num
+gate_count = groqQCsim.gate_count
 
 if __name__ == "__main__":
 	target_qbits  = [0, 0, 6, 4]
-	control_qbit = -1 #i.e. no control qubit is involved
+	control_qbits = [-1, -1, -1, -1] #-1 ... no cotron qubit is incolved in the operation
+
+	if len(target_qbits) != gate_count:
+		raise Exception("Number of target qubits in the list of target qubits should be equal to the gate count")
+
+	if len(control_qbits) != gate_count:
+		raise Exception("Number of control qubits in the list of control qubits should be equal to the gate count")
 
 	gate_count = len(target_qbits)
 
@@ -27,10 +34,10 @@ if __name__ == "__main__":
 
 	one_qubit_circuits = []
 
-	if target_qbits[0] == control_qbit:
+	if target_qbits[0] == control_qbits[0]:
 		error("The control qubit and target qubit should be different")
 
-	elif target_qbits[0] >= 0 and target_qbits[0] < 8 and control_qbit == -1:
+	elif target_qbits[0] >= 0 and target_qbits[0] < 8 and control_qbits[0] == -1:
 		# define quantum circuit
 		circuit = Circuit(qbit_num)
 		for gate_idx in range( len(target_qbits) ):
@@ -40,20 +47,21 @@ if __name__ == "__main__":
 			circuit_1.add_U3( 0 )
 			one_qubit_circuits.append( circuit_1 )
 		
-	elif target_qbits[0] >= 0 and target_qbits[0] < 8 and control_qbit >= 0 and control_qbit < 8:	
+	elif target_qbits[0] >= 0 and target_qbits[0] < 8 and control_qbits[0] >= 0 and control_qbits[0] < 8:	
 	
 		# define quantum circuit
 		circuit = Circuit(qbit_num)
-		circuit.add_adaptive( target_qbits[0], control_qbit )
+		circuit.add_adaptive( target_qbits[0], control_qbits[0] )
 	
 		circuit_1 = Circuit( 1 )
 		circuit_1.add_RY( 0  )	
+		one_qubit_circuits.append( circuit_1 )
 
-	elif target_qbits[0] >= 0 and target_qbits[0] < 8 and control_qbit > 8 and control_qbit <= 21:	
+	elif target_qbits[0] >= 0 and target_qbits[0] < 8 and control_qbits[0] > 8 and control_qbits[0] <= 21:	
 	
 		# define quantum circuit
 		circuit = Circuit(qbit_num)
-		circuit.add_adaptive( target_qbits[0], control_qbit )
+		circuit.add_adaptive( target_qbits[0], control_qbits[0] )
 	
 		circuit_1 = Circuit( 1 )
 		circuit_1.add_RY( 0  )	
@@ -93,11 +101,16 @@ if __name__ == "__main__":
 	print( 'The single qubit gate kernels are:')
 
 	gate_kernels = np.zeros((80, 2, 2,), dtype=np.complex64)
+	parameter_idx = parameters.size
 	for idx in range(80):
 		if idx < gate_count:
-			parameters_1 = parameters[parameters.size-(idx+1)*3 : parameters.size + (idx)*3]
+			gate_parameter_num = one_qubit_circuits[idx].get_Parameter_Num()
+			parameters_1       = parameters[parameter_idx-gate_parameter_num : parameter_idx]
+			parameter_idx      = parameter_idx-gate_parameter_num
+
+			print( parameters_1 )
 			gate_kernel_single = one_qubit_circuits[idx].get_Matrix( parameters_1 )
-			gate_kernels[idx] = gate_kernel_single
+			gate_kernels[idx]  = gate_kernel_single
 			print( gate_kernel_single )
 			print(' ')
 
@@ -113,7 +126,7 @@ if __name__ == "__main__":
 	#State_orig_real_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
 	#State_orig_imag_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
 
-	real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbit, gate_kernels, mxm_permutation = False)
+	real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, gate_kernels, mxm_permutation = False)
 	print(' ')
 	print( 'difference between CPU oracle and Groq chip (real part): ', scipy.linalg.norm( real_part - np.real( State_transformed_oracle ) , 2), '(imag part): ', scipy.linalg.norm( imag_part - np.imag( State_transformed_oracle ) , 2) )
 
