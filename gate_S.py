@@ -79,51 +79,7 @@ class Gate(Gate_S_base):
 		return state_1_broadcasted_st, state_0_broadcasted_st
 	
 		
-	def gather_gate_elements(self, gate_element_selector_mt, gate_element_selector_stream, gate_element_real_mt, gate_element_imag_mt, output_stream_offset = 0, time=None ):
 	
-		if time is None:
-			gate_element_selector_st_for_real      = gate_element_selector_mt.read(streams=gate_element_selector_stream)
-			gate_element_selector_st_for_imag      = gate_element_selector_mt.read(streams=gate_element_selector_stream)
-		else:
-			gate_element_selector_st_for_real      = gate_element_selector_mt.read(streams=gate_element_selector_stream, time=time)
-			gate_element_selector_st_for_imag      = gate_element_selector_mt.read(streams=gate_element_selector_stream, time=time+1)
-
-		gate_element_real_mt_8      = g.reinterpret( gate_element_real_mt, dtype=g.uint8 )
-		gate_element_real_byte_list = g.split( gate_element_real_mt_8, dim=1, num_splits=4 )
-			
-		gate_element_imag_mt_8      = g.reinterpret( gate_element_imag_mt, dtype=g.uint8 )
-		gate_element_imag_byte_list = g.split( gate_element_imag_mt_8, dim=1, num_splits=4 )
-
-
-		gate_element_real_list = []
-		gate_element_imag_list = []
-		for slice_idx in range(4):
-
-			gate_element_real_byte_st = g.mem_gather(gate_element_real_byte_list[slice_idx], 
-											gate_element_selector_st_for_real, 
-											output_streams=[g.SG1[output_stream_offset+slice_idx]] )
-
-			gate_element_real_byte_st = g.reshape( gate_element_real_byte_st, [1,320])
-			gate_element_real_list.append( gate_element_real_byte_st )
-
-			gate_element_imag_byte_st = g.mem_gather(gate_element_imag_byte_list[slice_idx], 
-										gate_element_selector_st_for_imag, 
-										output_streams=[g.SG1[output_stream_offset+slice_idx]] )
-
-			gate_element_imag_byte_st = g.reshape( gate_element_imag_byte_st, [1,320])
-			gate_element_imag_list.append( gate_element_imag_byte_st )
-
-
-
-		gate_element_real_st = g.concat( gate_element_real_list )
-		gate_element_real_st = g.reinterpret(gate_element_real_st, dtype=g.float32 )
-
-		gate_element_imag_st = g.concat( gate_element_imag_list )
-		gate_element_imag_st = g.reinterpret(gate_element_imag_st, dtype=g.float32 )
-			
-		gate_element_st 	= g.stack( [gate_element_real_st, gate_element_imag_st], dim=0 )
-			
-		return gate_element_st
 				
 	
 	def gate_S_program(self):

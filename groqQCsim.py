@@ -46,7 +46,7 @@ def compile(mxm_permutation = True) -> List[str]:
 	program.gate_S_program()
 
 	# program to perform gate_SS operation
-	#program.gate_SS_program()
+	program.gate_SS_program()
 
 	# program to perform gate_SL operation
 	#program.gate_SL_program()
@@ -107,7 +107,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device.load(iop[1], unsafe_keep_entry_points=True)
 	device.load(iop[2], unsafe_keep_entry_points=True)
 	device.load(iop[3], unsafe_keep_entry_points=True)
-	#device.load(iop[4], unsafe_keep_entry_points=True)
+	device.load(iop[4], unsafe_keep_entry_points=True)
 	#device.load(iop[5], unsafe_keep_entry_points=True)
 	'''
 	if target_qbit >= small_qbit_num_limit :
