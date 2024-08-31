@@ -12,8 +12,9 @@ qbit_num = groqQCsim.qbit_num
 gate_count = groqQCsim.gate_count
 
 if __name__ == "__main__":
-	target_qbits  = [4, 3] #[0, 0, 6, 4]
-	control_qbits = [0, 5] #[-1, -1, -1, -1] #-1 ... no cotron qubit is incolved in the operation
+
+	target_qbits  = [0, 0, 6, 4]
+	control_qbits = [5, -1, 2, -1] #-1 ... no cotrol qubit is incolved in the operation
 
 	if len(target_qbits) != gate_count:
 		raise Exception("Number of target qubits in the list of target qubits should be equal to the gate count")

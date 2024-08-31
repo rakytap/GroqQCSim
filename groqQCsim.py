@@ -130,8 +130,11 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 		if ( control_qbit < small_qbit_num_limit and control_qbit >= 0 and control_qbit<8) :
 			control_state_1_selector[gate_idx,0:320:16] = control_qbit
-		else :
+		elif (control_qbit == -1 ): #no control qubit case
 			control_state_1_selector[gate_idx,0:320:16] = 0  # no control qubit is used when filetring the gate kernels
+		else: 
+			raise Exception( "L and H cpntrol qubits are not implemented yet for chained operations" )
+
 	control_state_0_selector = control_state_1_selector
 
 	
@@ -150,8 +153,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	distributor_map_np = np.zeros( (gate_count, 320,), dtype=np.uint8 )
 	for gate_idx in range(gate_count):
 	
-		control_qbit = control_qbits[gate_idx
-]
+		control_qbit = control_qbits[gate_idx]
 		if control_qbit > 8 and control_qbit <= 16:
 			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - small_qbit_num_limit - 1)
 			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - small_qbit_num_limit - 1) + 1
