@@ -32,6 +32,55 @@ class Gate(Gate_S_base):
 		"""
         
 		super().__init__(pgm_pkg, mxm_permutation = mxm_permutation )
+		
+	def gather_control_qubit_selector_SS(self ):
+	
+		# state_1_mt: if target_qubit_loc at the idx-th element is in state_1 |1> then all the 8 bits of the idx-th element is set to 1, thus state_1[idx] = 255
+		# state_0_mt: if target_qubit_loc at the idx-th element is in state_0 |0> then all the 8 bits of the idx-th element is set to 1, thus state_0[idx] = 255
+		# Creates a shared tensor to reuse the memory allocation made by program pgm1
+		control_state_1_broadcasted_shared = g.shared_memory_tensor(self.control_state_1_broadcasted_mt, name="control_state_1_broadcasted_shared")
+		control_state_0_broadcasted_shared = g.shared_memory_tensor(self.control_state_0_broadcasted_mt, name="control_state_0_broadcasted_shared")
+	
+		
+		gate_counter_S_control_qbit_selector_shared = g.shared_memory_tensor(self.gate_counter_S_control_qbit_selector_mt,   \
+   										name="gate_counter_S_control_qbit_selector_shared") 
+		gate_counter_S_control_qbit_selector_st     = gate_counter_S_control_qbit_selector_shared.read( streams=g.SG1[0] )
+
+		# split state_1_broadcasted_shared and state_0_broadcasted_shared into slices to use mem_gather on the tensor
+		control_state_1_broadcasted_shared = g.reinterpret(control_state_1_broadcasted_shared, dtype=g.uint8 )
+		control_state_1_broadcasted_shared_list = g.split( control_state_1_broadcasted_shared, dim=2, num_splits=4 )
+
+		control_state_0_broadcasted_shared = g.reinterpret(control_state_0_broadcasted_shared, dtype=g.uint8 )
+		control_state_0_broadcasted_shared_list = g.split( control_state_0_broadcasted_shared, dim=2, num_splits=4 )
+				
+		control_state_0_broadcasted_bytes_list = []
+		control_state_1_broadcasted_bytes_list = []
+		
+		#control_state_1_broadcasted_st = control_state_1_broadcasted_shared.read( streams=g.SG4[2] )
+		#control_state_0_broadcasted_st = control_state_0_broadcasted_shared.read( streams=g.SG4[5] )		
+
+		for slice_idx in range(4):
+			control_state_1_broadcasted_byte_st = g.mem_gather(control_state_1_broadcasted_shared_list[slice_idx], 
+												gate_counter_S_control_qbit_selector_st, 
+												output_streams=[g.SG1[2*4+slice_idx]] )
+			control_state_1_broadcasted_byte_st = g.reshape( control_state_1_broadcasted_byte_st, [1,320])
+			control_state_1_broadcasted_bytes_list.append( control_state_1_broadcasted_byte_st )
+
+			control_state_0_broadcasted_byte_st = g.mem_gather(control_state_0_broadcasted_shared_list[slice_idx], 
+												gate_counter_S_control_qbit_selector_st, 
+												output_streams=[g.SG1[5*4+slice_idx]] )
+
+			control_state_0_broadcasted_byte_st = g.reshape( control_state_0_broadcasted_byte_st, [1,320])
+			control_state_0_broadcasted_bytes_list.append( control_state_0_broadcasted_byte_st )
+                                        	             	
+		control_state_1_broadcasted_st = g.concat( control_state_1_broadcasted_bytes_list )
+		control_state_1_broadcasted_st = g.reinterpret(control_state_1_broadcasted_st, dtype=g.uint32 )
+
+		control_state_0_broadcasted_st = g.concat( control_state_0_broadcasted_bytes_list )
+		control_state_0_broadcasted_st = g.reinterpret(control_state_0_broadcasted_st, dtype=g.uint32 )	
+		
+		return control_state_0_broadcasted_st, control_state_1_broadcasted_st
+
 
 
 	def gather_gate_filter_tensors_SS(self ):
@@ -214,8 +263,9 @@ class Gate(Gate_S_base):
 					# gather streams to filter and mix gate elements for the unitary transformation
 					state_1_broadcasted_st, state_0_broadcasted_st = self.gather_gate_filter_tensors_SS()
 
-					control_state_1_broadcasted_st = control_state_1_broadcasted_shared.read( streams=g.SG4[2] )
-					control_state_0_broadcasted_st = control_state_0_broadcasted_shared.read( streams=g.SG4[5] )
+					control_state_0_broadcasted_st, control_state_1_broadcasted_st = self.gather_control_qubit_selector_SS()
+					#control_state_1_broadcasted_st = control_state_1_broadcasted_shared.read( streams=g.SG4[2] )
+					#control_state_0_broadcasted_st = control_state_0_broadcasted_shared.read( streams=g.SG4[5] )
 					ones_zeros_st = ones_zeros_mt.read( streams=g.SG4[3])
 					
 					gate_counter_gate_element_selector_00_shared = g.shared_memory_tensor( \
@@ -279,7 +329,6 @@ class Gate(Gate_S_base):
 					# when the control qbit is |0> we dont want to change the state
 					gate_diag_st = g.add(gate_diag_st, control_state_0_broadcasted_st, alus=[7], output_streams=g.SG4[3])
 							
-					print("layout: ", layout_imag_diag)
 					
 					gate_diag_real_st, gate_diag_imag_st	= g.split( gate_diag_st, num_splits=2, dim=0 )
 					gate_diag_real_mt 	= gate_diag_real_st.write(name=f"gate_diag_real", storage_req=storage_req_real_diag)
@@ -349,10 +398,118 @@ class Gate(Gate_S_base):
                                                                                                       gate_diag_imag_mt, 
                                                                                                       gate_off_diag_real_mt, 
                                                                                                       gate_off_diag_imag_mt)
+                                                                                                      
+                                                                                                      
+			with g.ResourceScope(name=f"increase_gate_counters_scope", is_buffered=True, predecessors=[apply_gate_scope], time=None) as increase_gate_counters_scope :
+			
+				constant_1_address_offset_shared = g.shared_memory_tensor(self.constant_1_address_offset_mt, name="constant_1_address_offset_shared" )
+				
+				#### increase the gate counter for permute map selector ####
+				alu_rq_12 = g.tensor.create_alu_request( alus=[12] )
+				
+				constant_1_address_offset_st     = constant_1_address_offset_shared.read(streams=[g.SG1_E[0]])				
+
+				gate_counter_perm_map_selector_shared = g.shared_memory_tensor(self.gate_counter_perm_map_selector_mt, name="gate_counter_perm_map_selector_shared" )
+				gate_counter_perm_map_selector_st  = gate_counter_perm_map_selector_shared.read(streams=[g.SG1_E[4]])
+				
+				# offset the memory address by 1
+				gate_counter_perm_map_selector_st = g.add(constant_1_address_offset_st, gate_counter_perm_map_selector_st, alus=alu_rq_12, output_streams=g.SG4_W[1])
+				
+				# save the offsetted memory address
+				gate_counter_perm_map_selector_mt = gate_counter_perm_map_selector_st.write(name=f"gate_counter_perm_map_selector_mt", \
+													 storage_req=gate_counter_perm_map_selector_shared.storage_request, 
+													 time=0)#, program_output=False)
+				
+
+				#### increase the gate counter for gate filtering selector ####
+				alu_rq_15 = g.tensor.create_alu_request( alus=[15] )			
+			
+				
+				#constant_1_address_offset_st     = constant_1_address_offset_shared.read(streams=[g.SG1_E[0]])				
+
+				gate_counter_gate_filtering_selector_shared = g.shared_memory_tensor(self.gate_counter_gate_filtering_selector_mt,   \
+												   	name="gate_counter_gate_filtering_selector_shared") 
+				gate_counter_gate_filtering_selector_st  = gate_counter_gate_filtering_selector_shared.read(streams=[g.SG1_W[4]])
+				
+				# offset the memory address by 1
+				gate_counter_gate_filtering_selector_st = g.add(constant_1_address_offset_st, gate_counter_gate_filtering_selector_st, alus=alu_rq_15, output_streams=g.SG4_E[6])
+				
+				# save the offsetted memory address
+				gate_counter_gate_filtering_selector_mt = gate_counter_gate_filtering_selector_st.write( \
+										name=f"gate_counter_gate_filtering_selector_mt", \
+										storage_req=gate_counter_gate_filtering_selector_shared.storage_request, 
+										time=None)#, program_output=False)
+
+
+
+
+				
+				#### increase the gate counter for gate element selectors ####
+				alu_rq_0  = g.tensor.create_alu_request( alus=[0] )	
+				alu_rq_1  = g.tensor.create_alu_request( alus=[1] )	
+				alu_rq_13 = g.tensor.create_alu_request( alus=[13] )	
+				alu_rq_14 = g.tensor.create_alu_request( alus=[14] )	
+
+				constant_1_address_offset_st_copy     = constant_1_address_offset_shared.read(streams=[g.SG1_E[0]])				
+
+				gate_counter_gate_element_selector_00_shared = g.shared_memory_tensor( \
+									self.gate_counter_gate_element_selector_00_mt, \
+									name="gate_counter_gate_element_selector_00_shared") 
+				
+				gate_counter_gate_element_selector_01_shared = g.shared_memory_tensor( \
+									self.gate_counter_gate_element_selector_01_mt, \
+									name="gate_counter_gate_element_selector_01_shared") 
+
+				
+				gate_counter_gate_element_selector_10_shared = g.shared_memory_tensor( \
+									self.gate_counter_gate_element_selector_10_mt, \
+									name="gate_counter_gate_element_selector_10_shared") 
+				
+				gate_counter_gate_element_selector_11_shared = g.shared_memory_tensor( \
+									self.gate_counter_gate_element_selector_11_mt, \
+									name="gate_counter_gate_element_selector_11_shared") 
+				
+				gate_counter_gate_element_selector_00_st  = gate_counter_gate_element_selector_00_shared.read(streams=[g.SG1_W[8]])
+				gate_counter_gate_element_selector_11_st  = gate_counter_gate_element_selector_11_shared.read(streams=[g.SG1_W[12]])
+				gate_counter_gate_element_selector_01_st  = gate_counter_gate_element_selector_01_shared.read(streams=[g.SG1_W[24]])
+				gate_counter_gate_element_selector_10_st  = gate_counter_gate_element_selector_10_shared.read(streams=[g.SG1_W[28]])
+
+				#gate_counter_gate_element_selector_11_st.write( name='wwww', layout='H1(W), -1, S1(42)')#, program_output=True )
+				
+				# offset the memory address by 1
+				gate_counter_gate_element_selector_00_st = g.add(constant_1_address_offset_st, gate_counter_gate_element_selector_00_st, alus=alu_rq_0, output_streams=g.SG4_E[3])
+				gate_counter_gate_element_selector_11_st = g.add(constant_1_address_offset_st, gate_counter_gate_element_selector_11_st, alus=alu_rq_1, output_streams=g.SG4_E[2])
+				gate_counter_gate_element_selector_01_st = g.add(constant_1_address_offset_st_copy, gate_counter_gate_element_selector_01_st, alus=alu_rq_14, output_streams=g.SG4_E[7])
+				gate_counter_gate_element_selector_10_st = g.add(constant_1_address_offset_st_copy, gate_counter_gate_element_selector_10_st, alus=alu_rq_13, output_streams=g.SG4_E[0])
+				
+				#gate_counter_gate_element_selector_11_st.write( name='rrrr', layout='H1(E), -1, S1(42)')#, program_output=True )
+
+
+				# save the offsetted memory address
+				gate_counter_gate_element_selector_00_mt = gate_counter_gate_element_selector_00_st.write( \
+										name=f"gate_counter_gate_element_selector_00_mt", \
+										storage_req=gate_counter_gate_element_selector_00_shared.storage_request, 
+										time=None)#, program_output=False)
+
+				gate_counter_gate_element_selector_11_mt = gate_counter_gate_element_selector_11_st.write( \
+										name=f"gate_counter_gate_element_selector_11_mt", \
+										storage_req=gate_counter_gate_element_selector_11_shared.storage_request, 
+										time=None)#, program_output=True)
+
+
+				gate_counter_gate_element_selector_01_mt = gate_counter_gate_element_selector_01_st.write( \
+										name=f"gate_counter_gate_element_selector_01_mt", \
+										storage_req=gate_counter_gate_element_selector_01_shared.storage_request, 
+										time=1)#, program_output=True)
+
+
+				gate_counter_gate_element_selector_10_mt = gate_counter_gate_element_selector_10_st.write( \
+										name=f"gate_counter_gate_element_selector_10_mt", \
+										storage_req=gate_counter_gate_element_selector_10_shared.storage_request, 
+										time=None)#, program_output=False)                                                                                                      
 					
 				
 			self.pgm_pkg.compile_program_context(pgm5)
 			
 			#g.compile(base_name="QCsim", result_tensor=result)
 			g.write_visualizer_data("QCsim_"+name)		
-		

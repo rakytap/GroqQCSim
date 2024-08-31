@@ -107,6 +107,9 @@ layout_permute_maps_east = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1})
 #gate counter: for reading state_1_broadcasted and state_0_boradcasted (each gate act on a different target qubit)
 layout_gate_counter_gate_filtering_selector = f"H1(E), A{1}({2*small_qbit_num_limit}), S1(37)"
 
+#gate counter: for reading control_state_1_broadcasted and control_state_0_boradcasted (each gate act on a different target qubit)
+layout_gate_counter_S_control_qbit_selector = f"H1(E), A{1}({2*small_qbit_num_limit+1}), S1(37)"
+
 
 # memory address maps to read out state vector components with control qbit = 1 state 
 # maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)

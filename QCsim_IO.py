@@ -322,6 +322,12 @@ class IO:
 			self.gate_counter_gate_filtering_selector_mt = g.from_data( np.asarray(gate_counter_perm_map_selector_np, 
 											dtype=np.uint8),
 										 	layout=layout_gate_counter_gate_filtering_selector )
+										 	
+			gate_counter_S_control_qbit_selector_np           = np.zeros( (320,), dtype=np.uint8 )
+			gate_counter_S_control_qbit_selector_np[0:320:16] = gate_count
+			self.gate_counter_S_control_qbit_selector_mt = g.from_data( np.asarray(gate_counter_S_control_qbit_selector_np, 
+											dtype=np.uint8),
+										 	layout=layout_gate_counter_S_control_qbit_selector )
 
 
 			gate_element_selector_00_np                   = np.zeros( (320,), dtype=np.uint8 )
@@ -343,9 +349,11 @@ class IO:
 					
 			g.add_mem_constraints([self.gate_counter_gate_element_selector_00_mt], [self.gate_counter_gate_element_selector_01_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 			g.add_mem_constraints([self.gate_counter_gate_element_selector_11_mt], [self.gate_counter_gate_element_selector_10_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)				
+			g.add_mem_constraints([self.gate_counter_gate_filtering_selector_mt], [self.gate_counter_S_control_qbit_selector_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)			
 										 	
 			self.gate_counter_perm_map_selector_mt.is_static = True										 	
 			self.gate_counter_gate_filtering_selector_mt.is_static = True	
+			self.gate_counter_S_control_qbit_selector_mt.is_static = True				
 			self.gate_counter_gate_element_selector_00_mt.is_static = True
 			self.gate_counter_gate_element_selector_01_mt.is_static = True
 			self.gate_counter_gate_element_selector_10_mt.is_static = True
@@ -475,7 +483,7 @@ class IO:
 				                                               transposer_requests[1])
 
 		
-				self.state_1_broadcasted_mt = state_1_broadcasted_st.write(name="state_1_broadcasted", layout=layout_state_1_broadcasted , program_output=False)
+				self.state_1_broadcasted_mt = state_1_broadcasted_st.write(name="state_1_broadcasted", layout=layout_state_1_broadcasted, program_output=False)
 				self.state_0_broadcasted_mt = state_0_broadcasted_st.write(name="state_0_broadcasted", layout=layout_state_0_broadcasted, program_output=False)
 
 				self.state_1_broadcasted_mt.is_static = True
