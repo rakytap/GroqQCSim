@@ -12,8 +12,8 @@ qbit_num = groqQCsim.qbit_num
 gate_count = groqQCsim.gate_count
 
 if __name__ == "__main__":
-	target_qbits  = [0] #[0, 0, 6, 4]
-	control_qbits = [2] #[-1, -1, -1, -1] #-1 ... no cotron qubit is incolved in the operation
+	target_qbits  = [4, 3] #[0, 0, 6, 4]
+	control_qbits = [0, 5] #[-1, -1, -1, -1] #-1 ... no cotron qubit is incolved in the operation
 
 	if len(target_qbits) != gate_count:
 		raise Exception("Number of target qubits in the list of target qubits should be equal to the gate count")
@@ -33,41 +33,38 @@ if __name__ == "__main__":
 
 
 	one_qubit_circuits = []
+	circuit = Circuit(qbit_num)
+	for gate_idx in range( len(target_qbits) ):
 
-	if target_qbits[0] == control_qbits[0]:
-		error("The control qubit and target qubit should be different")
+		if target_qbits[gate_idx] == control_qbits[gate_idx]:
+			error("The control qubit and target qubit should be different")
 
-	elif target_qbits[0] >= 0 and target_qbits[0] < 8 and control_qbits[0] == -1:
-		# define quantum circuit
-		circuit = Circuit(qbit_num)
-		for gate_idx in range( len(target_qbits) ):
+		elif target_qbits[gate_idx] >= 0 and target_qbits[gate_idx] < 8 and control_qbits[gate_idx] == -1:
+
 			circuit.add_U3( target_qbits[gate_idx] )
 		
 			circuit_1 = Circuit( 1 )
 			circuit_1.add_U3( 0 )
 			one_qubit_circuits.append( circuit_1 )
 		
-	elif target_qbits[0] >= 0 and target_qbits[0] < 8 and control_qbits[0] >= 0 and control_qbits[0] < 8:	
+		elif target_qbits[gate_idx] >= 0 and target_qbits[gate_idx] < 8 and control_qbits[gate_idx] >= 0 and control_qbits[gate_idx] < 8:	
 	
-		# define quantum circuit
-		circuit = Circuit(qbit_num)
-		circuit.add_adaptive( target_qbits[0], control_qbits[0] )
-	
-		circuit_1 = Circuit( 1 )
-		circuit_1.add_RY( 0  )	
-		one_qubit_circuits.append( circuit_1 )
 
-	elif target_qbits[0] >= 0 and target_qbits[0] < 8 and control_qbits[0] > 8 and control_qbits[0] <= 21:	
+			circuit.add_adaptive( target_qbits[gate_idx], control_qbits[gate_idx] )
 	
-		# define quantum circuit
-		circuit = Circuit(qbit_num)
-		circuit.add_adaptive( target_qbits[0], control_qbits[0] )
-	
-		circuit_1 = Circuit( 1 )
-		circuit_1.add_RY( 0  )	
+			circuit_1 = Circuit( 1 )
+			circuit_1.add_RY( 0  )	
+			one_qubit_circuits.append( circuit_1 )
 
-	else:
-		error("Unimplemented case wit target qubit and control qubit.")
+		elif target_qbits[gate_idx] >= 0 and target_qbits[gate_idx] < 8 and control_qbits[gate_idx] > 8 and control_qbits[gate_idx] <= 21:	
+	
+			circuit.add_adaptive( target_qbits[gate_idx], control_qbits[gate_idx] )
+	
+			circuit_1 = Circuit( 1 )
+			circuit_1.add_RY( 0  )	
+
+		else:
+			error("Unimplemented case wit target qubit and control qubit.")
 		
 		
 		

@@ -133,6 +133,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 		else :
 			control_state_1_selector[gate_idx,0:320:16] = 0  # no control qubit is used when filetring the gate kernels
 	control_state_0_selector = control_state_1_selector
+
 	
 	
 	# create memory maps to access the correct metadata on the chip to perform the gate operation on the chosen target_qubit
@@ -217,7 +218,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			# pogram perfroming the Gate_SS operation
 			index_of_gate_program = 4
 			entry_point = iop["gate_SS"]["compute"]
-			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})	
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
 
 		elif target_qbit >= 0 and target_qbit < 8 and control_qbit > 8 and control_qbit <= 16:
 

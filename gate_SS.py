@@ -33,6 +33,42 @@ class Gate(Gate_S_base):
         
 		super().__init__(pgm_pkg, mxm_permutation = mxm_permutation )
 		
+	def gather_control_qubit_0_selector_SS(self ):
+	
+		# state_1_mt: if target_qubit_loc at the idx-th element is in state_1 |1> then all the 8 bits of the idx-th element is set to 1, thus state_1[idx] = 255
+		# state_0_mt: if target_qubit_loc at the idx-th element is in state_0 |0> then all the 8 bits of the idx-th element is set to 1, thus state_0[idx] = 255
+		# Creates a shared tensor to reuse the memory allocation made by program pgm1
+		control_state_0_broadcasted_shared = g.shared_memory_tensor(self.control_state_0_broadcasted_mt, name="control_state_0_broadcasted_shared")
+	
+		
+		gate_counter_S_control_qbit_selector_shared = g.shared_memory_tensor(self.gate_counter_S_control_qbit_selector_mt,   \
+   										name="gate_counter_S_control_qbit_selector_shared") 
+		gate_counter_S_control_qbit_selector_st     = gate_counter_S_control_qbit_selector_shared.read( streams=g.SG1[0] )
+
+		# split state_1_broadcasted_shared and state_0_broadcasted_shared into slices to use mem_gather on the tensor
+		control_state_0_broadcasted_shared = g.reinterpret(control_state_0_broadcasted_shared, dtype=g.uint8 )
+		control_state_0_broadcasted_shared_list = g.split( control_state_0_broadcasted_shared, dim=2, num_splits=4 )
+				
+		control_state_0_broadcasted_bytes_list = []
+		
+		#control_state_0_broadcasted_st = control_state_0_broadcasted_shared.read( streams=g.SG4[5] )		
+
+		for slice_idx in range(4):
+
+			control_state_0_broadcasted_byte_st = g.mem_gather(control_state_0_broadcasted_shared_list[slice_idx], 
+												gate_counter_S_control_qbit_selector_st, 
+												output_streams=[g.SG1[5*4+slice_idx]] )
+
+			control_state_0_broadcasted_byte_st = g.reshape( control_state_0_broadcasted_byte_st, [1,320])
+			control_state_0_broadcasted_bytes_list.append( control_state_0_broadcasted_byte_st )
+                                        	             	
+
+		control_state_0_broadcasted_st = g.concat( control_state_0_broadcasted_bytes_list )
+		control_state_0_broadcasted_st = g.reinterpret(control_state_0_broadcasted_st, dtype=g.uint32 )	
+		
+		return control_state_0_broadcasted_st
+
+
 	def gather_control_qubit_selector_SS(self ):
 	
 		# state_1_mt: if target_qubit_loc at the idx-th element is in state_1 |1> then all the 8 bits of the idx-th element is set to 1, thus state_1[idx] = 255
@@ -80,6 +116,41 @@ class Gate(Gate_S_base):
 		control_state_0_broadcasted_st = g.reinterpret(control_state_0_broadcasted_st, dtype=g.uint32 )	
 		
 		return control_state_0_broadcasted_st, control_state_1_broadcasted_st
+
+
+	def gather_control_qubit_1_selector_SS(self ):
+	
+		# state_1_mt: if target_qubit_loc at the idx-th element is in state_1 |1> then all the 8 bits of the idx-th element is set to 1, thus state_1[idx] = 255
+		# state_0_mt: if target_qubit_loc at the idx-th element is in state_0 |0> then all the 8 bits of the idx-th element is set to 1, thus state_0[idx] = 255
+		# Creates a shared tensor to reuse the memory allocation made by program pgm1
+		control_state_1_broadcasted_shared = g.shared_memory_tensor(self.control_state_1_broadcasted_mt, name="control_state_1_broadcasted_shared")
+	
+		
+		gate_counter_S_control_qbit_selector_shared = g.shared_memory_tensor(self.gate_counter_S_control_qbit_selector_mt,   \
+   										name="gate_counter_S_control_qbit_selector_shared") 
+		gate_counter_S_control_qbit_selector_st     = gate_counter_S_control_qbit_selector_shared.read( streams=g.SG1[0] )
+
+		# split state_1_broadcasted_shared and state_0_broadcasted_shared into slices to use mem_gather on the tensor
+		control_state_1_broadcasted_shared = g.reinterpret(control_state_1_broadcasted_shared, dtype=g.uint8 )
+		control_state_1_broadcasted_shared_list = g.split( control_state_1_broadcasted_shared, dim=2, num_splits=4 )
+
+		control_state_1_broadcasted_bytes_list = []
+		
+		#control_state_1_broadcasted_st = control_state_1_broadcasted_shared.read( streams=g.SG4[2] )		
+
+		for slice_idx in range(4):
+			control_state_1_broadcasted_byte_st = g.mem_gather(control_state_1_broadcasted_shared_list[slice_idx], 
+												gate_counter_S_control_qbit_selector_st, 
+												output_streams=[g.SG1[2*4+slice_idx]] )
+			control_state_1_broadcasted_byte_st = g.reshape( control_state_1_broadcasted_byte_st, [1,320])
+			control_state_1_broadcasted_bytes_list.append( control_state_1_broadcasted_byte_st )
+
+                                        	             	
+		control_state_1_broadcasted_st = g.concat( control_state_1_broadcasted_bytes_list )
+		control_state_1_broadcasted_st = g.reinterpret(control_state_1_broadcasted_st, dtype=g.uint32 )
+
+		
+		return control_state_1_broadcasted_st
 
 
 
@@ -261,12 +332,14 @@ class Gate(Gate_S_base):
 
 
 					# gather streams to filter and mix gate elements for the unitary transformation
-					state_1_broadcasted_st, state_0_broadcasted_st = self.gather_gate_filter_tensors_SS()
+					state_1_broadcasted_st, state_0_broadcasted_st = self.gather_gate_filter_tensors_SS() ##################################
 
 					control_state_0_broadcasted_st, control_state_1_broadcasted_st = self.gather_control_qubit_selector_SS()
 					#control_state_1_broadcasted_st = control_state_1_broadcasted_shared.read( streams=g.SG4[2] )
 					#control_state_0_broadcasted_st = control_state_0_broadcasted_shared.read( streams=g.SG4[5] )
 					ones_zeros_st = ones_zeros_mt.read( streams=g.SG4[3])
+
+
 					
 					gate_counter_gate_element_selector_00_shared = g.shared_memory_tensor( \
 									self.gate_counter_gate_element_selector_00_mt, \
@@ -341,7 +414,8 @@ class Gate(Gate_S_base):
 
 					# gather streams to filter and mix gate elements for the unitary transformation
 					state_1_broadcasted_st, state_0_broadcasted_st = self.gather_gate_filter_tensors_SS()
-					control_state_1_broadcasted_st = control_state_1_broadcasted_shared.read( streams=g.SG4[2] )
+
+					control_state_1_broadcasted_st = self.gather_control_qubit_1_selector_SS() ##################################
 
 
 					# real and imaginary parts of the gate element concatenated into a unified tensor
@@ -509,6 +583,33 @@ class Gate(Gate_S_base):
 										time=None)#, program_output=False)                                                                                                      
 					
 				
+
+				#### increase the gate counter for control qubit selector ####
+				constant_1_address_offset_shared = g.shared_memory_tensor(self.constant_1_address_offset_mt, name="constant_1_address_offset_shared" )
+
+
+				alu_rq_7 = g.tensor.create_alu_request( alus=[7] )
+				
+				constant_1_address_offset_st     = constant_1_address_offset_shared.read(streams=[g.SG1_E[8]])	
+
+				gate_counter_S_control_qbit_selector_shared = g.shared_memory_tensor(self.gate_counter_S_control_qbit_selector_mt,   \
+   										name="gate_counter_S_control_qbit_selector_shared") 
+				gate_counter_S_control_qbit_selector_st     = gate_counter_S_control_qbit_selector_shared.read( streams=g.SG1[12] )
+
+							
+				# offset the memory address by 1
+				gate_counter_S_control_qbit_selector_st = g.add(constant_1_address_offset_st, gate_counter_S_control_qbit_selector_st, alus=alu_rq_7, output_streams=g.SG4_E[4])
+				
+				# save the offsetted memory address
+				gate_counter_S_control_qbit_selector_mt = gate_counter_S_control_qbit_selector_st.write(name=f"gate_counter_S_control_qbit_selector_mt", \
+													 storage_req=gate_counter_S_control_qbit_selector_shared.storage_request, 
+													 time=2)
+
+
+				#gate_counter_S_control_qbit_selector_st.write(name='tttt', layout='H1(E), -1, S1(42)', program_output=True)
+
+
+
 			self.pgm_pkg.compile_program_context(pgm5)
 			
 			#g.compile(base_name="QCsim", result_tensor=result)
