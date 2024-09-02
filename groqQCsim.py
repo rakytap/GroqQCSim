@@ -50,6 +50,9 @@ def compile(mxm_permutation = True) -> List[str]:
 
 	# program to perform gate_SL operation
 	program.gate_SL_program()
+
+	# program to perform gate_S8 operation
+	program.gate_S8_program()
 	
 	iops = pgm_pkg.assemble()
 
@@ -109,6 +112,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device.load(iop[3], unsafe_keep_entry_points=True) #S
 	device.load(iop[4], unsafe_keep_entry_points=True) #SS
 	device.load(iop[5], unsafe_keep_entry_points=True) #SL
+	device.load(iop[6], unsafe_keep_entry_points=True) #S8
 	'''
 	if target_qbit >= small_qbit_num_limit :
 		raise ValueError( "the target qubit in this program should be less than 8" )
@@ -137,6 +141,10 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			# control_state_1_selector is not used for L control qubits. 
 			# state 1 for control qubit states are collected via gather maps, that are selected using distributor maps (see distributor_map_np)
 			# It is just skiped over by gate counters
+			control_state_1_selector[gate_idx,0:320:16] = 0  
+		elif (control_qbit == 8) :
+			# control qubit 8 is treated over outer splits. 
+			# control_state_1_selector is not used for control qubit 8. 
 			control_state_1_selector[gate_idx,0:320:16] = 0  
 		else: 
 			raise Exception( "8 and H control qubits are not implemented yet for chained operations" )
@@ -240,6 +248,14 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			entry_point = iop["gate_SL"]["compute"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
 			#print( gate_output )	
+
+		elif target_qbit >= 0 and target_qbit < 8 and control_qbit == 8:
+
+			# pogram perfroming the Gate_SL operation
+			index_of_gate_program = 6
+			entry_point = iop["gate_S8"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+
 
 		else:
 

@@ -68,7 +68,13 @@ if __name__ == "__main__":
 			circuit_1 = Circuit( 1 )
 			circuit_1.add_RY( 0  )	
 			one_qubit_circuits.append( circuit_1 )			
-
+		elif target_qbits[gate_idx] >= 0 and target_qbits[gate_idx] < 8 and control_qbits[gate_idx] == 8:	
+	
+			circuit.add_adaptive( target_qbits[gate_idx], control_qbits[gate_idx] )
+	
+			circuit_1 = Circuit( 1 )
+			circuit_1.add_RY( 0  )	
+			one_qubit_circuits.append( circuit_1 )			
 		else:
 			error("Unimplemented case wit target qubit and control qubit.")
 		
