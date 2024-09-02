@@ -326,7 +326,7 @@ class Gate(Gate_S_base):
 				alu_requests.append(  g.tensor.create_alu_request( [5], 1 ) )
 				alu_requests.append(  g.tensor.create_alu_request( [2], 1 ) )	
 					
-				with g.ResourceScope(name=f"prepare_fileterd_gate_elements_scope_SS", is_buffered=True, time=0) as prepare_fileterd_gate_elements_scope :
+				with g.ResourceScope(name=f"prepare_filtered_gate_elements_scope_SS", is_buffered=True, time=0) as prepare_filtered_gate_elements_scope :
 
 					gate_counter_gate_filtering_selector_shared = g.shared_memory_tensor(self.gate_counter_gate_filtering_selector_mt, name="gate_counter_gate_filtering_selector_shared") 
 

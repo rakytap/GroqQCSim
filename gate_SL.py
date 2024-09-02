@@ -440,7 +440,116 @@ class Gate(Split_gates):
 				alu_requests.append(  g.tensor.create_alu_request( [5], 1 ) )
 				alu_requests.append(  g.tensor.create_alu_request( [2], 1 ) )
 					
-				with g.ResourceScope(name=f"prepare_fileterd_gate_elements_scope", is_buffered=True, time=0) as prepare_fileterd_gate_elements_scope :
+				with g.ResourceScope(name=f"prepare_filtered_gate_elements_scope", is_buffered=True, time=0) as prepare_filtered_gate_elements_scope :
+				
+				
+					gate_counter_gate_filtering_selector_shared = g.shared_memory_tensor(self.gate_counter_gate_filtering_selector_mt,   \
+												   										name="gate_counter_gate_filtering_selector_shared") 
+
+					# gather streams to filter and mix gate elements for the unitary transformation
+					state_1_broadcasted_st, state_0_broadcasted_st = self.gather_gate_filter_tensors()
+
+					#state_1_broadcasted_st = state_1_broadcasted_list[0].read( streams=g.SG4[2] )
+					#state_0_broadcasted_st = state_0_broadcasted_list[0].read( streams=g.SG4[0] )
+
+					gate_counter_gate_element_selector_00_shared = g.shared_memory_tensor( \
+									self.gate_counter_gate_element_selector_00_mt, \
+									name="gate_counter_gate_element_selector_00_shared") 
+
+					gate_counter_gate_element_selector_01_shared = g.shared_memory_tensor( \
+									self.gate_counter_gate_element_selector_01_mt, \
+									name="gate_counter_gate_element_selector_01_shared") 
+
+
+					gate_counter_gate_element_selector_10_shared = g.shared_memory_tensor( \
+									self.gate_counter_gate_element_selector_10_mt, \
+									name="gate_counter_gate_element_selector_10_shared") 
+
+					gate_counter_gate_element_selector_11_shared = g.shared_memory_tensor( \
+									self.gate_counter_gate_element_selector_11_mt, \
+									name="gate_counter_gate_element_selector_11_shared") 
+					
+					
+					# real and imaginary parts of the gate element concatenated into a unified tensor
+					gate_00_st = self.gather_gate_elements(gate_counter_gate_element_selector_00_shared, \
+															g.SG1_W[30], \
+															self.gate_kernels_broadcasted_real_mt, \
+															self.gate_kernels_broadcasted_imag_mt, \
+															output_stream_offset = 4, \
+															time = 0)
+															
+					# real and imaginary parts of the gate element concatenated into a unified tensor
+					gate_11_st = self.gather_gate_elements(gate_counter_gate_element_selector_11_shared, \
+															g.SG1_W[31], \
+															self.gate_kernels_broadcasted_real_copy_mt, \
+															self.gate_kernels_broadcasted_imag_copy_mt, \
+															output_stream_offset = 12 )
+
+															
+					gate_00_st = g.reinterpret( gate_00_st, g.uint32 )
+					gate_00_st = g.bitwise_and( gate_00_st, state_0_broadcasted_st, alus=[12], output_streams=g.SG4[0] )
+					gate_00_st = g.reinterpret( gate_00_st, g.float32 )
+
+
+
+					gate_11_st = g.reinterpret( gate_11_st, g.uint32 )
+					gate_11_st = g.bitwise_and( gate_11_st, state_1_broadcasted_st, alus=[4], output_streams=g.SG4[2] )
+					gate_11_st = g.reinterpret( gate_11_st, g.float32 )
+
+				
+					# combine the filtered gate element vectors
+					gate_diag_st = g.add(gate_00_st, gate_11_st, alus=[1], output_streams=g.SG4[3])
+					
+					
+					gate_diag_st_list	= g.split( gate_diag_st, num_splits=2, dim=0 )
+					gate_diag_real_mt 	= gate_diag_st_list[0].write(name=f"gate_diag_real", storage_req=storage_req_real_diag)#, program_output=True)
+					gate_diag_imag_mt 	= gate_diag_st_list[1].write(name=f"gate_diag_imag", storage_req=storage_req_imag_diag)#, program_output=True)
+					
+					g.add_mem_constraints([self.gate_kernels_broadcasted_real_mt], [gate_diag_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+					g.add_mem_constraints([self.gate_kernels_broadcasted_imag_mt], [gate_diag_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+
+
+
+					# gather streams to filter and mix gate elements for the unitary transformation
+					state_1_broadcasted_st, state_0_broadcasted_st = self.gather_gate_filter_tensors()
+					
+					# real and imaginary parts of the gate element concatenated into a unified tensor
+					gate_01_st = self.gather_gate_elements(gate_counter_gate_element_selector_01_shared, \
+															g.SG1_W[30], \
+															self.gate_kernels_broadcasted_real_mt, \
+															self.gate_kernels_broadcasted_imag_mt, \
+															output_stream_offset = 4 )
+															
+					# real and imaginary parts of the gate element concatenated into a unified tensor								
+					gate_10_st = self.gather_gate_elements(gate_counter_gate_element_selector_10_shared, \
+															g.SG1_W[31], \
+															self.gate_kernels_broadcasted_real_copy_mt, \
+															self.gate_kernels_broadcasted_imag_copy_mt, \
+															output_stream_offset = 12, \
+															time = 7 )
+															
+					gate_01_st = g.reinterpret( gate_01_st, g.uint32 )
+					gate_01_st = g.bitwise_and( gate_01_st, state_0_broadcasted_st, alus=[14], output_streams=g.SG4[0] )
+					gate_01_st = g.reinterpret( gate_01_st, g.float32 )
+
+
+					gate_10_st = g.reinterpret( gate_10_st, g.uint32 )
+					gate_10_st = g.bitwise_and( gate_10_st, state_1_broadcasted_st, alus=[6], output_streams=g.SG4[2] )
+					gate_10_st = g.reinterpret( gate_10_st, g.float32 )
+					
+					# combine the filtered gate element vectors
+					gate_off_diag_st = g.add(gate_01_st, gate_10_st, alus=[3], output_streams=g.SG4[3])
+				
+							
+					
+					gate_off_diag_st_list	= g.split( gate_off_diag_st, num_splits=2, dim=0 )
+					gate_off_diag_real_mt 	= gate_off_diag_st_list[0].write(name=f"gate_off_diag_real", storage_req=storage_req_real_off_diag)
+					gate_off_diag_imag_mt 	= gate_off_diag_st_list[1].write(name=f"gate_off_diag_imag", storage_req=storage_req_imag_off_diag)
+		
+					g.add_mem_constraints([self.gate_kernels_broadcasted_real_copy_mt], [gate_off_diag_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+					g.add_mem_constraints([self.gate_kernels_broadcasted_imag_copy_mt], [gate_off_diag_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+					
+					'''
 
 					state_1_broadcasted_st = state_1_broadcasted_shared.read( streams=g.SG4[1] )
 					state_0_broadcasted_st = state_0_broadcasted_shared.read( streams=g.SG4[7] )
@@ -508,7 +617,7 @@ class Gate(Split_gates):
 					gate_off_diag_real_mt 	= gate_off_diag_st_list[0].write(name=f"gate_off_diag_real", storage_req=storage_req_real_off_diag)
 					gate_off_diag_imag_mt 	= gate_off_diag_st_list[1].write(name=f"gate_off_diag_imag", storage_req=storage_req_imag_off_diag)
 
-
+					'''
 			#################################################################################
 
 		
@@ -618,7 +727,9 @@ class Gate(Split_gates):
 					g.mem_scatter( Psi_transformed_imag_bytes_mt_list[byte_idx], Psi_imag_bytes_copy_mt_list[byte_idx], control_qubit_address_maps_SL_east_st)
 
 
-
+			with g.ResourceScope(name=f"increase_gate_counters_scope", is_buffered=True, predecessors=[apply_gate_scope], time=None) as increase_gate_counters_scope :
+			
+				self.increment_gate_counters_for_S_gates()	
 					
 			
 			self.pgm_pkg.compile_program_context(pgm5)

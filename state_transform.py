@@ -13,8 +13,12 @@ gate_count = groqQCsim.gate_count
 
 if __name__ == "__main__":
 
-	target_qbits  = [0, 0, 6, 4]
-	control_qbits = [5, -1, 2, -1] #-1 ... no cotrol qubit is incolved in the operation
+	#target_qbits  = [0, 0, 6, 4]
+	#control_qbits = [5, -1, 2, -1] #-1 ... no cotrol qubit is incolved in the operation
+	
+	
+	target_qbits  = [0]
+	control_qbits = [11] #-1 ... no cotrol qubit is incolved in the operation
 
 	if len(target_qbits) != gate_count:
 		raise Exception("Number of target qubits in the list of target qubits should be equal to the gate count")
@@ -63,6 +67,7 @@ if __name__ == "__main__":
 	
 			circuit_1 = Circuit( 1 )
 			circuit_1.add_RY( 0  )	
+			one_qubit_circuits.append( circuit_1 )			
 
 		else:
 			error("Unimplemented case wit target qubit and control qubit.")

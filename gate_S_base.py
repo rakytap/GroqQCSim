@@ -32,8 +32,56 @@ class Gate_S_base(Split_gates):
 			Permutor takes twice as much time as the MXM.
 		"""
 		super().__init__(pgm_pkg, mxm_permutation = mxm_permutation )
+		
+		
+		
 
+	def gather_gate_filter_tensors(self ):
+	
+		# state_1_mt: if target_qubit_loc at the idx-th element is in state_1 |1> then all the 8 bits of the idx-th element is set to 1, thus state_1[idx] = 255
+		# state_0_mt: if target_qubit_loc at the idx-th element is in state_0 |0> then all the 8 bits of the idx-th element is set to 1, thus state_0[idx] = 255
+		# Creates a shared tensor to reuse the memory allocation made by program pgm1
+		state_1_broadcasted_shared = g.shared_memory_tensor(self.state_1_broadcasted_mt, name="state_1_broadcasted_shared")
+		state_0_broadcasted_shared = g.shared_memory_tensor(self.state_0_broadcasted_mt, name="state_0_broadcasted_shared")	
+	
+	
+		gate_counter_gate_filtering_selector_shared = g.shared_memory_tensor(self.gate_counter_gate_filtering_selector_mt,   \
+												   										name="gate_counter_gate_filtering_selector_shared") 
+		gate_counter_gate_filtering_selector_st     = gate_counter_gate_filtering_selector_shared.read( streams=g.SG1[0] )
 
+		# split state_1_broadcasted_shared and state_0_broadcasted_shared into slices to use mem_gather on the tensor
+		state_1_broadcasted_shared = g.reinterpret(state_1_broadcasted_shared, dtype=g.uint8 )
+		state_1_broadcasted_shared_list = g.split( state_1_broadcasted_shared, dim=2, num_splits=4 )
+
+		state_0_broadcasted_shared = g.reinterpret(state_0_broadcasted_shared, dtype=g.uint8 )
+		state_0_broadcasted_shared_list = g.split( state_0_broadcasted_shared, dim=2, num_splits=4 )
+				
+		state_1_broadcasted_bytes_list = []
+		state_0_broadcasted_bytes_list = []
+
+		for slice_idx in range(4):
+			state_1_broadcasted_byte_st = g.mem_gather(state_1_broadcasted_shared_list[slice_idx], 
+												gate_counter_gate_filtering_selector_st, 
+												output_streams=[g.SG1[8+slice_idx]] )
+			state_1_broadcasted_byte_st = g.reshape( state_1_broadcasted_byte_st, [1,320])
+			state_1_broadcasted_bytes_list.append( state_1_broadcasted_byte_st )
+
+			state_0_broadcasted_byte_st = g.mem_gather(state_0_broadcasted_shared_list[slice_idx], 
+												gate_counter_gate_filtering_selector_st, 
+												output_streams=[g.SG1[slice_idx]] )
+			state_0_broadcasted_byte_st = g.reshape( state_0_broadcasted_byte_st, [1,320])
+			state_0_broadcasted_bytes_list.append( state_0_broadcasted_byte_st )
+                                        	             	
+		state_1_broadcasted_st = g.concat( state_1_broadcasted_bytes_list )
+		state_1_broadcasted_st = g.reinterpret(state_1_broadcasted_st, dtype=g.uint32 )
+
+		state_0_broadcasted_st = g.concat( state_0_broadcasted_bytes_list )
+		state_0_broadcasted_st = g.reinterpret(state_0_broadcasted_st, dtype=g.uint32 )	
+		
+		return state_1_broadcasted_st, state_0_broadcasted_st
+		
+		
+		
 
 	def gather_gate_elements(self, gate_element_selector_mt, gate_element_selector_stream, gate_element_real_mt, gate_element_imag_mt, output_stream_offset = 0, time=None ):
 	

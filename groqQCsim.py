@@ -49,7 +49,7 @@ def compile(mxm_permutation = True) -> List[str]:
 	program.gate_SS_program()
 
 	# program to perform gate_SL operation
-	#program.gate_SL_program()
+	program.gate_SL_program()
 	
 	iops = pgm_pkg.assemble()
 
@@ -103,12 +103,12 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	iop = runtime.IOProgram(iop_file)
 	device = runtime.devices[0]
 	device.open()
-	device.load(iop[0], unsafe_keep_entry_points=True)
-	device.load(iop[1], unsafe_keep_entry_points=True)
-	device.load(iop[2], unsafe_keep_entry_points=True)
-	device.load(iop[3], unsafe_keep_entry_points=True)
-	device.load(iop[4], unsafe_keep_entry_points=True)
-	#device.load(iop[5], unsafe_keep_entry_points=True)
+	device.load(iop[0], unsafe_keep_entry_points=True) # upload
+	device.load(iop[1], unsafe_keep_entry_points=True) # split_gates
+	device.load(iop[2], unsafe_keep_entry_points=True) # download
+	device.load(iop[3], unsafe_keep_entry_points=True) #S
+	device.load(iop[4], unsafe_keep_entry_points=True) #SS
+	device.load(iop[5], unsafe_keep_entry_points=True) #SL
 	'''
 	if target_qbit >= small_qbit_num_limit :
 		raise ValueError( "the target qubit in this program should be less than 8" )
@@ -132,8 +132,14 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			control_state_1_selector[gate_idx,0:320:16] = control_qbit
 		elif (control_qbit == -1 ): #no control qubit case
 			control_state_1_selector[gate_idx,0:320:16] = 0  # no control qubit is used when filetring the gate kernels
+		elif (control_qbit > 8 and control_qbit <= 16 ) :
+			# L control qubits are treated over outer splits. 
+			# control_state_1_selector is not used for L control qubits. 
+			# state 1 for control qubit states are collected via gather maps, that are selected using distributor maps (see distributor_map_np)
+			# It is just skiped over by gate counters
+			control_state_1_selector[gate_idx,0:320:16] = 0  
 		else: 
-			raise Exception( "L and H cpntrol qubits are not implemented yet for chained operations" )
+			raise Exception( "8 and H control qubits are not implemented yet for chained operations" )
 
 	control_state_0_selector = control_state_1_selector
 
@@ -157,8 +163,11 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 		if control_qbit > 8 and control_qbit <= 16:
 			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - small_qbit_num_limit - 1)
 			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - small_qbit_num_limit - 1) + 1
+		else:
+			# when the control qubits is not L or H, no valid distributor map is required
+			pass
 			
-
+			
 	# generate packed gate kernel data
 	gate_kernels_real_packed = np.zeros( (320,), dtype=np.float32 )
 	gate_kernels_imag_packed = np.zeros( (320,), dtype=np.float32 )
