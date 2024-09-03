@@ -64,8 +64,11 @@ class Gate(Split_gates):
 		control_qubit_address_maps_SL_east_st   = control_qubit_address_maps_SL_east_mt.read( streams = g.SG1[27], time=time )
 
 
+		gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1_W[12]] )		
+		distributor_map_st                      = g.mem_gather(self.distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
+
 		control_qubit_address_maps_SL_east_st = g.distribute_8( control_qubit_address_maps_SL_east_st, 
-									self.distributor_map_mt,
+									distributor_map_st,
 									distributor_req=self.distributor_request_east,
 									map_stream_req=g.SG1[12],
 									bypass8=0b11110111,
@@ -110,10 +113,14 @@ class Gate(Split_gates):
 
 		control_qubit_address_maps_SL_west_mt   = g.concat( control_qubit_address_maps_SL_west_list[0:half_memory_slices] )
 		control_qubit_address_maps_SL_west_st   = control_qubit_address_maps_SL_west_mt.read( streams = g.SG1[31], time=time )
-
+		
+		
+		
+		gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1_W[12]] )		
+		distributor_map_st                      = g.mem_gather(self.distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
 
 		control_qubit_address_maps_SL_west_st = g.distribute_8( control_qubit_address_maps_SL_west_st, 
-									self.distributor_map_mt,
+									distributor_map_st,
 									distributor_req=self.distributor_request_west,
 									map_stream_req=g.SG1[12],
 									bypass8=0b01111111,
@@ -310,6 +317,14 @@ class Gate(Split_gates):
 				else: # if permutor is used to generate qubit pairs
 
 					tm_pkg = 0
+					
+					
+				
+					gate_counter_perm_map_selector_shared = g.shared_memory_tensor(self.gate_counter_perm_map_selector_mt, name="gate_counter_perm_map_selector_shared" )
+
+						
+
+		
 
 					# byte-wise permutation of the state vector
 					Psi_real_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=State_input_real_shared.storage_request, initialized=False)		
@@ -352,14 +367,19 @@ class Gate(Split_gates):
 					
 						# Real part
 						#control_qubit_address_maps_SL_west_st = control_qubit_address_maps_SL_west_tmp.read( streams = g.SG1_E[31] )
-						control_qubit_address_maps_SL_west_st = self.select_L_control_qubit_map_west()		
+						control_qubit_address_maps_SL_west_st = self.select_L_control_qubit_map_west()	
+						
+						
+						gate_counter_perm_map_selector_st_a   = gate_counter_perm_map_selector_shared.read(streams=[g.SG1_E[0]])						
+						gate_counter_perm_map_selector_st_b   = gate_counter_perm_map_selector_shared.read(streams=[g.SG1_E[0]])		
 						
 						
 
 						control_qubit_address_maps_SL_east_copy_st = control_qubit_address_maps_SL_east_copy_mt.read( streams = g.SG1_W[30] )		
 						
 						state_real_byte_st                 = g.mem_gather(Psi_real_mt_list[byte_idx], control_qubit_address_maps_SL_west_st, output_streams=[g.SG1_E[0]] )
-						state_permute_map_selector_east_st = state_permute_map_selector_list[0].read(streams=[g.SG1_E[24]])	
+						state_permute_map_selector_east_st = g.mem_gather(state_permute_map_selector_shared, gate_counter_perm_map_selector_st_b, output_streams=[g.SG1_E[24]])				
+						#state_permute_map_selector_east_st = state_permute_map_selector_list[0].read(streams=[g.SG1_E[24]])	
 						permute_map_west_st                = g.mem_gather(permute_maps_mt_east_shared, state_permute_map_selector_east_st, output_streams=[g.SG1_E[24]])		
 						permuted_state_real_st_8           = g.permute_inner(state_real_byte_st, permute_map_west_st, permutor_req=permutor_requests[1], input_streams=[g.SG1_E[0], g.SG1_E[24]], output_streams=g.SG1[4], time=permutation_time_starts[byte_idx] )
 				
@@ -371,8 +391,9 @@ class Gate(Split_gates):
 						control_qubit_address_maps_SL_east_st = self.select_L_control_qubit_map_east()
 						
 						state_imag_byte_st                 = g.mem_gather(Psi_imag_mt_list[byte_idx], control_qubit_address_maps_SL_west_st, output_streams=[g.SG1_W[0]] )
-						state_permute_map_selector_east_st = state_permute_map_selector_list[0].read(streams=[g.SG1_W[24]])	
-						permute_map_west_st                = g.mem_gather(permute_maps_mt_west_shared, state_permute_map_selector_east_st, output_streams=[g.SG1_W[24]])
+						state_permute_map_selector_west_st = g.mem_gather(state_permute_map_selector_shared, gate_counter_perm_map_selector_st_a, output_streams=[g.SG1_W[24]])	
+						#state_permute_map_selector_west_st = state_permute_map_selector_list[0].read(streams=[g.SG1_W[24]])	
+						permute_map_west_st                = g.mem_gather(permute_maps_mt_west_shared, state_permute_map_selector_west_st, output_streams=[g.SG1_W[24]])
 						permuted_state_imag_st_8           = g.permute_inner(state_imag_byte_st, permute_map_west_st, permutor_req=permutor_requests[0], input_streams=[g.SG1_W[0], g.SG1_E[24]], output_streams=g.SG1[4])#, time=permutation_time_starts[byte_idx]+0*memory_addresses )
 				
 
@@ -549,76 +570,6 @@ class Gate(Split_gates):
 					g.add_mem_constraints([self.gate_kernels_broadcasted_real_copy_mt], [gate_off_diag_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 					g.add_mem_constraints([self.gate_kernels_broadcasted_imag_copy_mt], [gate_off_diag_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 					
-					'''
-
-					state_1_broadcasted_st = state_1_broadcasted_shared.read( streams=g.SG4[1] )
-					state_0_broadcasted_st = state_0_broadcasted_shared.read( streams=g.SG4[7] )
-
-						
-					# real and imaginary parts of the state concatenated into a unified tensor
-					gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[6], time=0 )
-					gate_00_imag_st = gate_kernels_broadcasted_imag_shared_dict["0_00"].read( streams=g.SG4[6], time=0 )
-					gate_00_st 	= g.stack( [gate_00_real_st, gate_00_imag_st], dim=0 )
-
-					#gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[6] )
-					gate_00_st = g.reinterpret( gate_00_st, g.uint32 )
-					gate_00_st = g.bitwise_and( gate_00_st, state_0_broadcasted_st, alus=alu_requests[1], output_streams=g.SG4[4] )
-					gate_00_st = g.reinterpret( gate_00_st, g.float32 )
-
-
-					# real and imaginary parts of the state concatenated into a unified tensor
-					gate_11_real_st = gate_kernels_broadcasted_real_shared_copy_dict["0_11"].read( streams=g.SG4[0])#, time=2 )
-					gate_11_imag_st = gate_kernels_broadcasted_imag_shared_copy_dict["0_11"].read( streams=g.SG4[0])#, time=2 )
-					gate_11_st 	= g.stack( [gate_11_real_st, gate_11_imag_st], dim=0 )
-
-					gate_11_st = g.reinterpret( gate_11_st, g.uint32 )
-					gate_11_st = g.bitwise_and( gate_11_st, state_1_broadcasted_st, alus=alu_requests[0], output_streams=g.SG4[3] )
-					gate_11_st = g.reinterpret( gate_11_st, g.float32 )
-
-				
-					# combine the filtered gate element vectors
-					gate_diag_st = g.add(gate_00_st, gate_11_st, alus=alu_requests[2], output_streams=g.SG4[3])
-
-
-					
-					gate_diag_real_st, gate_diag_imag_st = g.split( gate_diag_st, num_splits=2, dim=0 )
-
-					gate_diag_real_mt = gate_diag_real_st.write(name=f"gate_diag_real", storage_req=storage_req_real_diag)
-					gate_diag_imag_mt = gate_diag_imag_st.write(name=f"gate_diag_imag", storage_req=storage_req_imag_diag)
-
-				#with g.ResourceScope(name="prepare_gate_elements_output_state_1_scope", is_buffered=True, predecessors=[prepare_gate_elements_output_state_0_scope], time=None) as prepare_gate_elements_output_state_1_scope :
-
-					state_1_broadcasted_st = state_1_broadcasted_shared.read( streams=g.SG4[1] )
-					state_0_broadcasted_st = state_0_broadcasted_shared.read( streams=g.SG4[7] )
-				
-					# real and imaginary parts of the state concatenated into a unified tensor
-					gate_01_real_st = gate_kernels_broadcasted_real_shared_dict["0_01"].read( streams=g.SG4[6])#, time=5 )
-					gate_01_imag_st = gate_kernels_broadcasted_imag_shared_dict["0_01"].read( streams=g.SG4[6])#, time=5 )
-					gate_01_st 	= g.stack( [gate_01_real_st, gate_01_imag_st], dim=0 )
-
-					#gate_00_real_st = gate_kernels_broadcasted_real_shared_dict["0_00"].read( streams=g.SG4[6] )
-					gate_01_st = g.reinterpret( gate_01_st, g.uint32 )
-					gate_01_st = g.bitwise_and( gate_01_st, state_0_broadcasted_st, alus=alu_requests[1], output_streams=g.SG4[4] )
-					gate_01_st = g.reinterpret( gate_01_st, g.float32 )
-
-					# real and imaginary parts of the state concatenated into a unified tensor
-					gate_10_real_st = gate_kernels_broadcasted_real_shared_copy_dict["0_10"].read( streams=g.SG4[0], time=7 )
-					gate_10_imag_st = gate_kernels_broadcasted_imag_shared_copy_dict["0_10"].read( streams=g.SG4[0], time=7 )
-					gate_10_st 	= g.stack( [gate_10_real_st, gate_10_imag_st], dim=0 )
-
-					gate_10_st = g.reinterpret( gate_10_st, g.uint32 )
-					gate_10_st = g.bitwise_and( gate_10_st, state_1_broadcasted_st, alus=alu_requests[0], output_streams=g.SG4[3] )
-					gate_10_st = g.reinterpret( gate_10_st, g.float32 )
-					
-					# combine the filtered gate element vectors
-					gate_off_diag_st = g.add(gate_01_st, gate_10_st, alus=alu_requests[2], output_streams=g.SG4[3])
-					
-					gate_off_diag_st_list	= g.split( gate_off_diag_st, num_splits=2, dim=0 )
-					gate_off_diag_real_mt 	= gate_off_diag_st_list[0].write(name=f"gate_off_diag_real", storage_req=storage_req_real_off_diag)
-					gate_off_diag_imag_mt 	= gate_off_diag_st_list[1].write(name=f"gate_off_diag_imag", storage_req=storage_req_imag_off_diag)
-
-					'''
-			#################################################################################
 
 		
 

@@ -4,7 +4,7 @@ qbit_num = 14
 gate_kernel_element_labels = ["00", "01", "10", "11"]
 
 # gate count stored in a single packed vector 
-gate_count = 1
+gate_count = 6
 
 # the number og qubits for which the gate operations need the permutor (need to reorganize the elements in a vector)
 small_qbit_num_limit = 8
@@ -25,10 +25,14 @@ control_qubit_address_maps_SL_west_layout = f"H1(W), A{memory_slices}(0-{memory_
 layout_gate_counter_perm_map_selector = f"H1(W), A{1}(0), S1(37)"
 
 # control qubit dependent distributor map for SL gate
-layout_distributor_maps_west = f"H1(W), A{gate_count}(1-{1+gate_count-1}), S1(37)"  #TODO update with A consarint for SL gate
+layout_distributor_maps_west = f"H1(W), A{gate_count}(1-{1+gate_count-1}), S1(37)"  #TODO HAVE A disptributor map also on the east
 
 # permute maps used to reorder the state vector elements according to the given target qubit (permute map is also stored on the easter hemisphere)
 layout_permute_maps_west = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(36)"
+
+
+# gate counter: for reading out the correct distributor map for choosing the correct L control qubit memory maps
+layout_gate_counter_distributor_maps_west = "H1(W), A1(0), S1(35)"
 
 
 

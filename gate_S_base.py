@@ -148,7 +148,7 @@ class Gate_S_base(Split_gates):
 		# save the offsetted memory address
 		gate_counter_perm_map_selector_mt = gate_counter_perm_map_selector_st.write(name=f"gate_counter_perm_map_selector_mt", \
 													 storage_req=gate_counter_perm_map_selector_shared.storage_request, 
-													 time=0)#, program_output=False)
+													 time=0)#, program_output=True)
 				
 
 		#### increase the gate counter for gate filtering selector ####
@@ -168,7 +168,7 @@ class Gate_S_base(Split_gates):
 		gate_counter_gate_filtering_selector_mt = gate_counter_gate_filtering_selector_st.write( \
 								name=f"gate_counter_gate_filtering_selector_mt", \
 								storage_req=gate_counter_gate_filtering_selector_shared.storage_request, 
-								time=None)#, program_output=False)
+								time=None)#, program_output=True)
 
 
 
@@ -236,11 +236,11 @@ class Gate_S_base(Split_gates):
 		gate_counter_gate_element_selector_10_mt = gate_counter_gate_element_selector_10_st.write( \
 								name=f"gate_counter_gate_element_selector_10_mt", \
 								storage_req=gate_counter_gate_element_selector_10_shared.storage_request, 
-								time=None)#, program_output=False) 
+								time=None)#, program_output=True) 
 					
 				
 
-		#### increase the gate counter for control qubit selector ####
+		#### increase the gate counter for S control qubit selector ####
 		constant_1_address_offset_shared = g.shared_memory_tensor(self.constant_1_address_offset_mt, name="constant_1_address_offset_shared" )
 
 
@@ -259,7 +259,30 @@ class Gate_S_base(Split_gates):
 		# save the offsetted memory address
 		gate_counter_S_control_qbit_selector_mt = gate_counter_S_control_qbit_selector_st.write(name=f"gate_counter_S_control_qbit_selector_mt", \
 											 storage_req=gate_counter_S_control_qbit_selector_shared.storage_request, 
-											 time=2)
+											 time=2)#, program_output=True) 
+
+
+
+		#### increase the gate counter for L/H control qubit distribute map selector ####
+		#constant_1_address_offset_shared = g.shared_memory_tensor(self.constant_1_address_offset_mt, name="constant_1_address_offset_shared" )
+
+
+		alu_rq_6 = g.tensor.create_alu_request( alus=[6] )
+				
+		#constant_1_address_offset_st     = constant_1_address_offset_shared.read(streams=[g.SG1_E[8]])	
+
+		gate_counter_distributor_maps_west_shared = g.shared_memory_tensor(self.gate_counter_distributor_maps_west_mt,   \
+   										name="gate_counter_S_control_qbit_selector_shared") 
+		gate_counter_distributor_maps_west_st     = gate_counter_distributor_maps_west_shared.read( streams=g.SG1[16] )
+
+							
+		# offset the memory address by 1
+		gate_counter_distributor_maps_west_st = g.add(constant_1_address_offset_st, gate_counter_distributor_maps_west_st, alus=alu_rq_6, output_streams=g.SG4_W[4])
+				
+		# save the offsetted memory address
+		gate_counter_distributor_maps_west_mt = gate_counter_distributor_maps_west_st.write(name=f"gate_counter_distributor_maps_west_mt", \
+											 storage_req=gate_counter_distributor_maps_west_shared.storage_request, 
+											 time=None)#, program_output=True) 
 
 
 

@@ -158,10 +158,10 @@ class Split_gates(IO):
 					else:
 						gate_kernel_broadcasted_real_st = gate_kernel_broadcasted_list[1]
 						gate_kernel_broadcasted_imag_st = gate_kernel_broadcasted_list[0]				
-		
-					if idx == 3:					
-						gate_kernel_broadcasted_imag_st.write(name=f"iii_{gate_idx}")#, program_output=True )		
-						gate_kernel_broadcasted_real_st.write(name=f"rrr_{gate_idx}")#, program_output=True )	
+					
+					#if idx == 3:					
+					#	gate_kernel_broadcasted_imag_st.write(name=f"iii_{gate_idx}")#, program_output=True )		
+					#	gate_kernel_broadcasted_real_st.write(name=f"rrr_{gate_idx}")#, program_output=True )	
 
 					######################## save broadcasted elements into memory and add memory exclusion rules #############################
 

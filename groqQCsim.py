@@ -223,6 +223,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			index_of_gate_program = 3
 			entry_point = iop["gate_S"]["compute"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output )			
 
 		elif target_qbit >= 0 and target_qbit < 8 and control_qbit < 8 and control_qbit >= 0: 
 
@@ -230,6 +231,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			index_of_gate_program = 4
 			entry_point = iop["gate_SS"]["compute"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output )			
 
 		elif target_qbit >= 0 and target_qbit < 8 and control_qbit > 8 and control_qbit <= 16:
 
@@ -237,9 +239,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			index_of_gate_program = 5
 			entry_point = iop["gate_SL"]["compute"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
-			#print( gate_output["test"] )	
-			#print( gate_output["test"].dtype )	
-			#print( gate_output["test"].shape )		
+			#print( gate_output )	
 
 		else:
 
