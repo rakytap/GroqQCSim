@@ -98,7 +98,7 @@ class IO:
 			index_pair = 1 << (control_qbit - small_qbit_num_limit)
 			
 			# each 2-byte column in the 16-byte blocks of the map tensor corresponds to a specific control qbit 
-			if control_qbit < 16:
+			if control_qbit <= 16:
 				horizontal_offset_in_memory_map = (control_qbit-control_qbit_min)*2 
 			else:
 				horizontal_offset_in_memory_map = (control_qbit-17)*2 
@@ -106,12 +106,11 @@ class IO:
 				
 			# maps for control_qbits for 9,10,...,16 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
 			# maps for control_qbits for 17,...,21 on the lower half of the memory tensor (addresses half_memory_slices+1,...,memory_slices)		
-			if control_qbit < 16:
+			if control_qbit <= 16:
 				vertical_offset_in_memory_map = 0
 			else:
 				vertical_offset_in_memory_map = half_memory_slices
 							 
-				
 			mask_lower_bits = index_pair - 1 
 			mask_upper_bits = 1 << ( qbit_num - control_qbit )
 			mask_upper_bits = mask_upper_bits - 1

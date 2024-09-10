@@ -54,6 +54,9 @@ def compile(mxm_permutation = True) -> List[str]:
 	# program to perform gate_S8 operation
 	program.gate_S8_program()
 	
+	# program to perform gate_SH operation
+	program.gate_SH_program()
+
 	iops = pgm_pkg.assemble()
 
 	return iops
@@ -113,6 +116,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device.load(iop[4], unsafe_keep_entry_points=True) #SS
 	device.load(iop[5], unsafe_keep_entry_points=True) #SL
 	device.load(iop[6], unsafe_keep_entry_points=True) #S8
+	device.load(iop[7], unsafe_keep_entry_points=True) #SH
 	'''
 	if target_qbit >= small_qbit_num_limit :
 		raise ValueError( "the target qubit in this program should be less than 8" )
@@ -146,8 +150,10 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			# control qubit 8 is treated over outer splits. 
 			# control_state_1_selector is not used for control qubit 8. 
 			control_state_1_selector[gate_idx,0:320:16] = 0  
+		elif ( control_qbit > 16 and control_qbit < 21 ) :
+			control_state_1_selector[gate_idx,0:320:16] = 0  
 		else: 
-			raise Exception( "8 and H control qubits are not implemented yet for chained operations" )
+			raise Exception( "control qubit must be lesser than 21" )
 
 	control_state_0_selector = control_state_1_selector
 
@@ -171,6 +177,9 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 		if control_qbit > 8 and control_qbit <= 16:
 			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - small_qbit_num_limit - 1)
 			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - small_qbit_num_limit - 1) + 1
+		elif control_qbit > 16 and control_qbit < 21:
+			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - 17)
+			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - 17) + 1
 		else:
 			# when the control qubits is not L or H, no valid distributor map is required
 			pass
@@ -251,11 +260,18 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 		elif target_qbit >= 0 and target_qbit < 8 and control_qbit == 8:
 
-			# pogram perfroming the Gate_SL operation
+			# pogram perfroming the Gate_S8 operation
 			index_of_gate_program = 6
 			entry_point = iop["gate_S8"]["compute"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
 
+		elif target_qbit >= 0 and target_qbit < 8 and control_qbit > 16 and control_qbit <= 21:
+
+			# pogram perfroming the Gate_SH operation
+			index_of_gate_program = 7
+			entry_point = iop["gate_SH"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output )	
 
 		else:
 

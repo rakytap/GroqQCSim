@@ -18,7 +18,7 @@ if __name__ == "__main__":
 	
 	
 	target_qbits  = [0,  7, 6,  4, 3, 5]
-	control_qbits = [11, 2, 9, -1, 5, 0] #-1 ... no cotrol qubit is incolved in the operation
+	control_qbits = [17, 2, 19, -1, 20, 0] #-1 ... no cotrol qubit is incolved in the operation
 
 	if len(target_qbits) != gate_count:
 		raise Exception("Number of target qubits in the list of target qubits should be equal to the gate count")
