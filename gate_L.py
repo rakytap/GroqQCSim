@@ -36,6 +36,53 @@ class Gate(Split_gates):
 		
 		self.target_qubit = 9
 
+
+	def gather_gate_elements(self, gate_element_selector_mt, gate_element_selector_stream, gate_element_real_mt, gate_element_imag_mt, output_stream_offset = 0, time=None ):
+	
+		if time is None:
+			gate_element_selector_st_for_real      = gate_element_selector_mt.read(streams=gate_element_selector_stream)
+			gate_element_selector_st_for_imag      = gate_element_selector_mt.read(streams=gate_element_selector_stream)
+		else:
+			gate_element_selector_st_for_real      = gate_element_selector_mt.read(streams=gate_element_selector_stream, time=time)
+			gate_element_selector_st_for_imag      = gate_element_selector_mt.read(streams=gate_element_selector_stream, time=time+1)
+
+		gate_element_real_mt_8      = g.reinterpret( gate_element_real_mt, dtype=g.uint8 )
+		gate_element_real_byte_list = g.split( gate_element_real_mt_8, dim=1, num_splits=4 )
+			
+		gate_element_imag_mt_8      = g.reinterpret( gate_element_imag_mt, dtype=g.uint8 )
+		gate_element_imag_byte_list = g.split( gate_element_imag_mt_8, dim=1, num_splits=4 )
+
+
+		gate_element_real_list = []
+		gate_element_imag_list = []
+		for slice_idx in range(4):
+
+			gate_element_real_byte_st = g.mem_gather(gate_element_real_byte_list[slice_idx], 
+											gate_element_selector_st_for_real, 
+											output_streams=[g.SG1[output_stream_offset+slice_idx]] )
+
+			gate_element_real_byte_st = g.reshape( gate_element_real_byte_st, [1,320])
+			gate_element_real_list.append( gate_element_real_byte_st )
+
+			gate_element_imag_byte_st = g.mem_gather(gate_element_imag_byte_list[slice_idx], 
+										gate_element_selector_st_for_imag, 
+										output_streams=[g.SG1[output_stream_offset+slice_idx]] )
+
+			gate_element_imag_byte_st = g.reshape( gate_element_imag_byte_st, [1,320])
+			gate_element_imag_list.append( gate_element_imag_byte_st )
+
+
+
+		gate_element_real_st = g.concat( gate_element_real_list )
+		gate_element_real_st = g.reinterpret(gate_element_real_st, dtype=g.float32 )
+
+		gate_element_imag_st = g.concat( gate_element_imag_list )
+		gate_element_imag_st = g.reinterpret(gate_element_imag_st, dtype=g.float32 )
+			
+		gate_element_st 	= g.stack( [gate_element_real_st, gate_element_imag_st], dim=0 )
+			
+		return gate_element_st
+
 	
 	def two_complex_dot_product(self, s_r_0, s_i_0, s_r_1, s_i_1, g_r_0, g_i_0, g_r_1, g_i_1):
 		s_r_0_st = s_r_0.read(streams=g.SG4[4]) #direction=Direction.EASTWARD
@@ -96,28 +143,27 @@ class Gate(Split_gates):
 			gate_kernels_broadcasted_real_shared_copy_dict = {}
 			gate_kernels_broadcasted_imag_shared_copy_dict = {}
 
-			for gate_idx in range( 1 ):
-				for label in gate_kernel_element_labels:
-					key = f"{gate_idx}_"+label
-					gate_kernel_broadcasted_real_mt = self.gate_kernels_broadcasted_real_dict[key]
-					gate_kernel_broadcasted_imag_mt = self.gate_kernels_broadcasted_imag_dict[key]
+			for label in gate_kernel_element_labels:
+				key = f"0_"+label
+				gate_kernel_broadcasted_real_mt = self.gate_kernels_broadcasted_real_dict[key]
+				gate_kernel_broadcasted_imag_mt = self.gate_kernels_broadcasted_imag_dict[key]
 
-					gate_kernels_broadcasted_real_shared = g.shared_memory_tensor(gate_kernel_broadcasted_real_mt, name=gate_kernel_broadcasted_real_mt.name+"_shared")
-					gate_kernels_broadcasted_imag_shared = g.shared_memory_tensor(gate_kernel_broadcasted_imag_mt, name=gate_kernel_broadcasted_imag_mt.name+"_shared")
+				gate_kernels_broadcasted_real_shared = g.shared_memory_tensor(gate_kernel_broadcasted_real_mt, name=gate_kernel_broadcasted_real_mt.name+"_shared")
+				gate_kernels_broadcasted_imag_shared = g.shared_memory_tensor(gate_kernel_broadcasted_imag_mt, name=gate_kernel_broadcasted_imag_mt.name+"_shared")
 
-					gate_kernels_broadcasted_real_shared_dict[key] = gate_kernels_broadcasted_real_shared
-					gate_kernels_broadcasted_imag_shared_dict[key] = gate_kernels_broadcasted_imag_shared
+				gate_kernels_broadcasted_real_shared_dict[key] = gate_kernels_broadcasted_real_shared
+				gate_kernels_broadcasted_imag_shared_dict[key] = gate_kernels_broadcasted_imag_shared
 
-					gate_kernel_broadcasted_real_copy_mt = self.gate_kernels_broadcasted_real_copy_dict[key]
-					gate_kernel_broadcasted_imag_copy_mt = self.gate_kernels_broadcasted_imag_copy_dict[key]
+				gate_kernel_broadcasted_real_copy_mt = self.gate_kernels_broadcasted_real_copy_dict[key]
+				gate_kernel_broadcasted_imag_copy_mt = self.gate_kernels_broadcasted_imag_copy_dict[key]
 
-					gate_kernels_broadcasted_real_shared_copy = g.shared_memory_tensor(gate_kernel_broadcasted_real_copy_mt, name=gate_kernel_broadcasted_real_copy_mt.name+"_shared")
-					gate_kernels_broadcasted_imag_shared_copy = g.shared_memory_tensor(gate_kernel_broadcasted_imag_copy_mt, name=gate_kernel_broadcasted_imag_copy_mt.name+"_shared")
+				gate_kernels_broadcasted_real_shared_copy = g.shared_memory_tensor(gate_kernel_broadcasted_real_copy_mt, name=gate_kernel_broadcasted_real_copy_mt.name+"_shared")
+				gate_kernels_broadcasted_imag_shared_copy = g.shared_memory_tensor(gate_kernel_broadcasted_imag_copy_mt, name=gate_kernel_broadcasted_imag_copy_mt.name+"_shared")
 
-					gate_kernels_broadcasted_real_shared_copy_dict[key] = gate_kernels_broadcasted_real_shared_copy
-					gate_kernels_broadcasted_imag_shared_copy_dict[key] = gate_kernels_broadcasted_imag_shared_copy
+				gate_kernels_broadcasted_real_shared_copy_dict[key] = gate_kernels_broadcasted_real_shared_copy
+				gate_kernels_broadcasted_imag_shared_copy_dict[key] = gate_kernels_broadcasted_imag_shared_copy
 
-			with g.ResourceScope(name=f"apply_gate_scope_{gate_idx}", is_buffered=True, predecessors=[], time=0) as apply_gate_scope :
+			with g.ResourceScope(name=f"apply_gate_scope", is_buffered=True, predecessors=[], time=0) as apply_gate_scope :
 				pairs = [ [x,x^(1<<(self.target_qubit-8))] for x in range(memory_addresses) if x < x^(1<<(self.target_qubit-8))         ]
 
 
@@ -152,26 +198,63 @@ class Gate(Split_gates):
 				pairs1 = [x.reshape(2, memory_addresses//2, matrix_size) for x in pairs1.split(num_splits=2, dim=2)]
 				#pairs (2, memory_addresses//2, 2, matrix_size) -> [(2, memory_addresses//2, matrix_size)]*2
 
-				gr0 = g.stack( 
-                                      [g.stack( [gate_kernels_broadcasted_real_shared_dict[f"{gate_idx}_"+label] for _ in range(memory_addresses//2)], dim=0 ) for label in ["00", "10"]], dim=0 )
-          	
-				gi0 = g.stack(
-		                      [g.stack( [gate_kernels_broadcasted_imag_shared_dict[f"{gate_idx}_"+label] for _ in range(memory_addresses//2)], dim=0 ) for label in ["00", "10"]], dim=0 )
 
-				gr1 = g.stack(
-                                      [g.stack( [gate_kernels_broadcasted_real_shared_copy_dict[f"{gate_idx}_"+label] for _ in range(memory_addresses//2)], dim=0 ) for label in ["01", "11"]], dim=0 )
+				gr0_elements_list = []
+				gi0_elements_list = []
+				gr1_elements_list = []
+				gi1_elements_list = []
+				for idx in range(memory_addresses//4):
 
-				gi1 = g.stack(
-                                      [g.stack( [gate_kernels_broadcasted_imag_shared_copy_dict[f"{gate_idx}_"+label] for _ in range(memory_addresses//2)], dim=0) for label in ["01", "11"]], dim=0 )
-				#g (2, memory_addresses//2, matrix_size)
+					gr0_elements_list.append( gate_kernels_broadcasted_real_shared_dict[f"0_00"] )
+					gr0_elements_list.append( gate_kernels_broadcasted_real_shared_dict[f"0_00"] )
+					gr0_elements_list.append( gate_kernels_broadcasted_real_shared_dict[f"0_10"] )
+					gr0_elements_list.append( gate_kernels_broadcasted_real_shared_dict[f"0_10"] )
+
+					gi0_elements_list.append( gate_kernels_broadcasted_imag_shared_dict[f"0_00"] )
+					gi0_elements_list.append( gate_kernels_broadcasted_imag_shared_dict[f"0_00"] )
+					gi0_elements_list.append( gate_kernels_broadcasted_imag_shared_dict[f"0_10"] )
+					gi0_elements_list.append( gate_kernels_broadcasted_imag_shared_dict[f"0_10"] )
+
+
+					gr1_elements_list.append( gate_kernels_broadcasted_real_shared_copy_dict[f"0_01"] )
+					gr1_elements_list.append( gate_kernels_broadcasted_real_shared_copy_dict[f"0_01"] )
+					gr1_elements_list.append( gate_kernels_broadcasted_real_shared_copy_dict[f"0_11"] )
+					gr1_elements_list.append( gate_kernels_broadcasted_real_shared_copy_dict[f"0_11"] )
+
+					gi1_elements_list.append( gate_kernels_broadcasted_imag_shared_copy_dict[f"0_01"] )
+					gi1_elements_list.append( gate_kernels_broadcasted_imag_shared_copy_dict[f"0_01"] )
+					gi1_elements_list.append( gate_kernels_broadcasted_imag_shared_copy_dict[f"0_11"] )
+					gi1_elements_list.append( gate_kernels_broadcasted_imag_shared_copy_dict[f"0_11"] )
+
+
+				gr0 = g.stack( gr0_elements_list, dim=0 )
+				gr0 = gr0.reshape( memory_addresses//4, 2, 2, 320 )
+
+				gi0 = g.stack( gi0_elements_list, dim=0 )
+				gi0 = gi0.reshape( memory_addresses//4, 2, 2, 320 )
+
+				gr1 = g.stack( gr1_elements_list, dim=0 )
+				gr1 = gr1.reshape( memory_addresses//4, 2, 2, 320 )
+
+				gi1 = g.stack( gi1_elements_list, dim=0 )
+				gi1 = gi1.reshape( memory_addresses//4, 2, 2, 320 )
+
+				
+
           
 				#switch to row pair order (memory_addresses//2, matrix_size) so we can write result and copy without overwriting future needed values (cannot implicit latch gates, but saves double memory if crossing VXM or extra copy operations)
 
-				if memory_addresses > 8: #8 memory addresses does not exhaust the ALU pipeline depth (3*3=9 or 3*4=12 with identity), only at 16 does this issue occur              
-					new_shape = (2, memory_addresses//2, 1, 320) if self.target_qubit==8 else (2, memory_addresses//4, 2, 320) #maintain bank alternation for target_qubit>=9
-					gr0, gi0, gr1, gi1 = gr0.reshape(*new_shape).transpose(1, 0, 2, 3), gi0.reshape(*new_shape).transpose(1, 0, 2, 3), gr1.reshape(*new_shape).transpose(1, 0, 2, 3), gi1.reshape(*new_shape).transpose(1, 0, 2, 3)
-					new_shape = (2, memory_addresses//2, 1, matrix_size) if self.target_qubit==8 else (2, memory_addresses//4, 2, matrix_size)
-					pairs0[0], pairs0[1], pairs1[0], pairs1[1] = pairs0[0].reshape(*new_shape).transpose(1, 0, 2, 3), pairs0[1].reshape(*new_shape).transpose(1, 0, 2, 3), pairs1[0].reshape(*new_shape).transpose(1, 0, 2, 3), pairs1[1].reshape(*new_shape).transpose(1, 0, 2, 3)
+
+				if  self.target_qubit==8:           
+					new_shape = (2, memory_addresses//2, 1, matrix_size)
+				else: 
+					new_shape = (2, memory_addresses//4, 2, matrix_size) #maintain bank alternation for target_qubit>=9
+
+
+				pairs0[0] = pairs0[0].reshape(*new_shape).transpose(1, 0, 2, 3)
+				pairs0[1] = pairs0[1].reshape(*new_shape).transpose(1, 0, 2, 3)
+				pairs1[0] = pairs1[0].reshape(*new_shape).transpose(1, 0, 2, 3)
+				pairs1[1] = pairs1[1].reshape(*new_shape).transpose(1, 0, 2, 3)
                             
 				pairs0[0], pairs0[1], pairs1[0], pairs1[1] = self.two_complex_dot_product( pairs0[0], pairs0[1], pairs1[0], pairs1[1], gr0, gi0, gr1, gi1)
 
@@ -198,9 +281,9 @@ class Gate(Split_gates):
 
 
 				Psi_transformed_real_mt_output = g.constant_tensor( Psi_transformed_real_mt.shape, g.float32, storage_req=Psi_transformed_real_mt.storage_request, 
-                                                                                    name=f"Psi_transformed_real_{gate_idx}", initialized=False)
+                                                                                    name=f"Psi_transformed_real", initialized=False)
 				Psi_transformed_imag_mt_output = g.constant_tensor( Psi_transformed_imag_mt.shape, g.float32, storage_req=Psi_transformed_imag_mt.storage_request, 
-                                                                                    name=f"Psi_transformed_imag_{gate_idx}", initialized=False)
+                                                                                    name=f"Psi_transformed_imag", initialized=False)
 
 				Psi_transformed_real_mt_output.set_program_output()
 				Psi_transformed_imag_mt_output.set_program_output()

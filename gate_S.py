@@ -78,7 +78,7 @@ class Gate(Gate_S_base):
 			gate_kernels_broadcasted_real_shared_dict = {}
 			gate_kernels_broadcasted_imag_shared_dict = {}
 			gate_kernels_broadcasted_real_shared_copy_dict = {}
-			gate_kernels_broadcasted_imag_shared_copy_dict = {}
+			gate_kernels_broadcasted_imag_shared_copy_dict = {} #TODO delete these dictionaries. Not needed anymore
 			
 			for label in gate_kernel_element_labels:
 

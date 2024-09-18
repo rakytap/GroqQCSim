@@ -130,7 +130,11 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	# maps for mem_gather to select the correct state_1 indices according to the target qubit
 	target_qbit_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )
 	for gate_idx in range(gate_count):
-		target_qbit_selector[gate_idx, 0:320:16] = target_qbits[gate_idx]
+		target_qbit = target_qbits[gate_idx]
+		if target_qbit < 8:
+			target_qbit_selector[gate_idx, 0:320:16] = target_qbit
+		else:
+			target_qbit_selector[gate_idx, 0:320:16] = 0
 		
 	state_1_selector = target_qbit_selector.copy()#np.zeros( (2,320,), dtype=np.uint8 )
 	state_0_selector = target_qbit_selector.copy()#np.zeros( (2,320,), dtype=np.uint8 )	
@@ -282,9 +286,13 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_SH operation
 			index_of_gate_program = 8
-			entry_point = iop["gate_L"]["compute"]
+			entry_point = iop["gate_L"]["mono"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
-			#print( gate_output )		
+			gr0 = gate_output["gr0"]
+			print( gr0.shape )	
+			print( memory_addresses )
+			print( gr0[0,:,0,0] )	
+			#print( gr0[] )		
 
 		else:
 
