@@ -328,7 +328,7 @@ class IO:
 											dtype=np.uint8),
 										 	layout=layout_gate_counter_S_control_qbit_selector )
 
-
+			# TODO: move these memory layouts to memory_layouts and update the ods file
 			gate_element_selector_00_np                   = np.zeros( (320,), dtype=np.uint8 )
 			gate_element_selector_00_np[0:320:16]         = 0 + small_qbit_num_limit*20
 			self.gate_counter_gate_element_selector_00_mt = g.from_data( gate_element_selector_00_np, layout="H1(E), A1(0), S1(36)" )
@@ -340,11 +340,11 @@ class IO:
 					
 			gate_element_selector_01_np                   = np.zeros( (320,), dtype=np.uint8 )
 			gate_element_selector_01_np[0:320:16]         = gate_count + small_qbit_num_limit*20
-			self.gate_counter_gate_element_selector_01_mt = g.from_data( gate_element_selector_01_np, layout="H1(E), A1(1), S1(36)" )
+			self.gate_counter_gate_element_selector_01_mt = g.from_data( gate_element_selector_01_np, layout="H1(E), A1(0), S1(34)" )
 
 			gate_element_selector_10_np                   = np.zeros( (320,), dtype=np.uint8 )
 			gate_element_selector_10_np[0:320:16]         = 2*gate_count + small_qbit_num_limit*20
-			self.gate_counter_gate_element_selector_10_mt = g.from_data( gate_element_selector_10_np, layout="H1(E), A1(1), S1(35)" )	
+			self.gate_counter_gate_element_selector_10_mt = g.from_data( gate_element_selector_10_np, layout="H1(E), A1(0), S1(33)" )	
 					
 			g.add_mem_constraints([self.gate_counter_gate_element_selector_00_mt], [self.gate_counter_gate_element_selector_01_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 			g.add_mem_constraints([self.gate_counter_gate_element_selector_11_mt], [self.gate_counter_gate_element_selector_10_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)				

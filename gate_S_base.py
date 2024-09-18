@@ -230,7 +230,7 @@ class Gate_S_base(Split_gates):
 		gate_counter_gate_element_selector_01_mt = gate_counter_gate_element_selector_01_st.write( \
 								name=f"gate_counter_gate_element_selector_01_mt", \
 								storage_req=gate_counter_gate_element_selector_01_shared.storage_request, 
-								time=1)#, program_output=True)
+								time=2)#, program_output=True)
 
 
 		gate_counter_gate_element_selector_10_mt = gate_counter_gate_element_selector_10_st.write( \
