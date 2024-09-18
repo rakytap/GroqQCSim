@@ -288,10 +288,10 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			index_of_gate_program = 8
 			entry_point = iop["gate_L"]["mono"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
-			gr0 = gate_output["gr0"]
-			print( gr0.shape )	
-			print( memory_addresses )
-			print( gr0[0,:,0,0] )	
+			#gr0 = gate_output["gr0"]
+			#print( gr0.shape )	
+			#print( memory_addresses )
+			#print( gr0[0,:,0,0] )	
 			#print( gr0[] )		
 
 		else:
