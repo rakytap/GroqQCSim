@@ -1,10 +1,10 @@
-qbit_num = 21
+qbit_num = 16
 
 # label to indicate the 00, 01, 10, 11 elements of the gate kernel
 gate_kernel_element_labels = ["00", "01", "10", "11"]
 
 # gate count stored in a single packed vector 
-gate_count = 6
+gate_count = 1
 
 # the number og qubits for which the gate operations need the permutor (need to reorganize the elements in a vector)
 small_qbit_num_limit = 8
@@ -12,7 +12,8 @@ small_qbit_num_limit = 8
 
 # determine the size of the part of the state vector handled in the inner split of the LPU tensors
 matrix_size   = int(2**small_qbit_num_limit)
-memory_slices = 1 << (qbit_num-small_qbit_num_limit)
+memory_slices = 1 << (qbit_num-small_qbit_num_limit) # TODO:replace all the occurances to memory_addresses
+memory_addresses = 1 << (qbit_num-small_qbit_num_limit)
 
 # memory address maps to read out state vector components with control qbit = 1 state 
 # maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)

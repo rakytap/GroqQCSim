@@ -57,6 +57,9 @@ def compile(mxm_permutation = True) -> List[str]:
 	# program to perform gate_SH operation
 	program.gate_SH_program()
 
+	# program to perform gate_L operation
+	program.gate_L_program()
+
 	iops = pgm_pkg.assemble()
 
 	return iops
@@ -117,6 +120,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device.load(iop[5], unsafe_keep_entry_points=True) #SL
 	device.load(iop[6], unsafe_keep_entry_points=True) #S8
 	device.load(iop[7], unsafe_keep_entry_points=True) #SH
+	device.load(iop[8], unsafe_keep_entry_points=True) #L
 	'''
 	if target_qbit >= small_qbit_num_limit :
 		raise ValueError( "the target qubit in this program should be less than 8" )
@@ -271,7 +275,16 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			index_of_gate_program = 7
 			entry_point = iop["gate_SH"]["compute"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
-			#print( gate_output )	
+			#print( gate_output )
+
+
+		elif target_qbit > 8 and target_qbit < 21 and control_qbit == -1:
+
+			# pogram perfroming the Gate_SH operation
+			index_of_gate_program = 8
+			entry_point = iop["gate_L"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output )		
 
 		else:
 
