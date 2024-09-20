@@ -162,7 +162,57 @@ class IO:
 
 		return mem_gather_map
 			
+
+	def generate_target_qubit_L_write_maps(self):
 	
+		# memory map containing all of the memory maps
+		# maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
+		# maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_slices+1,...,memory_slices)		
+		mem_write_map = np.zeros( (memory_addresses, 320,), dtype=np.uint8 )
+		
+		for target_qbit in range(9, 17):
+		
+			horizontal_offset_in_memory_map = (16-target_qbit)*2 
+		
+			index_pairs = [ [x, x^(1<<(target_qbit-8))] for x in range(memory_addresses) if x < x^(1<<(target_qbit-8)) ]
+							
+			for idx in range( len(index_pairs)//2 ):
+				
+				idx1 = index_pairs[2*idx][0]
+				idx2 = index_pairs[2*idx+1][0]
+				idx3 = index_pairs[2*idx][1]
+				idx4 = index_pairs[2*idx+1][1]
+				
+				
+				# the 2-byte (16-bit) memory offset needs to be splitted into two bytes
+				lower_bits_of_addresses_idx1  = idx1 & 255
+				higher_bits_of_addresses_idx1 = (idx1 >> 8 ) & 255
+				
+				lower_bits_of_addresses_idx2  = idx2 & 255
+				higher_bits_of_addresses_idx2 = (idx2 >> 8 ) & 255
+				
+				lower_bits_of_addresses_idx3  = idx3 & 255
+				higher_bits_of_addresses_idx3 = (idx3 >> 8 ) & 255
+				
+				lower_bits_of_addresses_idx4  = idx4 & 255
+				higher_bits_of_addresses_idx4 = (idx4 >> 8 ) & 255												
+										
+				for superlane_idx in range(20):
+					col_min = horizontal_offset_in_memory_map + 16*superlane_idx
+					mem_write_map[ 4*idx, col_min ]   = lower_bits_of_addresses_idx1
+					mem_write_map[ 4*idx, col_min+1 ] = higher_bits_of_addresses_idx1
+					
+					mem_write_map[ 4*idx+1, col_min ]   = lower_bits_of_addresses_idx2
+					mem_write_map[ 4*idx+1, col_min+1 ] = higher_bits_of_addresses_idx2
+					
+					mem_write_map[ 4*idx+2, col_min ]   = lower_bits_of_addresses_idx3
+					mem_write_map[ 4*idx+2, col_min+1 ] = higher_bits_of_addresses_idx3
+					
+					mem_write_map[ 4*idx+3, col_min ]   = lower_bits_of_addresses_idx4
+					mem_write_map[ 4*idx+3, col_min+1 ] = higher_bits_of_addresses_idx4															
+
+		return mem_write_map
+				
 
 
 	def upload_program(self):
@@ -452,6 +502,14 @@ class IO:
 			self.control_qubit_address_maps_SL_west_mt.is_static = True	
 			self.control_qubit_address_maps_SL_east_mt.is_static = True
 			
+			# generate memeory write maps for target qubits L
+			mem_write_map = self.generate_target_qubit_L_write_maps()
+			
+			self.target_qubit_write_maps_L_mt = g.from_data(mem_write_map, layout=target_qubit_write_maps_L_layout)
+			self.target_qubit_write_maps_L_mt.is_static = True
+			
+			
+			
 			#distributor_map_np = np.zeros( (320,), dtype=np.uint8 )
 			#distributor_map_np[0:320:16] = 0
 			#distributor_map_np[1:320:16] = 1
@@ -459,6 +517,10 @@ class IO:
 			
 
 			self.distributor_map_mt = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="control_qubit_distributor_maps", layout=layout_distributor_maps_west)
+			
+			
+			
+			
 			
 			gate_counter_distributor_maps_west_np            = np.zeros( (320,), dtype=np.uint8 )
 			gate_counter_distributor_maps_west_np[0:320:16]  = 1

@@ -1,4 +1,4 @@
-qbit_num = 16
+qbit_num = 17
 
 # label to indicate the 00, 01, 10, 11 elements of the gate kernel
 gate_kernel_element_labels = ["00", "01", "10", "11"]
@@ -124,8 +124,11 @@ control_qubit_address_maps_SL_east_layout_a = f"H1(E), A{memory_slices}(0-{memor
 control_qubit_address_maps_SL_east_layout_b = f"H1(E), -1, S1(38)"
 
 
-layout_gate_kernels_real_packed ="H1(E), A1(320), S4(40-43)"
-layout_gate_kernels_imag_packed	="H1(E), A1(321), S4(40-43)"
+layout_gate_kernels_real_packed ="H1(E), A1(320), S4(32-35)"
+layout_gate_kernels_imag_packed	="H1(E), A1(321), S4(32-35)"
+
+
+target_qubit_write_maps_L_layout = f"H1(E), A{memory_addresses}(0-{memory_addresses-1}), S1(40)"
 
 
 
