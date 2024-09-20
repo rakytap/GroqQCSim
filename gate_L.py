@@ -109,7 +109,7 @@ class Gate(Split_gates):
 		i_st = g.add(i0_st, i1_st, alus=[3], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_E[0], g.SG4_E[1]], direction=Direction.WESTWARD
 		r_delay_st = g.vxm_identity(r_st, alus=[5], output_streams=[g.SG4[2]]) #input_streams=[g.SG4_W[5]], direction=Direction.WESTWARD
 		i_delay_st = g.vxm_identity(i_st, alus=[13], output_streams=[g.SG4[7]]) #input_streams=[g.SG4_W[1]], direction=Direction.WESTWARD
-		return r_st, i_st, r_delay_st, i_delay_st #directions=[Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD]
+		return r_delay_st, i_delay_st #directions=[Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD]
 	
 				
 	
@@ -126,8 +126,8 @@ class Gate(Split_gates):
 
 
 			# Creates a shared tensor to reuse the memory allocation made by program pgm1
-			State_input_real_shared = g.shared_memory_tensor(self.State_input_real_mt, name="State_input_real_shared")
-			State_input_imag_shared = g.shared_memory_tensor(self.State_input_imag_mt, name="State_input_imag_shared")
+			State_input_real_shared      = g.shared_memory_tensor(self.State_input_real_mt, name="State_input_real_shared")
+			State_input_imag_shared      = g.shared_memory_tensor(self.State_input_imag_mt, name="State_input_imag_shared")
 			State_input_real_copy_shared = g.shared_memory_tensor(self.State_input_real_copy_mt, name="State_input_real_copy_shared")
 			State_input_imag_copy_shared = g.shared_memory_tensor(self.State_input_imag_copy_mt, name="State_input_imag_copy_shared")
 
@@ -140,33 +140,70 @@ class Gate(Split_gates):
 
 
 			with g.ResourceScope(name=f"apply_gate_scope", is_buffered=True, predecessors=[], time=0) as apply_gate_scope :
-				pairs = [ [x,x^(1<<(self.target_qubit-8))] for x in range(memory_addresses) if x < x^(1<<(self.target_qubit-8))         ]
+
+
+				index_pairs = [ [x, x^(1<<(self.target_qubit-8))] for x in range(memory_addresses) if x < x^(1<<(self.target_qubit-8)) ]
 
 
 				# print("=============================>", pairs)
 				# print(len(inner_dims))
 				# print(Psi_transformed_real_mt.physical_shape, Psi_transformed_real_mt.shape)
 				#Psi_transformed_mt (memory_addresses, matrix_size)
-				inner_dims = [x.reshape(2, matrix_size) for x in g.stack( [Psi_transformed_real_mt, Psi_transformed_imag_mt], dim=0).split(dim=1, num_splits=memory_addresses)]
-				inner_dims_copy = [x.reshape(2, matrix_size) for x in g.stack( [Psi_transformed_real_copy_mt, Psi_transformed_imag_copy_mt], dim=0).split(dim=1, num_splits=memory_addresses)]
-				#inner_dims (2, memory_addresses, matrix_size) -> [(2, matrix_size)]*memory_addresses 
-				pairs_to_concat0_0 = []
-				pairs_to_concat0_1 = []
-				pairs_to_concat1_0 = []
-				pairs_to_concat1_1 = []
 
-				for i in pairs:
-					pairs_to_concat0_0.append(inner_dims[i[0]])
-					pairs_to_concat0_1.append(inner_dims[i[1]])
-					pairs_to_concat1_0.append(inner_dims_copy[i[0]])
-					pairs_to_concat1_1.append(inner_dims_copy[i[1]])
 
-				#pairs_to_concat [(2, 1<<small_qbit_num_limit)]*(memory_addresses//2)
-				pairs_to_concat0_0 = g.stack(pairs_to_concat0_0, dim=0)
-				pairs_to_concat0_1 = g.stack(pairs_to_concat0_1, dim=0)
-				pairs_to_concat1_0 = g.stack(pairs_to_concat1_0, dim=0)
-				pairs_to_concat1_1 = g.stack(pairs_to_concat1_1, dim=0)
-				#pairs_to_concat (memory_addresses//2, 2, matrix_size)
+				Psi_transformed_real_splits = Psi_transformed_real_mt.split(dim=0, num_splits=memory_addresses)
+				Psi_transformed_imag_splits = Psi_transformed_imag_mt.split(dim=0, num_splits=memory_addresses)
+
+				Psi_transformed_real_copy_splits = Psi_transformed_real_copy_mt.split(dim=0, num_splits=memory_addresses)
+				Psi_transformed_imag_copy_splits = Psi_transformed_imag_copy_mt.split(dim=0, num_splits=memory_addresses)
+
+				Psi_transformed_real_state_0_list = []
+				Psi_transformed_real_state_1_list = []
+				Psi_transformed_imag_state_0_list = []
+				Psi_transformed_imag_state_1_list = []
+
+				
+				readout_indices      = []
+				readout_indices_pair = []				
+				write_indices        = []	
+				
+				
+				for idx in range( len(index_pairs)//2 ):
+				
+					readout_indices.append( index_pairs[2*idx][0] )      # for upper row of the gate kernel (output state is 0)
+					readout_indices.append( index_pairs[2*idx+1][0] )    # for upper row of the gate kernel (output state is 0)
+					readout_indices.append( index_pairs[2*idx][0] )      # for lower row of the gate kernel (output state is 1) 
+					readout_indices.append( index_pairs[2*idx+1][0] )    # for lower row of the gate kernel (output state is 1)					
+										
+					readout_indices_pair.append( index_pairs[2*idx][1] )   # for upper row of the gate kernel (output state is 0)
+					readout_indices_pair.append( index_pairs[2*idx+1][1] ) # for upper row of the gate kernel (output state is 0)			
+					readout_indices_pair.append( index_pairs[2*idx][1] )   # for lower row of the gate kernel (output state is 1)
+					readout_indices_pair.append( index_pairs[2*idx+1][1] ) # for lower row of the gate kernel (output state is 1)						
+					
+					write_indices.append( index_pairs[2*idx][0] ) 
+					write_indices.append( index_pairs[2*idx+1][0] ) 					
+					write_indices.append( index_pairs[2*idx][1] ) 
+					write_indices.append( index_pairs[2*idx+1][1] ) 
+					
+				
+				
+
+					
+					
+				for readout_idx in readout_indices:					
+					Psi_transformed_real_state_0_list.append( Psi_transformed_real_splits[ readout_idx ] ) 			
+					Psi_transformed_imag_state_0_list.append( Psi_transformed_imag_splits[ readout_idx ] )  					
+					
+					
+				for readout_idx_pair in readout_indices_pair:	
+					Psi_transformed_real_state_1_list.append( Psi_transformed_real_copy_splits[ readout_idx_pair ] )  	
+					Psi_transformed_imag_state_1_list.append( Psi_transformed_imag_copy_splits[ readout_idx_pair ] ) 		
+					
+					
+				Psi_transformed_real_state_0 = g.stack(Psi_transformed_real_state_0_list, dim=0)
+				Psi_transformed_real_state_1 = g.stack(Psi_transformed_real_state_1_list, dim=0)
+				Psi_transformed_imag_state_0 = g.stack(Psi_transformed_imag_state_0_list, dim=0)
+				Psi_transformed_imag_state_1 = g.stack(Psi_transformed_imag_state_1_list, dim=0)
 
 
 
@@ -284,70 +321,43 @@ class Gate(Split_gates):
 				          
 				#switch to row pair order (memory_addresses//2, matrix_size) so we can write result and copy without overwriting future needed values (cannot implicit latch gates, but saves double memory if crossing VXM or extra copy operations)
 
-
-				#pairs0 = g.stack([pairs_to_concat0_0, pairs_to_concat1_0 if self.target_qubit==8 else pairs_to_concat0_0], dim=0)
-				#pairs0 = [x.reshape(2, memory_addresses//2, matrix_size) for x in pairs0.split(num_splits=2, dim=2)]
-				#pairs1 = g.stack([pairs_to_concat1_1, pairs_to_concat0_1 if self.target_qubit==8 else pairs_to_concat1_1], dim=0)
-				#pairs1 = [x.reshape(2, memory_addresses//2, matrix_size) for x in pairs1.split(num_splits=2, dim=2)]
-
-				if self.target_qubit==8:
-					pairs0 = g.stack([pairs_to_concat0_0, pairs_to_concat1_0], dim=0)
-					pairs1 = g.stack([pairs_to_concat1_1, pairs_to_concat0_1], dim=0)
-
-				else:
-					pairs0 = g.stack([pairs_to_concat0_0, pairs_to_concat0_0], dim=0)
-					pairs1 = g.stack([pairs_to_concat1_1, pairs_to_concat1_1], dim=0)
-
-
-
-				pairs0 = [x.reshape(2, memory_addresses//2, matrix_size) for x in pairs0.split(num_splits=2, dim=2)]
-				pairs1 = [x.reshape(2, memory_addresses//2, matrix_size) for x in pairs1.split(num_splits=2, dim=2)]
-
-
-
-				if  self.target_qubit==8:           
-					new_shape = (2, memory_addresses//2, 1, matrix_size)
-				else: 
-					new_shape = (2, memory_addresses//4, 2, matrix_size) #maintain bank alternation for target_qubit>=9
-
-
-				pairs0[0] = pairs0[0].reshape(*new_shape).transpose(1, 0, 2, 3)
-				pairs0[1] = pairs0[1].reshape(*new_shape).transpose(1, 0, 2, 3)
-				pairs1[0] = pairs1[0].reshape(*new_shape).transpose(1, 0, 2, 3)
-				pairs1[1] = pairs1[1].reshape(*new_shape).transpose(1, 0, 2, 3)
-
+				
+				
 
 				# calculate the VXM round trip                            
-				pairs0[0], pairs0[1], pairs1[0], pairs1[1] = self.two_complex_dot_product( 
-												pairs0[0], 
-												pairs0[1], 
-												pairs1[0], 
-												pairs1[1], 
+				Psi_transformed_real_st, Psi_transformed_imag_st = self.two_complex_dot_product( 
+												Psi_transformed_real_state_0,#pairs0[0], 
+												Psi_transformed_imag_state_0,#pairs0[1], 
+												Psi_transformed_real_state_1,#pairs1[0], 
+												Psi_transformed_imag_state_1,#pairs1[1], 
 												gate_element_real_st, 
 												gate_element_imag_st, 
 												gate_element_real_copy_st, 
 												gate_element_imag_copy_st)
+												
+												
+				Psi_real_storage_req_list      = []								
+				Psi_imag_storage_req_list      = []
+				Psi_real_copy_storage_req_list = []
+				Psi_imag_copy_storage_req_list = []
+																
+				for write_idx in write_indices:
+					Psi_real_storage_req_list.append( Psi_transformed_real_splits[ write_idx ] )
+					Psi_imag_storage_req_list.append( Psi_transformed_imag_splits[ write_idx ] )
+					Psi_real_copy_storage_req_list.append( Psi_transformed_real_copy_splits[ write_idx ] )
+					Psi_imag_copy_storage_req_list.append( Psi_transformed_imag_copy_splits[ write_idx ] )	
+					
+				Psi_real_storage_req      = g.stack( Psi_real_storage_req_list, dim=0 )														
+				Psi_imag_storage_req      = g.stack( Psi_imag_storage_req_list, dim=0 )
+				Psi_real_copy_storage_req = g.stack( Psi_real_copy_storage_req_list, dim=0 )
+				Psi_imag_copy_storage_req = g.stack( Psi_imag_copy_storage_req_list, dim=0 )												
+				
+									
 
-
-				pairs_to_store0 = g.stack([pairs_to_concat0_0, pairs_to_concat0_1], dim=0)
-				pairs_to_store1 = g.stack([pairs_to_concat1_0, pairs_to_concat1_1], dim=0)
-				#pairs_to_store (2, memory_addresses//2, 2, matrix_size)
-
-				pairs0_0, pairs0_1 = g.split(pairs_to_store0, num_splits=2, dim=2)
-				pairs1_0, pairs1_1 = g.split(pairs_to_store1, num_splits=2, dim=2)
-				#pairs (2, memory_addresses//2, 1, matrix_size)
-				print(memory_addresses)
-				if memory_addresses > 8:
-					pairs0_0, pairs0_1, pairs1_0, pairs1_1 = pairs0_0.reshape(*new_shape).transpose(1, 0, 2, 3), pairs0_1.reshape(*new_shape).transpose(1, 0, 2, 3), pairs1_0.reshape(*new_shape).transpose(1, 0, 2, 3), pairs1_1.reshape(*new_shape).transpose(1, 0, 2, 3)
-					#for target_qbit >= 9, bank alternation works by utilizing the VXM identity delayed output as it passes through even ALUs (compute graph has depth of 4 ALUs)
-					#for target_qbit == 8, original is even/odd bank, copy is odd/even bank  
-					if self.target_qubit == 8: pairs1, pairs0 = pairs0, pairs1
-					else: pairs0 = pairs1 #use only delayed tensors
-
-				pairs0[0].write(storage_req=pairs0_0.storage_request, name="pairs0_0")
-				pairs0[1].write(storage_req=pairs0_1.storage_request, name="pairs0_1")
-				pairs1[0].write(storage_req=pairs1_0.storage_request, name="pairs1_0")
-				pairs1[1].write(storage_req=pairs1_1.storage_request, name="pairs1_1")
+				Psi_transformed_real_st.write( storage_req = Psi_real_storage_req.storage_request, name="Psi_transformed_real_tmp")
+				Psi_transformed_imag_st.write( storage_req = Psi_imag_storage_req.storage_request, name="Psi_transformed_imag_tmp")
+				Psi_transformed_real_st.write( storage_req = Psi_real_copy_storage_req.storage_request, name="Psi_transformed_real_copy_tmp")
+				Psi_transformed_imag_st.write( storage_req = Psi_imag_copy_storage_req.storage_request, name="Psi_transformed_imag_copy_tmp")
 
 
 				Psi_transformed_real_mt_output = g.constant_tensor( Psi_transformed_real_mt.shape, g.float32, storage_req=Psi_transformed_real_mt.storage_request, 
