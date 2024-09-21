@@ -170,9 +170,11 @@ class IO:
 		# maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_slices+1,...,memory_slices)		
 		mem_write_map = np.zeros( (memory_addresses, 320,), dtype=np.uint8 )
 		
+		half_slice = 1 << 12
+		
 		for target_qbit in range(9, 17):
 		
-			horizontal_offset_in_memory_map = (16-target_qbit)*2 
+			horizontal_offset_in_memory_map = (target_qbit-1-small_qbit_num_limit)*2 
 		
 			index_pairs = [ [x, x^(1<<(target_qbit-8))] for x in range(memory_addresses) if x < x^(1<<(target_qbit-8)) ]
 							
@@ -181,9 +183,15 @@ class IO:
 				idx1 = index_pairs[2*idx][0]
 				idx2 = index_pairs[2*idx+1][0]
 				idx3 = index_pairs[2*idx][1]
-				idx4 = index_pairs[2*idx+1][1]
+				idx4 = index_pairs[2*idx+1][1]	
 				
-				
+				# adding memory address offset for bank alternation
+				idx1 = idx1//2 if idx1 % 2 == 0 else idx1//2 + half_slice
+				idx2 = idx2//2 if idx2 % 2 == 0 else idx2//2 + half_slice
+				idx3 = idx3//2 if idx3 % 2 == 0 else idx3//2 + half_slice
+				idx4 = idx4//2 if idx4 % 2 == 0 else idx4//2 + half_slice
+																											
+								
 				# the 2-byte (16-bit) memory offset needs to be splitted into two bytes
 				lower_bits_of_addresses_idx1  = idx1 & 255
 				higher_bits_of_addresses_idx1 = (idx1 >> 8 ) & 255
@@ -196,20 +204,23 @@ class IO:
 				
 				lower_bits_of_addresses_idx4  = idx4 & 255
 				higher_bits_of_addresses_idx4 = (idx4 >> 8 ) & 255												
+					
 										
 				for superlane_idx in range(20):
-					col_min = horizontal_offset_in_memory_map + 16*superlane_idx
-					mem_write_map[ 4*idx, col_min ]   = lower_bits_of_addresses_idx1
-					mem_write_map[ 4*idx, col_min+1 ] = higher_bits_of_addresses_idx1
+					col_idx = horizontal_offset_in_memory_map + 16*superlane_idx
 					
-					mem_write_map[ 4*idx+1, col_min ]   = lower_bits_of_addresses_idx2
-					mem_write_map[ 4*idx+1, col_min+1 ] = higher_bits_of_addresses_idx2
+					mem_write_map[ 4*idx+0, col_idx ]   = lower_bits_of_addresses_idx1
+					mem_write_map[ 4*idx+0, col_idx+1 ] = higher_bits_of_addresses_idx1
 					
-					mem_write_map[ 4*idx+2, col_min ]   = lower_bits_of_addresses_idx3
-					mem_write_map[ 4*idx+2, col_min+1 ] = higher_bits_of_addresses_idx3
+					mem_write_map[ 4*idx+1, col_idx ]   = lower_bits_of_addresses_idx2
+					mem_write_map[ 4*idx+1, col_idx+1 ] = higher_bits_of_addresses_idx2
 					
-					mem_write_map[ 4*idx+3, col_min ]   = lower_bits_of_addresses_idx4
-					mem_write_map[ 4*idx+3, col_min+1 ] = higher_bits_of_addresses_idx4															
+					mem_write_map[ 4*idx+2, col_idx ]   = lower_bits_of_addresses_idx3
+					mem_write_map[ 4*idx+2, col_idx+1 ] = higher_bits_of_addresses_idx3
+					
+					mem_write_map[ 4*idx+3, col_idx ]   = lower_bits_of_addresses_idx4
+					mem_write_map[ 4*idx+3, col_idx+1 ] = higher_bits_of_addresses_idx4	
+																				
 
 		return mem_write_map
 				

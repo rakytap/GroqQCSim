@@ -85,6 +85,7 @@ class Gate(Split_gates):
 
 	
 	def two_complex_dot_product(self, s_r_0, s_i_0, s_r_1, s_i_1, g_r_0, g_i_0, g_r_1, g_i_1):
+		'''
 		s_r_0_st = s_r_0.read(streams=g.SG4[4]) #direction=Direction.EASTWARD
 		s_i_0_st = s_i_0.read(streams=g.SG4[6]) #direction=Direction.EASTWARD
 		s_r_1_st = s_r_1.read(streams=g.SG4[1]) #direction=Direction.EASTWARD
@@ -110,6 +111,33 @@ class Gate(Split_gates):
 		r_delay_st = g.vxm_identity(r_st, alus=[5], output_streams=[g.SG4[2]]) #input_streams=[g.SG4_W[5]], direction=Direction.WESTWARD
 		i_delay_st = g.vxm_identity(i_st, alus=[13], output_streams=[g.SG4[7]]) #input_streams=[g.SG4_W[1]], direction=Direction.WESTWARD
 		return r_delay_st, i_delay_st #directions=[Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD]
+		'''
+		
+		s_r_0_st_m4 = s_r_0.read(streams=g.SG4[4]) #direction=Direction.EASTWARD
+		s_i_0_st_m4 = s_i_0.read(streams=g.SG4[1]) #direction=Direction.EASTWARD
+		s_r_1_st_m4 = s_r_1.read(streams=g.SG4[5]) #direction=Direction.EASTWARD
+		s_i_1_st_m4 = s_i_1.read(streams=g.SG4[7]) #direction=Direction.EASTWARD
+		g_r_0_st_m4 = g_r_0#.read(streams=g.SG4[7]) #direction=Direction.WESTWARD
+		g_i_0_st_m4 = g_i_0#.read(streams=g.SG4[3]) #direction=Direction.WESTWARD
+		g_r_1_st_m4 = g_r_1#.read(streams=g.SG4[5]) #direction=Direction.WESTWARD
+		g_i_1_st_m4 = g_i_1#.read(streams=g.SG4[6]) #direction=Direction.WESTWARD
+		rr0_st_m3 = g.mul(s_r_0_st_m4, g_r_0_st_m4, alus=[8], output_streams=[g.SG4[6]]) #input_streams=[g.SG4_E[4], g.SG4_W[7]], direction=Direction.EASTWARD
+		ii0_st_m3 = g.mul(s_i_0_st_m4, g_i_0_st_m4, alus=[0], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_E[1], g.SG4_W[3]], direction=Direction.EASTWARD
+		ri0_st_m3 = g.mul(s_r_0_st_m4, g_i_0_st_m4, alus=[4], output_streams=[g.SG4[3]]) #input_streams=[g.SG4_E[4], g.SG4_W[3]], direction=Direction.EASTWARD
+		ir0_st_m3 = g.mul(s_i_0_st_m4, g_r_0_st_m4, alus=[12], output_streams=[g.SG4[0]]) #input_streams=[g.SG4_E[1], g.SG4_W[7]], direction=Direction.EASTWARD
+		r0_st_m2 = g.sub(rr0_st_m3, ii0_st_m3, alus=[14], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_E[6], g.SG4_E[1]], direction=Direction.EASTWARD
+		i0_st_m2 = g.add(ri0_st_m3, ir0_st_m3, alus=[1], output_streams=[g.SG4[3]]) #input_streams=[g.SG4_E[3], g.SG4_E[0]], direction=Direction.EASTWARD
+		rr1_st_m3 = g.mul(s_r_1_st_m4, g_r_1_st_m4, alus=[7], output_streams=[g.SG4[2]]) #input_streams=[g.SG4_E[5], g.SG4_W[5]], direction=Direction.WESTWARD
+		ii1_st_m3 = g.mul(s_i_1_st_m4, g_i_1_st_m4, alus=[15], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_E[7], g.SG4_W[6]], direction=Direction.WESTWARD
+		ri1_st_m3 = g.mul(s_r_1_st_m4, g_i_1_st_m4, alus=[10], output_streams=[g.SG4[6]]) #input_streams=[g.SG4_E[5], g.SG4_W[6]], direction=Direction.WESTWARD
+		ir1_st_m3 = g.mul(s_i_1_st_m4, g_r_1_st_m4, alus=[11], output_streams=[g.SG4[5]]) #input_streams=[g.SG4_E[7], g.SG4_W[5]], direction=Direction.WESTWARD
+		r1_st_m2 = g.sub(rr1_st_m3, ii1_st_m3, alus=[2], output_streams=[g.SG4[0]]) #input_streams=[g.SG4_W[2], g.SG4_W[1]], direction=Direction.EASTWARD
+		i1_st_m2 = g.add(ri1_st_m3, ir1_st_m3, alus=[9], output_streams=[g.SG4[4]]) #input_streams=[g.SG4_W[6], g.SG4_W[5]], direction=Direction.EASTWARD
+		r_st_m1 = g.add(r0_st_m2, r1_st_m2, alus=[3], output_streams=[g.SG4[0]]) #input_streams=[g.SG4_E[1], g.SG4_E[0]], direction=Direction.WESTWARD
+		i_st_m1 = g.add(i0_st_m2, i1_st_m2, alus=[6], output_streams=[g.SG4[2]]) #input_streams=[g.SG4_E[3], g.SG4_E[4]], direction=Direction.WESTWARD
+		r_delay_st_p0 = g.vxm_identity(r_st_m1, time=0, alus=[13], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_W[0]], direction=Direction.WESTWARD
+		i_delay_st_p0 = g.vxm_identity(i_st_m1, alus=[5], output_streams=[g.SG4[5]]) #input_streams=[g.SG4_W[2]], direction=Direction.WESTWARD
+		return r_delay_st_p0, i_delay_st_p0 #directions=[Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD]
 	
 				
 	
@@ -245,8 +273,8 @@ class Gate(Split_gates):
 				gate_element_counter_second_column_mt = gate_element_counter_second_column_mt.reshape( memory_addresses, 320 )
 
 			
-				gate_element_counter_first_column_st  = gate_element_counter_first_column_mt.read( streams=g.SG1_W[16] )		
-				gate_element_counter_second_column_st = gate_element_counter_second_column_mt.read( streams=g.SG1_W[17] )	
+				gate_element_counter_first_column_st  = gate_element_counter_first_column_mt.read( streams=g.SG1_W[17] )		
+				gate_element_counter_second_column_st = gate_element_counter_second_column_mt.read( streams=g.SG1_W[18] )	
 				
 				
 				gate_kernels_broadcasted_real_mt_8 = g.reinterpret( self.gate_kernels_broadcasted_real_mt, dtype=g.uint8 )
@@ -260,8 +288,12 @@ class Gate(Split_gates):
 
 				gate_kernels_broadcasted_imag_copy_mt_8 = g.reinterpret( self.gate_kernels_broadcasted_imag_copy_mt, dtype=g.uint8 )
 				gate_element_imag_copy_byte_list        = g.split( gate_kernels_broadcasted_imag_copy_mt_8, dim=1, num_splits=4 )
-				
-				
+				'''		
+		g_r_0_st_m4 = g_r_0#.read(streams=g.SG4[7]) #direction=Direction.WESTWARD
+		g_i_0_st_m4 = g_i_0#.read(streams=g.SG4[3]) #direction=Direction.WESTWARD
+		g_r_1_st_m4 = g_r_1#.read(streams=g.SG4[5]) #direction=Direction.WESTWARD
+		g_i_1_st_m4 = g_i_1#.read(streams=g.SG4[6]) #direction=Direction.WESTWARD
+				'''
 				gate_element_real_list = []
 				gate_element_imag_list = []
 				gate_element_real_copy_list = []
@@ -278,7 +310,7 @@ class Gate(Split_gates):
 					gate_element_real_list.append( gate_element_real_byte_st )
 					
 					#### first column imag part					
-					output_stream_offset = 5*4
+					output_stream_offset = 3*4
 					gate_element_imag_byte_st = g.mem_gather(gate_element_imag_byte_list[slice_idx], 
 										gate_element_counter_first_column_st, 
 										output_streams=[g.SG1[output_stream_offset+slice_idx]] )
@@ -288,7 +320,7 @@ class Gate(Split_gates):
 
 
 					#### second column real part
-					output_stream_offset = 6*4
+					output_stream_offset = 5*4
 					gate_element_real_copy_byte_st = g.mem_gather(gate_element_real_copy_byte_list[slice_idx], 
 											gate_element_counter_second_column_st, 
 											output_streams=[g.SG1_W[output_stream_offset+slice_idx]] )
@@ -298,7 +330,7 @@ class Gate(Split_gates):
 
 
 					#### second column imag part
-					output_stream_offset = 3*4
+					output_stream_offset = 6*4
 					gate_element_imag_copy_byte_st = g.mem_gather(gate_element_imag_copy_byte_list[slice_idx], 
 											gate_element_counter_second_column_st, 
 											output_streams=[g.SG1_W[output_stream_offset+slice_idx]] )
@@ -335,7 +367,7 @@ class Gate(Split_gates):
 												gate_element_real_copy_st, 
 												gate_element_imag_copy_st)
 												
-												
+				########################################################								
 				Psi_real_storage_req_list      = []								
 				Psi_imag_storage_req_list      = []
 				Psi_real_copy_storage_req_list = []
@@ -354,11 +386,51 @@ class Gate(Split_gates):
 				
 									
 
-				Psi_transformed_real_st.write( storage_req = Psi_real_storage_req.storage_request, name="Psi_transformed_real_tmp")
-				Psi_transformed_imag_st.write( storage_req = Psi_imag_storage_req.storage_request, name="Psi_transformed_imag_tmp")
-				Psi_transformed_real_st.write( storage_req = Psi_real_copy_storage_req.storage_request, name="Psi_transformed_real_copy_tmp")
-				Psi_transformed_imag_st.write( storage_req = Psi_imag_copy_storage_req.storage_request, name="Psi_transformed_imag_copy_tmp")
+				#Psi_transformed_real_st.write( storage_req = Psi_real_storage_req.storage_request, name="Psi_transformed_real_tmp")
+				#Psi_transformed_imag_st.write( storage_req = Psi_imag_storage_req.storage_request, name="Psi_transformed_imag_tmp")
+				#Psi_transformed_real_st.write( storage_req = Psi_real_copy_storage_req.storage_request, name="Psi_transformed_real_copy_tmp")
+				#Psi_transformed_imag_st.write( storage_req = Psi_imag_copy_storage_req.storage_request, name="Psi_transformed_imag_copy_tmp")
+				######################################################
+				
+				
+				# define state with 320 vectors instead of 256 inner splits
+				Psi_real_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=State_input_real_shared.storage_request, initialized=False)		
+				Psi_imag_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=State_input_imag_shared.storage_request, initialized=False)
+				Psi_real_copy_mt_320 = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=State_input_real_copy_shared.storage_request, initialized=False)
+				Psi_imag_copy_mt_320 = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=State_input_imag_copy_shared.storage_request, initialized=False)
 
+				
+				# separating the tensors along the slice dimension (separating the bytes)
+				Psi_real_mt_320_8       = g.reinterpret(Psi_real_mt_320, dtype=g.int8)
+				Psi_imag_mt_320_8       = g.reinterpret(Psi_imag_mt_320, dtype=g.int8)			
+				Psi_real_bytes_mt_list  = g.split(Psi_real_mt_320_8, dim=-2, num_splits=g.float32.size)
+				Psi_imag_bytes_mt_list  = g.split(Psi_imag_mt_320_8, dim=-2, num_splits=g.float32.size)
+
+
+				Psi_real_copy_mt_320_8       = g.reinterpret(Psi_real_copy_mt_320, dtype=g.int8)
+				Psi_imag_copy_mt_320_8       = g.reinterpret(Psi_imag_copy_mt_320, dtype=g.int8)			
+				Psi_real_bytes_copy_mt_list  = g.split(Psi_real_copy_mt_320_8, dim=-2, num_splits=g.float32.size)
+				Psi_imag_bytes_copy_mt_list  = g.split(Psi_imag_copy_mt_320_8, dim=-2, num_splits=g.float32.size)
+				
+				
+				
+				# write the calculated states into the memory with mem scatter
+				Psi_transformed_real_mt_320_8       = g.reinterpret(Psi_transformed_real_st, dtype=g.int8)
+				Psi_transformed_imag_mt_320_8       = g.reinterpret(Psi_transformed_imag_st, dtype=g.int8)			
+				Psi_transformed_real_bytes_mt_list  = g.split(Psi_transformed_real_mt_320_8, dim=-2, num_splits=g.float32.size)
+				Psi_transformed_imag_bytes_mt_list  = g.split(Psi_transformed_imag_mt_320_8, dim=-2, num_splits=g.float32.size)
+				
+				target_qubit_L_write_map_st = self.target_qubit_write_maps_L_mt.read( streams=g.SG1_W[16] )
+				
+				for byte_idx in range(4):
+					
+					g.mem_scatter( Psi_transformed_real_bytes_mt_list[byte_idx], Psi_real_bytes_mt_list[byte_idx], target_qubit_L_write_map_st)
+					g.mem_scatter( Psi_transformed_real_bytes_mt_list[byte_idx], Psi_real_bytes_copy_mt_list[byte_idx], target_qubit_L_write_map_st)
+					g.mem_scatter( Psi_transformed_imag_bytes_mt_list[byte_idx], Psi_imag_bytes_mt_list[byte_idx], target_qubit_L_write_map_st)
+					g.mem_scatter( Psi_transformed_imag_bytes_mt_list[byte_idx], Psi_imag_bytes_copy_mt_list[byte_idx], target_qubit_L_write_map_st)
+					
+					
+					
 
 				Psi_transformed_real_mt_output = g.constant_tensor( Psi_transformed_real_mt.shape, g.float32, storage_req=Psi_transformed_real_mt.storage_request, 
                                                                                     name=f"Psi_transformed_real", initialized=False)
