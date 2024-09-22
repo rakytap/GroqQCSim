@@ -367,12 +367,13 @@ class Gate(Split_gates):
 												gate_element_real_copy_st, 
 												gate_element_imag_copy_st)
 												
-				########################################################								
+				########################################################	
+				'''							
 				Psi_real_storage_req_list      = []								
 				Psi_imag_storage_req_list      = []
 				Psi_real_copy_storage_req_list = []
 				Psi_imag_copy_storage_req_list = []
-																
+															
 				for write_idx in write_indices:
 					Psi_real_storage_req_list.append( Psi_transformed_real_splits[ write_idx ] )
 					Psi_imag_storage_req_list.append( Psi_transformed_imag_splits[ write_idx ] )
@@ -390,6 +391,7 @@ class Gate(Split_gates):
 				#Psi_transformed_imag_st.write( storage_req = Psi_imag_storage_req.storage_request, name="Psi_transformed_imag_tmp")
 				#Psi_transformed_real_st.write( storage_req = Psi_real_copy_storage_req.storage_request, name="Psi_transformed_real_copy_tmp")
 				#Psi_transformed_imag_st.write( storage_req = Psi_imag_copy_storage_req.storage_request, name="Psi_transformed_imag_copy_tmp")
+				'''
 				######################################################
 				
 				

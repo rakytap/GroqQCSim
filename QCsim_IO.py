@@ -162,12 +162,86 @@ class IO:
 
 		return mem_gather_map
 			
-
-	def generate_target_qubit_L_write_maps(self):
+	def generate_target_qubit_L_read_maps(self):
 	
 		# memory map containing all of the memory maps
 		# maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
 		# maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_slices+1,...,memory_slices)		
+		mem_read_map = np.zeros( (memory_addresses, 320,), dtype=np.uint8 )
+		mem_read_pair_map = np.zeros( (memory_addresses, 320,), dtype=np.uint8 )
+		
+		'''
+					readout_indices.append( index_pairs[2*idx][0] )      # for upper row of the gate kernel (output state is 0)
+					readout_indices.append( index_pairs[2*idx+1][0] )    # for upper row of the gate kernel (output state is 0)
+					readout_indices.append( index_pairs[2*idx][0] )      # for lower row of the gate kernel (output state is 1) 
+					readout_indices.append( index_pairs[2*idx+1][0] )    # for lower row of the gate kernel (output state is 1)					
+										
+					readout_indices_pair.append( index_pairs[2*idx][1] )   # for upper row of the gate kernel (output state is 0)
+					readout_indices_pair.append( index_pairs[2*idx+1][1] ) # for upper row of the gate kernel (output state is 0)			
+					readout_indices_pair.append( index_pairs[2*idx][1] )   # for lower row of the gate kernel (output state is 1)
+					readout_indices_pair.append( index_pairs[2*idx+1][1] ) # for lower row of the gate kernel (output state is 1)			
+		'''			
+					
+		half_slice = 1 << 12
+		
+		for target_qbit in range(9, 17):
+		
+			horizontal_offset_in_memory_map = (target_qbit-1-small_qbit_num_limit)*2 
+		
+			index_pairs = [ [x, x^(1<<(target_qbit-8))] for x in range(memory_addresses) if x < x^(1<<(target_qbit-8)) ]
+							
+			for idx in range( len(index_pairs)//2 ):
+				
+				idx1 = index_pairs[2*idx][0]
+				idx2 = index_pairs[2*idx+1][0]
+				
+				idx1_pair = index_pairs[2*idx][1]
+				idx2_pair = index_pairs[2*idx+1][1]	
+				
+				# adding memory address offset for bank alternation
+				idx1 = idx1//2 if idx1 % 2 == 0 else idx1//2 + half_slice
+				idx2 = idx2//2 if idx2 % 2 == 0 else idx2//2 + half_slice
+				
+				idx1_pair = idx1_pair//2 if idx1_pair % 2 == 0 else idx1_pair//2 + half_slice
+				idx2_pair = idx2_pair//2 if idx2_pair % 2 == 0 else idx2_pair//2 + half_slice
+																											
+								
+				# the 2-byte (16-bit) memory offset needs to be splitted into two bytes
+				lower_bits_of_addresses_idx1  = idx1 & 255
+				higher_bits_of_addresses_idx1 = (idx1 >> 8 ) & 255
+				
+				lower_bits_of_addresses_idx2  = idx2 & 255
+				higher_bits_of_addresses_idx2 = (idx2 >> 8 ) & 255
+				
+				lower_bits_of_addresses_idx1_pair  = idx1_pair & 255
+				higher_bits_of_addresses_idx1_pair = (idx1_pair >> 8 ) & 255
+				
+				lower_bits_of_addresses_idx2_pair  = idx2_pair & 255
+				higher_bits_of_addresses_idx2_pair = (idx2_pair >> 8 ) & 255												
+					
+										
+				for superlane_idx in range(20):
+					col_idx = horizontal_offset_in_memory_map + 16*superlane_idx
+					
+					mem_read_map[ 2*idx+0, col_idx ]   = lower_bits_of_addresses_idx1
+					mem_read_map[ 2*idx+0, col_idx+1 ] = higher_bits_of_addresses_idx1
+					
+					mem_read_map[ 2*idx+1, col_idx ]   = lower_bits_of_addresses_idx2
+					mem_read_map[ 2*idx+1, col_idx+1 ] = higher_bits_of_addresses_idx2
+					
+					mem_read_pair_map[ 2*idx+0, col_idx ]   = lower_bits_of_addresses_idx1_pair
+					mem_read_pair_map[ 2*idx+0, col_idx+1 ] = higher_bits_of_addresses_idx1_pair
+					
+					mem_read_pair_map[ 2*idx+1, col_idx ]   = lower_bits_of_addresses_idx2_pair
+					mem_read_pair_map[ 2*idx+1, col_idx+1 ] = higher_bits_of_addresses_idx2_pair	
+																				
+
+		return mem_read_map, mem_read_pair_map
+		
+		
+	def generate_target_qubit_L_write_maps(self):
+	
+		# memory map containing all of the memory maps		
 		mem_write_map = np.zeros( (memory_addresses, 320,), dtype=np.uint8 )
 		
 		half_slice = 1 << 12
@@ -518,6 +592,15 @@ class IO:
 			
 			self.target_qubit_write_maps_L_mt = g.from_data(mem_write_map, layout=target_qubit_write_maps_L_layout)
 			self.target_qubit_write_maps_L_mt.is_static = True
+			
+			
+			# generate memeory read maps for target qubits L
+			mem_read_map, mem_read_pair_map = self.generate_target_qubit_L_read_maps()
+			
+			self.target_qubit_read_pair_maps_L_mt = g.from_data(mem_read_pair_map, layout=target_qubit_read_pair_maps_L_layout)
+			self.target_qubit_read_maps_L_mt      = g.from_data(mem_read_map, layout=target_qubit_read_maps_L_layout)			
+			self.target_qubit_read_pair_maps_L_mt.is_static = True
+			self.target_qubit_read_maps_L_mt.is_static      = True			
 			
 			
 			
