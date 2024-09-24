@@ -610,8 +610,8 @@ class IO:
 			#self.distributor_map_mt   = g.from_data(distributor_map_np, layout=layout_distributor_maps_west)
 			
 
-			self.distributor_map_mt = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="control_qubit_distributor_maps", layout=layout_distributor_maps_west)
-			
+			self.distributor_map_mt              = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="control_qubit_distributor_maps", layout=layout_distributor_maps_west)
+			self.target_qubit_distributor_map_mt = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="target_qubit_distributor_maps", layout=layout_target_qubit_distributor_maps)
 			
 			
 			
@@ -624,6 +624,7 @@ class IO:
 									
 			
 			g.add_mem_constraints([self.gate_counter_perm_map_selector_mt], [self.distributor_map_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+			g.add_mem_constraints([self.gate_counter_perm_map_selector_mt,self.distributor_map_mt], [self.target_qubit_distributor_map_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 			
 			with g.ResourceScope(name="distribute_state_indices_scope", is_buffered=True, time=0) as distribute_state_indices_scope :
 

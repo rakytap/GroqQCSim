@@ -13,7 +13,7 @@ gate_count = groqQCsim.gate_count
 
 if __name__ == "__main__":
 
-	target_qbits  = [9]
+	target_qbits  = [12]
 	control_qbits = [-1] #-1 ... no cotrol qubit is incolved in the operation
 	
 	

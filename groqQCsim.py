@@ -191,6 +191,22 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 		else:
 			# when the control qubits is not L or H, no valid distributor map is required
 			pass
+
+
+	# target qubit distributor maps for L(?) gates
+	target_qubit_distributor_map_np = np.zeros( (gate_count, 320,), dtype=np.uint8 )
+	for gate_idx in range(gate_count):
+	
+		target_qbit = target_qbits[gate_idx]
+		if target_qbit > 8 and target_qbit <= 16:
+			target_qubit_distributor_map_np[gate_idx, 0:320:16] = 2*(target_qbit - small_qbit_num_limit - 1)
+			target_qubit_distributor_map_np[gate_idx, 1:320:16] = 2*(target_qbit - small_qbit_num_limit - 1) + 1
+		elif target_qbit > 16 and target_qbit < 21:
+			target_qubit_distributor_map_np[gate_idx, 0:320:16] = 2*(target_qbit - 17)
+			target_qubit_distributor_map_np[gate_idx, 1:320:16] = 2*(target_qbit - 17) + 1
+		else:
+			# when the control qubits is not L or H, no valid distributor map is required
+			pass
 			
 			
 	# generate packed gate kernel data
@@ -219,7 +235,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 	# run the upload program
 	entry_point = iop["upload"]["mono"]
-	pgm_1_output = invoke(device, iop, 0, entry_point, {"State_input_real": input_real, "State_input_imag": input_imag, "mxm_permutation_selector": mxm_permutation_selector, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector, "control_qubit_distributor_maps": distributor_map_np})
+	pgm_1_output = invoke(device, iop, 0, entry_point, {"State_input_real": input_real, "State_input_imag": input_imag, "mxm_permutation_selector": mxm_permutation_selector, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector, "control_qubit_distributor_maps": distributor_map_np, "target_qubit_distributor_maps": target_qubit_distributor_map_np})
 
 	# run the gate split program
 	index_of_split_program = 2
@@ -292,7 +308,11 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			#print( gr0.shape )	
 			#print( memory_addresses )
 			#print( gr0[0,:,0,0] )	
-			#print( gr0[] )		
+			#print( gr0[] )	
+			print( 	gate_output["uuu"][0:20,0:2] )
+			print( 	gate_output["rrww0"][0:20,0:2] )
+			print( 	gate_output["rrww1"][0:20,0:2] )
+			#print( 	gate_output["uuue"] )
 
 		else:
 

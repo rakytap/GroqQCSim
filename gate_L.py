@@ -36,6 +36,11 @@ class Gate(Split_gates):
 		
 		self.target_qubit = 9
 
+		self.transposer_request_to_qubit_state_readout  = g.tensor.create_transposer_request( [0], 1) # request transposer on the west side
+		self.transposer_request_to_qubit_state_write    = g.tensor.create_transposer_request( [3], 1) # request transposer on the east side
+		self.distributor_request_to_qubit_state_readout = g.tensor.create_distributor_request( [0], 1 )  # West side	
+		self.distributor_request_to_qubit_state_write   = g.tensor.create_distributor_request( [6], 1 )  # East side	
+
 
 	def gather_gate_elements(self, gate_element_selector_mt, gate_element_selector_stream, gate_element_real_mt, gate_element_imag_mt, output_stream_offset = 0, time=None ):
 	
@@ -139,7 +144,140 @@ class Gate(Split_gates):
 		i_delay_st_p0 = g.vxm_identity(i_st_m1, alus=[5], output_streams=[g.SG4[5]]) #input_streams=[g.SG4_W[2]], direction=Direction.WESTWARD
 		return r_delay_st_p0, i_delay_st_p0 #directions=[Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD]
 	
-				
+
+
+	def select_target_qbit_read_map_west(self):
+		"""
+		Function used to read out the correct target qubit map to gather the target qubits L from the memory
+		The target qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
+		The target memory maps of control qubits 9, ..., 17 are stored in the lower half of one slice (addresses 0,1,..., 2^12).
+		The target memory maps of control qubits 18, ..., 20 are stored in the upper half of one slice (addresses 2^12,..., 2^13). 		
+		The 320-byte vector is splitted into 20 16-byte superlanes. 
+		In each 16-byte segments the first two bytes are used to address a memory on a slice. 
+		Thus, 8 memory maps can be stored in a single 16-byte superlane. Distributors are used to move the memory addresses into the position of the first two bytes.
+		 
+       
+		Parameters
+		----------
+
+		Return
+		------
+		Returns with the stream tensor of the target qubits memory map.
+		"""
+
+
+		target_qubit_0_state_read_maps_list = self.target_qubit_read_maps_L_mt.split( dim=0, num_splits=memory_addresses)
+		target_qubit_1_state_read_maps_list = self.target_qubit_read_pair_maps_L_mt.split( dim=0, num_splits=memory_addresses)
+		read_out_state_0_memory_tensor_list = []
+		read_out_state_1_memory_tensor_list = []
+		for idx in range(memory_addresses//4):
+
+			# idx, idx+1 needed for bank alternation strategy
+			read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ 2*idx ] )	# for upper row of the gate kernel (output state is 0)
+			read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ 2*idx+1 ] )	# for upper row of the gate kernel (output state is 0)
+			read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ 2*idx ] )	# for lower row of the gate kernel (output state is 1) 
+			read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ 2*idx+1 ] )	# for lower row of the gate kernel (output state is 1) 
+
+			# idx, idx+1 needed for bank alternation strategy
+			read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ 2*idx ] )	# for upper row of the gate kernel (output state is 0)
+			read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ 2*idx+1 ] )	# for upper row of the gate kernel (output state is 0)
+			read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ 2*idx ] )	# for lower row of the gate kernel (output state is 1) 
+			read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ 2*idx+1 ] )	# for lower row of the gate kernel (output state is 1) 
+
+
+		read_out_qubit_0_memory_tensor_mt = g.stack( read_out_state_0_memory_tensor_list, dim=0 )
+		read_out_qubit_0_memory_tensor_st = read_out_qubit_0_memory_tensor_mt.read( streams=g.SG1[0] )
+		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_0_memory_tensor_st, [memory_addresses,320])
+
+
+		read_out_qubit_1_memory_tensor_mt = g.stack( read_out_state_1_memory_tensor_list, dim=0 )
+		read_out_qubit_1_memory_tensor_st = read_out_qubit_1_memory_tensor_mt.read( streams=g.SG1[1] )
+		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_1_memory_tensor_st, [memory_addresses,320])
+
+
+		read_out_qubit_memory_tensor_st = g.stack( [read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st], dim=1 )
+		
+		
+		
+		#gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1_W[12]] )		
+		#distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
+		distributor_map_st                      = self.target_qubit_distributor_map_mt.read( streams=g.SG1[6] )
+		#rr = distributor_map_st.write(name="uuue", layout='H1(W), -1, S1(42)', program_output=True )
+		
+		read_out_qubit_memory_tensor_st = g.distribute_8( read_out_qubit_memory_tensor_st, 
+									distributor_map_st,
+									distributor_req=self.distributor_request_to_qubit_state_readout,
+									map_stream_req=g.SG1[6],
+									bypass8=0b11111100,
+									)	
+
+		
+		read_out_qubit_memory_tensor_st = g.transpose_null(read_out_qubit_memory_tensor_st, 
+					                             transposer_req=self.transposer_request_to_qubit_state_readout, 
+					                             stream_order=[0,1])
+
+		print("zzzzzzzzzzzzzzzzz ", 	read_out_qubit_memory_tensor_st.shape )
+
+
+		read_out_qubit_memory_tensor_st_list = read_out_qubit_memory_tensor_st.split( dim=1, num_splits=2)	
+		
+		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[0], [memory_addresses,320])
+		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[1], [memory_addresses,320])
+
+
+		read_out_qubit_0_memory_tensor_st.write( name="rrww0", layout='H1(W), -1, S1', program_output=True )
+		read_out_qubit_1_memory_tensor_st.write( name="rrww1", layout='H1(W), -1, S1', program_output=True )
+
+		return read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st		
+
+
+
+
+	def select_target_qbit_write_map_east(self):
+		"""
+		Function used to read out the correct target qubit map for scattering the target qubits L into the memory
+		The target qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
+		The target memory maps of control qubits 9, ..., 17 are stored in the lower half of one slice (addresses 0,1,..., 2^12).
+		The target memory maps of control qubits 18, ..., 20 are stored in the upper half of one slice (addresses 2^12,..., 2^13). 		
+		The 320-byte vector is splitted into 20 16-byte superlanes. 
+		In each 16-byte segments the first two bytes are used to address a memory on a slice. 
+		Thus, 8 memory maps can be stored in a single 16-byte superlane. Distributors are used to move the memory addresses into the position of the first two bytes.
+		 
+       
+		Parameters
+		----------
+
+		Return
+		------
+		Returns with the stream tensor of the target qubits memory map.
+		"""
+
+
+		target_qubit_write_maps_L_st = self.target_qubit_write_maps_L_mt.read( streams=g.SG1[16] )
+
+		
+		
+		
+		#gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1_W[12]] )		
+		#distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
+		distributor_map_st                      = self.target_qubit_distributor_map_mt.read( streams=g.SG1[8] )
+		
+		target_qubit_write_maps_L_st = g.distribute_8( target_qubit_write_maps_L_st, 
+									distributor_map_st,
+									distributor_req=self.distributor_request_to_qubit_state_write,
+									map_stream_req=g.SG1[8],
+									bypass8=0b11111110,
+									)	
+
+		
+		target_qubit_write_maps_L_st = g.transpose_null(target_qubit_write_maps_L_st, 
+					                             transposer_req=self.transposer_request_to_qubit_state_write, 
+					                             stream_order=[0])	
+
+		rr = target_qubit_write_maps_L_st.write(name="uuu", layout='H1(W), -1, S1(43)', program_output=True )
+		#rr = distributor_map_st.write(name="uuur", layout='H1(E), -1, S1(43)', program_output=True )
+
+		return target_qubit_write_maps_L_st	
 	
 	def gate_L_program(self):
 		"""
@@ -277,13 +415,16 @@ class Gate(Split_gates):
 
 
 				read_out_qubit_0_memory_tensor_mt = g.stack( read_out_state_0_memory_tensor_list, dim=0 )
-				read_out_qubit_0_memory_tensor_st = read_out_qubit_0_memory_tensor_mt.read( streams=g.SG1_E[0] )
+				#read_out_qubit_0_memory_tensor_st = read_out_qubit_0_memory_tensor_mt.read( streams=g.SG1_E[0] )
+				
 
 
 				read_out_qubit_1_memory_tensor_mt = g.stack( read_out_state_1_memory_tensor_list, dim=0 )
-				read_out_qubit_1_memory_tensor_st = read_out_qubit_1_memory_tensor_mt.read( streams=g.SG1_E[1] )
+				#read_out_qubit_1_memory_tensor_st = read_out_qubit_1_memory_tensor_mt.read( streams=g.SG1_E[1] )
 
-
+				# ???????????????????
+				read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st = self.select_target_qbit_read_map_west()
+				
 
 
 				Psi_transformed_real_state_0_bytes_list = []
@@ -509,7 +650,9 @@ class Gate(Split_gates):
 				Psi_transformed_real_bytes_mt_list  = g.split(Psi_transformed_real_mt_320_8, dim=-2, num_splits=g.float32.size)
 				Psi_transformed_imag_bytes_mt_list  = g.split(Psi_transformed_imag_mt_320_8, dim=-2, num_splits=g.float32.size)
 				
-				target_qubit_L_write_map_st = self.target_qubit_write_maps_L_mt.read( streams=g.SG1_W[16] )
+				#target_qubit_L_write_map_st = self.target_qubit_write_maps_L_mt.read( streams=g.SG1_W[16] )
+
+				target_qubit_L_write_map_st = self.select_target_qbit_write_map_east()
 				
 				for byte_idx in range(4):
 					
