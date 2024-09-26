@@ -43,6 +43,10 @@ layout_permute_maps_west = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1})
 layout_gate_counter_distributor_maps_west = "H1(W), A1(0), S1(35)"
 
 
+#gate counter: for reading control_state_1_broadcasted and control_state_0_boradcasted (each gate act on a different target qubit)
+layout_gate_counter_target_qubit_L_distributor_maps = f"H1(W), A{1}(1), S1(35)"
+
+
 
 # memory layout for the mxm permutation marices (identical permutation matrices are also stored on the easterns hemisphere)
 layout_mxm_permutation_matrices_west = f"H1(W), A{small_qbit_num_limit*20}(0-{small_qbit_num_limit*20-1}), S16(18-36)" 
@@ -125,6 +129,9 @@ layout_gate_counter_gate_filtering_selector = f"H1(E), A{1}({2*small_qbit_num_li
 
 #gate counter: for reading control_state_1_broadcasted and control_state_0_boradcasted (each gate act on a different target qubit)
 layout_gate_counter_S_control_qbit_selector = f"H1(E), A{1}({2*small_qbit_num_limit+1}), S1(37)"
+
+
+
 
 
 # memory address maps to read out state vector components with control qbit = 1 state 

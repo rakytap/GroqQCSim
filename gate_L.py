@@ -198,11 +198,9 @@ class Gate(Split_gates):
 		read_out_qubit_memory_tensor_st = g.stack( [read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st], dim=1 )
 		
 		
-		
-		#gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1_W[12]] )		
-		#distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
-		distributor_map_st                      = self.target_qubit_distributor_map_mt.read( streams=g.SG1[6] )
-		#rr = distributor_map_st.write(name="uuue", layout='H1(W), -1, S1(42)', program_output=True )
+		gate_counter_distribute_map_selector_st = self.gate_counter_target_qubit_L_distributor_maps_write_mt.read( streams=[g.SG1_W[12]] )		
+		distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
+		#distributor_map_st                      = self.target_qubit_distributor_map_mt.read( streams=g.SG1[6] )
 		
 		read_out_qubit_memory_tensor_st = g.distribute_8( read_out_qubit_memory_tensor_st, 
 									distributor_map_st,
@@ -215,8 +213,6 @@ class Gate(Split_gates):
 		read_out_qubit_memory_tensor_st = g.transpose_null(read_out_qubit_memory_tensor_st, 
 					                             transposer_req=self.transposer_request_to_qubit_state_readout, 
 					                             stream_order=[0,1])
-
-		print("zzzzzzzzzzzzzzzzz ", 	read_out_qubit_memory_tensor_st.shape )
 
 
 		read_out_qubit_memory_tensor_st_list = read_out_qubit_memory_tensor_st.split( dim=1, num_splits=2)	
@@ -258,9 +254,9 @@ class Gate(Split_gates):
 		
 		
 		
-		#gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1_W[12]] )		
-		#distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
-		distributor_map_st                      = self.target_qubit_distributor_map_mt.read( streams=g.SG1[8] )
+		gate_counter_distribute_map_selector_st = self.gate_counter_target_qubit_L_distributor_maps_write_mt.read( streams=[g.SG1_W[12]] )		
+		distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
+		#distributor_map_st                      = self.target_qubit_distributor_map_mt.read( streams=g.SG1[8] )
 		
 		target_qubit_write_maps_L_st = g.distribute_8( target_qubit_write_maps_L_st, 
 									distributor_map_st,
@@ -275,7 +271,6 @@ class Gate(Split_gates):
 					                             stream_order=[0])	
 
 		rr = target_qubit_write_maps_L_st.write(name="uuu", layout='H1(W), -1, S1(43)', program_output=True )
-		#rr = distributor_map_st.write(name="uuur", layout='H1(E), -1, S1(43)', program_output=True )
 
 		return target_qubit_write_maps_L_st	
 	

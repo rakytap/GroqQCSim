@@ -611,15 +611,24 @@ class IO:
 			
 
 			self.distributor_map_mt              = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="control_qubit_distributor_maps", layout=layout_distributor_maps_west)
+			# distributor maps to select the correct memory maps for L and H target qubits 
 			self.target_qubit_distributor_map_mt = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="target_qubit_distributor_maps", layout=layout_target_qubit_distributor_maps)
 			
 			
 			
-			
+			# distributor maps to select the correct memory maps to read data for SL and SH operations.
 			gate_counter_distributor_maps_west_np            = np.zeros( (320,), dtype=np.uint8 )
 			gate_counter_distributor_maps_west_np[0:320:16]  = 1
 			self.gate_counter_distributor_maps_west_mt       = g.from_data( gate_counter_distributor_maps_west_np, layout=layout_gate_counter_distributor_maps_west )	
 			self.gate_counter_distributor_maps_west_mt.is_static = True
+			
+			
+			# distributor maps to select the correct memory maps to write data on L and H target qubits.
+			gate_counter_target_qubit_L_distributor_maps_write_np            = np.zeros( (320,), dtype=np.uint8 )
+			gate_counter_target_qubit_L_distributor_maps_write_np [0:320:16]  = gate_count+1
+			self.gate_counter_target_qubit_L_distributor_maps_write_mt  = g.from_data( gate_counter_target_qubit_L_distributor_maps_write_np,
+																						 layout=layout_gate_counter_target_qubit_L_distributor_maps )	
+			self.gate_counter_target_qubit_L_distributor_maps_write_mt.is_static = True
 			
 									
 			
