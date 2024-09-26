@@ -1,5 +1,5 @@
-#from gate_S_base import Gate_S_base
-from split_gates import Split_gates
+from gate_S_base import Gate_counters
+#from split_gates import Split_gates
 from memory_layouts import *
 import groq.api as g
 import numpy as np
@@ -7,7 +7,7 @@ import numpy as np
 	
 	
 
-class Gate(Split_gates):
+class Gate(Gate_counters):
 	"""
 	A class used to implement the gate operation on qubits S with no control qubits
 
@@ -474,38 +474,20 @@ class Gate(Split_gates):
 
 				###################################################
 
-
-
-
-				gate_counter_gate_element_selector_00_shared = g.shared_memory_tensor( \
-							self.gate_counter_gate_element_selector_00_mt, \
-							name="gate_counter_gate_element_selector_00_shared") 
-				
-				gate_counter_gate_element_selector_01_shared = g.shared_memory_tensor( \
-							self.gate_counter_gate_element_selector_01_mt, \
-							name="gate_counter_gate_element_selector_01_shared") 
-				
-				gate_counter_gate_element_selector_10_shared = g.shared_memory_tensor( \
-							self.gate_counter_gate_element_selector_10_mt, \
-							name="gate_counter_gate_element_selector_10_shared") 
-				
-				gate_counter_gate_element_selector_11_shared = g.shared_memory_tensor( \
-							self.gate_counter_gate_element_selector_11_mt, \
-							name="gate_counter_gate_element_selector_11_shared") 
 							
 						
 				gate_element_counter_first_column_list  = []
 				gate_element_counter_second_column_list = []
 				for idx in range(memory_addresses//4):
-					gate_element_counter_first_column_list.append( gate_counter_gate_element_selector_00_shared )
-					gate_element_counter_first_column_list.append( gate_counter_gate_element_selector_00_shared )
-					gate_element_counter_first_column_list.append( gate_counter_gate_element_selector_10_shared )
-					gate_element_counter_first_column_list.append( gate_counter_gate_element_selector_10_shared )	
+					gate_element_counter_first_column_list.append( self.gate_counter_gate_element_selector_00_mt)
+					gate_element_counter_first_column_list.append( self.gate_counter_gate_element_selector_00_mt )
+					gate_element_counter_first_column_list.append( self.gate_counter_gate_element_selector_10_mt )
+					gate_element_counter_first_column_list.append( self.gate_counter_gate_element_selector_10_mt )	
 
-					gate_element_counter_second_column_list.append( gate_counter_gate_element_selector_01_shared )
-					gate_element_counter_second_column_list.append( gate_counter_gate_element_selector_01_shared )
-					gate_element_counter_second_column_list.append( gate_counter_gate_element_selector_11_shared )
-					gate_element_counter_second_column_list.append( gate_counter_gate_element_selector_11_shared )	
+					gate_element_counter_second_column_list.append( self.gate_counter_gate_element_selector_01_mt )
+					gate_element_counter_second_column_list.append( self.gate_counter_gate_element_selector_01_mt )
+					gate_element_counter_second_column_list.append( self.gate_counter_gate_element_selector_11_mt )
+					gate_element_counter_second_column_list.append( self.gate_counter_gate_element_selector_11_mt )	
 					
 					
 				gate_element_counter_first_column_mt  = g.stack( gate_element_counter_first_column_list, dim=0 )
@@ -666,6 +648,11 @@ class Gate(Split_gates):
 
 				Psi_transformed_real_mt_output.set_program_output()
 				Psi_transformed_imag_mt_output.set_program_output()
+				
+				
+			with g.ResourceScope(name=f"increase_gate_counters_scope", is_buffered=True, predecessors=[apply_gate_scope], time=None) as increase_gate_counters_scope :
+			
+				self.increment_gate_counters()	
 
 				
 			self.pgm_pkg.compile_program_context(pgm6)

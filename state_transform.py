@@ -13,8 +13,8 @@ gate_count = groqQCsim.gate_count
 
 if __name__ == "__main__":
 
-	target_qbits  = [12]
-	control_qbits = [-1] #-1 ... no cotrol qubit is incolved in the operation
+	target_qbits  = [12, 10]
+	control_qbits = [-1, -1] #-1 ... no cotrol qubit is incolved in the operation
 	
 	
 	#target_qbits  = [0,  7, 6,  4, 3, 5]
@@ -87,12 +87,12 @@ if __name__ == "__main__":
 
 	#create an array of random parameters
 	parameters = np.random.rand( parameter_num )*2*np.pi
-	'''
+	
 	if parameters.size > 3:
 		for gate_idx in range( len(target_qbits)-1 ):
 			parameters[gate_idx*3:3*(gate_idx+1)] = parameters[(len(target_qbits)-1)*3:]
 	#parameters[2] = -parameters[1]
-	'''
+	
 	print( parameters )
 
 

@@ -280,7 +280,7 @@ class Gate(Gate_S_base):
 			                                                                           
 			with g.ResourceScope(name=f"increase_gate_counters_scope", is_buffered=True, predecessors=[apply_gate_scope], time=None) as increase_gate_counters_scope :
 			
-				self.increment_gate_counters_for_S_gates()	
+				self.increment_gate_counters()	
 
 				
 

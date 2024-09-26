@@ -206,6 +206,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			target_qubit_distributor_map_np[gate_idx, 1:320:16] = 2*(target_qbit - 17) + 1
 		else:
 			# when the control qubits is not L or H, no valid distributor map is required
+			# the map selectors are padded with zeros for these cases
 			pass
 			
 			
