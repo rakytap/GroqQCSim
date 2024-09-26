@@ -311,9 +311,10 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			#print( gr0[0,:,0,0] )	
 			#print( gr0[] )	
 			#print( 	gate_output["uuu"][0:20,0:2] )
-			#print( 	gate_output["rrww0"][0:20,0:2] )
+			#print( 	gate_output["rrrrwwww1"][0:20,0:2] )
 			#print( 	gate_output["rrww1"][0:20,0:2] )
-			#print( 	gate_output["uuue"] )
+			#print( gate_output["distr_map"] )
+			#print( 	gate_output["target_qubit_distributor_maps"] )
 
 		else:
 

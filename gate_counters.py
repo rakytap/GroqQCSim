@@ -205,12 +205,12 @@ class Gate_counters(Split_gates):
 		gate_counter_distributor_maps_st = g.add(constant_1_address_offset_st, gate_counter_distributor_maps_st, alus=alu_rq_5, output_streams=g.SG4_W[4])
 				
 		# save the offsetted memory address
-		gate_counter_distributor_maps_west_mt = gate_counter_distributor_maps_st.write(name=f"gate_counter_distributor_maps_west_mt", \
+		gate_counter_distributor_maps_mt = gate_counter_distributor_maps_st.write(name=f"gate_counter_distributor_maps_mt", \
 											 storage_req=self.gate_counter_target_qubit_L_distributor_maps_write_mt.storage_request, 
 											 time=3)#, program_output=True) 											 
+									
+									
 											 
-										 
-											 
-											
+										
 
 

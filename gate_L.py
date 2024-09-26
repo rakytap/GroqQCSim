@@ -191,6 +191,8 @@ class Gate(Gate_counters):
 
 
 		read_out_qubit_1_memory_tensor_mt = g.stack( read_out_state_1_memory_tensor_list, dim=0 )
+		#read_out_qubit_1_memory_tensor_mt.set_program_output()
+		#read_out_qubit_1_memory_tensor_mt.name = "rrrrwwww1"
 		read_out_qubit_1_memory_tensor_st = read_out_qubit_1_memory_tensor_mt.read( streams=g.SG1[1] )
 		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_1_memory_tensor_st, [memory_addresses,320])
 
@@ -221,8 +223,11 @@ class Gate(Gate_counters):
 		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[1], [memory_addresses,320])
 
 
-		read_out_qubit_0_memory_tensor_st.write( name="rrww0", layout='H1(W), -1, S1', program_output=True )
-		read_out_qubit_1_memory_tensor_st.write( name="rrww1", layout='H1(W), -1, S1', program_output=True )
+		#read_out_qubit_0_memory_tensor_st.write( name="rrww0", layout='H1(W), -1, S1', program_output=True )
+		#read_out_qubit_1_memory_tensor_st.write( name="rrww1", layout='H1(W), -1, S1(43)', program_output=True )
+		#distributor_map_st.write( name="distr_map", layout='H1(W), -1, S1(43)', program_output=True )
+		#self.target_qubit_distributor_map_mt.set_program_output()
+		
 
 		return read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st		
 
@@ -270,7 +275,7 @@ class Gate(Gate_counters):
 					                             transposer_req=self.transposer_request_to_qubit_state_write, 
 					                             stream_order=[0])	
 
-		rr = target_qubit_write_maps_L_st.write(name="uuu", layout='H1(W), -1, S1(43)', program_output=True )
+		#rr = target_qubit_write_maps_L_st.write(name="uuu", layout='H1(W), -1, S1(43)', program_output=True )
 
 		return target_qubit_write_maps_L_st	
 	
@@ -317,55 +322,6 @@ class Gate(Gate_counters):
 
 				Psi_transformed_real_copy_splits = Psi_transformed_real_copy_mt.split(dim=0, num_splits=memory_addresses)
 				Psi_transformed_imag_copy_splits = Psi_transformed_imag_copy_mt.split(dim=0, num_splits=memory_addresses)
-				###################################################
-				Psi_transformed_real_state_0_list = []
-				Psi_transformed_real_state_1_list = []
-				Psi_transformed_imag_state_0_list = []
-				Psi_transformed_imag_state_1_list = []
-
-				
-				readout_indices      = []
-				readout_indices_pair = []				
-				write_indices        = []	
-				
-				
-				for idx in range( len(index_pairs)//2 ):
-				
-					readout_indices.append( index_pairs[2*idx][0] )      # for upper row of the gate kernel (output state is 0)
-					readout_indices.append( index_pairs[2*idx+1][0] )    # for upper row of the gate kernel (output state is 0)
-					readout_indices.append( index_pairs[2*idx][0] )      # for lower row of the gate kernel (output state is 1) 
-					readout_indices.append( index_pairs[2*idx+1][0] )    # for lower row of the gate kernel (output state is 1)					
-										
-					readout_indices_pair.append( index_pairs[2*idx][1] )   # for upper row of the gate kernel (output state is 0)
-					readout_indices_pair.append( index_pairs[2*idx+1][1] ) # for upper row of the gate kernel (output state is 0)			
-					readout_indices_pair.append( index_pairs[2*idx][1] )   # for lower row of the gate kernel (output state is 1)
-					readout_indices_pair.append( index_pairs[2*idx+1][1] ) # for lower row of the gate kernel (output state is 1)						
-					
-					write_indices.append( index_pairs[2*idx][0] ) 
-					write_indices.append( index_pairs[2*idx+1][0] ) 					
-					write_indices.append( index_pairs[2*idx][1] ) 
-					write_indices.append( index_pairs[2*idx+1][1] ) 
-					
-				
-				
-
-					
-					
-				for readout_idx in readout_indices:					
-					Psi_transformed_real_state_0_list.append( Psi_transformed_real_splits[ readout_idx ] ) 			
-					Psi_transformed_imag_state_0_list.append( Psi_transformed_imag_splits[ readout_idx ] )  					
-					
-					
-				for readout_idx_pair in readout_indices_pair:	
-					Psi_transformed_real_state_1_list.append( Psi_transformed_real_copy_splits[ readout_idx_pair ] )  	
-					Psi_transformed_imag_state_1_list.append( Psi_transformed_imag_copy_splits[ readout_idx_pair ] ) 		
-					
-					
-				Psi_transformed_real_state_0 = g.stack(Psi_transformed_real_state_0_list, dim=0)
-				Psi_transformed_real_state_1 = g.stack(Psi_transformed_real_state_1_list, dim=0)
-				Psi_transformed_imag_state_0 = g.stack(Psi_transformed_imag_state_0_list, dim=0)
-				Psi_transformed_imag_state_1 = g.stack(Psi_transformed_imag_state_1_list, dim=0)
-				###################################################
 
 
 				# define state with 320 vectors instead of 256 inner splits
@@ -590,32 +546,6 @@ class Gate(Gate_counters):
 												gate_element_real_copy_st, 
 												gate_element_imag_copy_st)
 												
-				########################################################	
-				'''							
-				Psi_real_storage_req_list      = []								
-				Psi_imag_storage_req_list      = []
-				Psi_real_copy_storage_req_list = []
-				Psi_imag_copy_storage_req_list = []
-															
-				for write_idx in write_indices:
-					Psi_real_storage_req_list.append( Psi_transformed_real_splits[ write_idx ] )
-					Psi_imag_storage_req_list.append( Psi_transformed_imag_splits[ write_idx ] )
-					Psi_real_copy_storage_req_list.append( Psi_transformed_real_copy_splits[ write_idx ] )
-					Psi_imag_copy_storage_req_list.append( Psi_transformed_imag_copy_splits[ write_idx ] )	
-					
-				Psi_real_storage_req      = g.stack( Psi_real_storage_req_list, dim=0 )														
-				Psi_imag_storage_req      = g.stack( Psi_imag_storage_req_list, dim=0 )
-				Psi_real_copy_storage_req = g.stack( Psi_real_copy_storage_req_list, dim=0 )
-				Psi_imag_copy_storage_req = g.stack( Psi_imag_copy_storage_req_list, dim=0 )												
-				
-									
-
-				#Psi_transformed_real_st.write( storage_req = Psi_real_storage_req.storage_request, name="Psi_transformed_real_tmp")
-				#Psi_transformed_imag_st.write( storage_req = Psi_imag_storage_req.storage_request, name="Psi_transformed_imag_tmp")
-				#Psi_transformed_real_st.write( storage_req = Psi_real_copy_storage_req.storage_request, name="Psi_transformed_real_copy_tmp")
-				#Psi_transformed_imag_st.write( storage_req = Psi_imag_copy_storage_req.storage_request, name="Psi_transformed_imag_copy_tmp")
-				'''
-				######################################################
 				
 				
 				
