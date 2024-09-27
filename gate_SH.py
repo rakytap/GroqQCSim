@@ -185,7 +185,8 @@ class Gate(Split_gates):
 
 				control_qubit_address_maps_SL_east_st   = self.select_H_control_qubit_map_east()
 						                                                         
-				control_qubit_address_maps_SL_east_copy_mt = control_qubit_address_maps_SL_east_st.write( name='control_qubit_address_map_SL_east_copy', layout=control_qubit_address_maps_SL_east_layout_b, time=0 )
+				control_qubit_address_maps_SL_east_copy_mt = control_qubit_address_maps_SL_east_st.write( name='control_qubit_address_map_SL_east_copy',
+														 layout=layout_control_qubit_address_maps_SL_east_b, time=0 )
 			
 			
 			#################################################################################

@@ -18,14 +18,14 @@ memory_addresses = 1 << (qbit_num-small_qbit_num_limit)
 
 
 # memory gather maps for L target qubits
-target_qubit_read_pair_maps_L_layout = f"H1(W), A{memory_addresses}(0-{memory_addresses-1}), S1(41)"
-target_qubit_read_maps_L_layout = f"H1(W), A{memory_addresses}(0-{memory_addresses-1}), S1(40)"
+layout_target_qubit_read_pair_maps_L = f"H1(W), A{memory_addresses}(0-{memory_addresses-1}), S1(41)"
+layout_target_qubit_read_maps_L = f"H1(W), A{memory_addresses}(0-{memory_addresses-1}), S1(40)"
 
 # memory address maps to read out state vector components with control qbit = 1 state 
 # maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
 # maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_slices+1,...,memory_slices)
 # each 2-byte column in the 16-byte blocks of the map tensor corresponds to a specific control qbit 	
-control_qubit_address_maps_SL_west_layout = f"H1(W), A{memory_slices}(0-{memory_slices-1}), S1(39)"
+layout_control_qubit_address_maps_SL_west = f"H1(W), A{memory_slices}(0-{memory_slices-1}), S1(39)"
 
 
 # gate counter: for reading out the correct permute map selector (each gate act on a different target qubit)
@@ -44,7 +44,7 @@ layout_gate_counter_distributor_maps_west = "H1(W), A1(0), S1(35)"
 
 
 #gate counter: for reading control_state_1_broadcasted and control_state_0_boradcasted (each gate act on a different target qubit)
-layout_gate_counter_target_qubit_L_distributor_maps = f"H1(W), A{1}(1), S1(35)"
+layout_gate_counter_target_qubit_L_distributor_maps = f"H1(W), A{1}(0), S1(34)"
 
 
 
@@ -88,10 +88,6 @@ layout_gate_kernels_imag	="H1(E), S4(12-15)"
 
 
 
-# memory layout for the tensors full of ones and zeros
-layout_zeros = f"H1(E), A1({320+2*gate_count}), S4(32-35)"
-layout_ones = f"H1(E), A1({320+2*gate_count}), S4(32-35)"
-
 
 # memory layout to store the vectors describing states |0> and |1> for different target qubits within a single 320 element vector
 # addresses from 0 to small_qbit_num_limit-1       			are occupied by vectors describing states |0> and |1> for different target qubits (states |1> are labeled by bits 1)
@@ -117,6 +113,12 @@ layout_control_state_0_broadcasted	= f"H1(E), A{gate_count}({gate_count}-{2*gate
 
 
 
+# memory layout for the tensors full of ones and zeros
+layout_zeros = f"H1(E), A1(0), S4(32-35)"
+layout_ones = f"H1(E), A1(1), S4(32-35)"
+
+
+
 layout_gate_kernels_real_packed ="H1(E), A1(320), S4(32-35)"
 layout_gate_kernels_imag_packed	="H1(E), A1(321), S4(32-35)"
 
@@ -138,8 +140,9 @@ layout_gate_counter_S_control_qbit_selector = f"H1(E), A{1}({2*small_qbit_num_li
 # maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
 # maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_slices+1,...,memory_slices)
 # each 2-byte column in the 16-byte blocks of the map tensor corresponds to a specific control qbit 	
-control_qubit_address_maps_SL_east_layout_a = f"H1(E), A{memory_slices}(0-{memory_slices-1}), S1(39)"
-control_qubit_address_maps_SL_east_layout_b = f"H1(E), -1, S1(38)"
+layout_control_qubit_address_maps_SL_east_b = f"H1(E), -1, S1(38)"
+layout_control_qubit_address_maps_SL_east_a = f"H1(E), A{memory_slices}(0-{memory_slices-1}), S1(39)"
+
 
 
 

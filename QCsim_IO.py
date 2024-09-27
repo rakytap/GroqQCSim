@@ -582,8 +582,8 @@ class IO:
 			# generate control qubit memory maps for SL gate (to select the correct elements from the state vector if SL gate is performed)
 			mem_gather_map = self.generate_control_qbit_maps_for_SL()
 
-			self.control_qubit_address_maps_SL_west_mt = g.from_data(mem_gather_map, layout=control_qubit_address_maps_SL_west_layout)
-			self.control_qubit_address_maps_SL_east_mt = g.from_data(mem_gather_map, layout=control_qubit_address_maps_SL_east_layout_a)			
+			self.control_qubit_address_maps_SL_west_mt = g.from_data(mem_gather_map, layout=layout_control_qubit_address_maps_SL_west)
+			self.control_qubit_address_maps_SL_east_mt = g.from_data(mem_gather_map, layout=layout_control_qubit_address_maps_SL_east_a)			
 			self.control_qubit_address_maps_SL_west_mt.is_static = True	
 			self.control_qubit_address_maps_SL_east_mt.is_static = True
 			
@@ -597,8 +597,8 @@ class IO:
 			# generate memeory read maps for target qubits L
 			mem_read_map, mem_read_pair_map = self.generate_target_qubit_L_read_maps()
 			
-			self.target_qubit_read_pair_maps_L_mt = g.from_data(mem_read_pair_map, layout=target_qubit_read_pair_maps_L_layout)
-			self.target_qubit_read_maps_L_mt      = g.from_data(mem_read_map, layout=target_qubit_read_maps_L_layout)			
+			self.target_qubit_read_pair_maps_L_mt = g.from_data(mem_read_pair_map, layout=layout_target_qubit_read_pair_maps_L)
+			self.target_qubit_read_maps_L_mt      = g.from_data(mem_read_map, layout=layout_target_qubit_read_maps_L)			
 			self.target_qubit_read_pair_maps_L_mt.is_static = True
 			self.target_qubit_read_maps_L_mt.is_static      = True			
 			
