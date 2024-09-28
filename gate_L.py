@@ -1,4 +1,4 @@
-from gate_S_base import Gate_counters
+from gate_counters import Gate_counters
 #from split_gates import Split_gates
 from memory_layouts import *
 import groq.api as g

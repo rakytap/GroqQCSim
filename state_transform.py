@@ -13,15 +13,13 @@ gate_count = groqQCsim.gate_count
 
 if __name__ == "__main__":
 
-	target_qbits  = [12,  0,  6,  4,  3, 5, 12, 7]
-	control_qbits = [-1, 15, 10, -1, 5, 0, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
+	#target_qbits  = [12,  0,  6,  4,  3, 5, 12, 7]
+	#control_qbits = [-1, 15, 10, -1, 5, 0, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
 	
-	#target_qbits  = [12,  0,  6,  4,  3, 10, 5, 7]
-	#control_qbits = [-1, 15, 10, -1, 14, -1, 0, 2] #-1 ... no cotrol qubit is incolved in the operation	
+	target_qbits  = [12]
+	control_qbits = [9] #-1 ... no cotrol qubit is incolved in the operation	
 	
 	
-	#target_qbits  = [0,  7, 6,  4, 3, 5]
-	#control_qbits = [15, 2, 10, -1, 14, 0] #-1 ... no cotrol qubit is incolved in the operation
 
 	if len(target_qbits) != gate_count:
 		raise Exception("Number of target qubits in the list of target qubits should be equal to the gate count")
@@ -44,36 +42,39 @@ if __name__ == "__main__":
 	circuit = Circuit(qbit_num)
 	for gate_idx in range( len(target_qbits) ):
 
-		if target_qbits[gate_idx] == control_qbits[gate_idx]:
+		target_qbit  = target_qbits[gate_idx]
+		control_qbit = control_qbits[gate_idx]
+
+		if target_qbit == control_qbit:
 			error("The control qubit and target qubit should be different")
 
-		elif target_qbits[gate_idx] >= 0 and target_qbits[gate_idx] != 8 and target_qbits[gate_idx] < 21 and control_qbits[gate_idx] == -1:
+		elif target_qbit >= 0 and target_qbit != 8 and target_qbit < 21 and control_qbit == -1:
 
-			circuit.add_U3( target_qbits[gate_idx] )
+			circuit.add_U3( target_qbit )
 		
 			circuit_1 = Circuit( 1 )
 			circuit_1.add_U3( 0 )
 			one_qubit_circuits.append( circuit_1 )
 		
-		elif target_qbits[gate_idx] >= 0 and target_qbits[gate_idx] < 8 and control_qbits[gate_idx] >= 0 and control_qbits[gate_idx] < 8:	
+		elif target_qbit >= 0 and target_qbit < 21 and control_qbit >= 0 and control_qbit < 21 and target_qbit != 8 and control_qbit != 8:	
 	
 
-			circuit.add_adaptive( target_qbits[gate_idx], control_qbits[gate_idx] )
+			circuit.add_adaptive( target_qbit, control_qbit )
 	
 			circuit_1 = Circuit( 1 )
 			circuit_1.add_RY( 0  )	
 			one_qubit_circuits.append( circuit_1 )
 
-		elif target_qbits[gate_idx] >= 0 and target_qbits[gate_idx] < 8 and control_qbits[gate_idx] > 8 and control_qbits[gate_idx] <= 21:	
+		elif target_qbit >= 0 and target_qbit < 8 and control_qbit > 8 and control_qbit <= 21:	
 	
-			circuit.add_adaptive( target_qbits[gate_idx], control_qbits[gate_idx] )
+			circuit.add_adaptive( target_qbit, control_qbit )
 	
 			circuit_1 = Circuit( 1 )
 			circuit_1.add_RY( 0  )	
 			one_qubit_circuits.append( circuit_1 )			
-		elif target_qbits[gate_idx] >= 0 and target_qbits[gate_idx] < 8 and control_qbits[gate_idx] == 8:	
+		elif target_qbit >= 0 and target_qbit < 8 and control_qbit == 8:	
 	
-			circuit.add_adaptive( target_qbits[gate_idx], control_qbits[gate_idx] )
+			circuit.add_adaptive( target_qbit, control_qbit )
 	
 			circuit_1 = Circuit( 1 )
 			circuit_1.add_RY( 0  )	
