@@ -146,7 +146,7 @@ class Gate(Gate_counters):
 	
 
 
-	def select_target_qbit_read_map_west(self):
+	def select_target_qbit_read_map_west_LL(self):
 		"""
 		Function used to read out the correct target qubit map to gather the target qubits L from the memory
 		The target qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
@@ -165,12 +165,13 @@ class Gate(Gate_counters):
 		Returns with the stream tensor of the target qubits memory map.
 		"""
 
-
+		#################################
+		'''
 		target_qubit_0_state_read_maps_list = self.target_qubit_read_maps_L_mt.split( dim=0, num_splits=memory_addresses)
 		target_qubit_1_state_read_maps_list = self.target_qubit_read_pair_maps_L_mt.split( dim=0, num_splits=memory_addresses)
 		read_out_state_0_memory_tensor_list = []
 		read_out_state_1_memory_tensor_list = []
-		for idx in range(memory_addresses//4):
+		for idx in range(memory_addresses//8):
 
 			# idx, idx+1 needed for bank alternation strategy
 			read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ 2*idx ] )	# for upper row of the gate kernel (output state is 0)
@@ -187,15 +188,24 @@ class Gate(Gate_counters):
 
 		read_out_qubit_0_memory_tensor_mt = g.stack( read_out_state_0_memory_tensor_list, dim=0 )
 		read_out_qubit_0_memory_tensor_st = read_out_qubit_0_memory_tensor_mt.read( streams=g.SG1[0] )
-		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_0_memory_tensor_st, [memory_addresses,320])
+		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_0_memory_tensor_st, [memory_addresses//2,320])
 
 
 		read_out_qubit_1_memory_tensor_mt = g.stack( read_out_state_1_memory_tensor_list, dim=0 )
 		#read_out_qubit_1_memory_tensor_mt.set_program_output()
 		#read_out_qubit_1_memory_tensor_mt.name = "rrrrwwww1"
 		read_out_qubit_1_memory_tensor_st = read_out_qubit_1_memory_tensor_mt.read( streams=g.SG1[1] )
-		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_1_memory_tensor_st, [memory_addresses,320])
+		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_1_memory_tensor_st, [memory_addresses//2,320])
+		'''
+		#############################x
 
+		control_qbit_state_1_selector_st = self.target_qubit_read_maps_LL_mt.read( streams=g.SG1_E[2] )
+		read_out_qubit_0_memory_tensor_st = g.mem_gather(self.target_qubit_read_maps_L_mt, control_qbit_state_1_selector_st, output_streams=[g.SG1[0]] )
+		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_0_memory_tensor_st, [memory_addresses//2,320])
+
+		read_out_qubit_1_memory_tensor_st = g.mem_gather(self.target_qubit_read_pair_maps_L_mt, control_qbit_state_1_selector_st, output_streams=[g.SG1[1]] )
+		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_1_memory_tensor_st, [memory_addresses//2,320])
+		###########################xx
 
 		read_out_qubit_memory_tensor_st = g.stack( [read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st], dim=1 )
 		
@@ -219,8 +229,8 @@ class Gate(Gate_counters):
 
 		read_out_qubit_memory_tensor_st_list = read_out_qubit_memory_tensor_st.split( dim=1, num_splits=2)	
 		
-		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[0], [memory_addresses,320])
-		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[1], [memory_addresses,320])
+		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[0], [memory_addresses//2,320])
+		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[1], [memory_addresses//2,320])
 
 
 		#read_out_qubit_0_memory_tensor_st.write( name="rrww0", layout='H1(W), -1, S1', program_output=True )
@@ -234,7 +244,7 @@ class Gate(Gate_counters):
 
 
 
-	def select_target_qbit_write_map_east(self):
+	def select_target_qbit_write_map_east_LL(self):
 		"""
 		Function used to read out the correct target qubit map for scattering the target qubits L into the memory
 		The target qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
@@ -253,8 +263,9 @@ class Gate(Gate_counters):
 		Returns with the stream tensor of the target qubits memory map.
 		"""
 
-
-		target_qubit_write_maps_L_st = self.target_qubit_write_maps_L_mt.read( streams=g.SG1[16] )
+		control_qbit_state_1_selector_st = self.target_qubit_write_maps_LL_mt.read( streams=g.SG1_W[15] )
+		target_qubit_write_maps_L_st = g.mem_gather(self.target_qubit_write_maps_L_mt, control_qbit_state_1_selector_st, output_streams=[g.SG1[16]] )
+		#target_qubit_write_maps_L_st = self.target_qubit_write_maps_L_mt.read( streams=g.SG1[16] )
 
 		
 		
@@ -344,7 +355,7 @@ class Gate(Gate_counters):
 				Psi_imag_bytes_copy_mt_list  = g.split(Psi_imag_copy_mt_320_8, dim=-2, num_splits=g.float32.size)
 				
 
-
+				'''
 				target_qubit_0_state_read_maps_list = self.target_qubit_read_maps_L_mt.split( dim=0, num_splits=memory_addresses)
 				target_qubit_1_state_read_maps_list = self.target_qubit_read_pair_maps_L_mt.split( dim=0, num_splits=memory_addresses)
 				read_out_state_0_memory_tensor_list = []
@@ -365,16 +376,16 @@ class Gate(Gate_counters):
 					read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ 2*idx+1 ] )	# for lower row of the gate kernel (output state is 1) 
 
 
-				read_out_qubit_0_memory_tensor_mt = g.stack( read_out_state_0_memory_tensor_list, dim=0 )
+				#read_out_qubit_0_memory_tensor_mt = g.stack( read_out_state_0_memory_tensor_list, dim=0 )
 				#read_out_qubit_0_memory_tensor_st = read_out_qubit_0_memory_tensor_mt.read( streams=g.SG1_E[0] )
 				
 
 
-				read_out_qubit_1_memory_tensor_mt = g.stack( read_out_state_1_memory_tensor_list, dim=0 )
+				#read_out_qubit_1_memory_tensor_mt = g.stack( read_out_state_1_memory_tensor_list, dim=0 )
 				#read_out_qubit_1_memory_tensor_st = read_out_qubit_1_memory_tensor_mt.read( streams=g.SG1_E[1] )
-
+				'''
 				# ???????????????????
-				read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st = self.select_target_qbit_read_map_west()
+				read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st = self.select_target_qbit_read_map_west_LL()
 				
 
 
@@ -390,21 +401,21 @@ class Gate(Gate_counters):
 					output_stream_offset = 4*4
 					Psi_transformed_real_state_0_byte_st = g.mem_gather( Psi_real_bytes_mt_list[byte_idx], read_out_qubit_0_memory_tensor_st,
 												 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
-					Psi_transformed_real_state_0_byte_st = g.reshape( Psi_transformed_real_state_0_byte_st, [memory_addresses,1,320])
+					Psi_transformed_real_state_0_byte_st = g.reshape( Psi_transformed_real_state_0_byte_st, [memory_addresses//2,1,320])
 					Psi_transformed_real_state_0_bytes_list.append( Psi_transformed_real_state_0_byte_st )
 
 					################
 					output_stream_offset = 1*4
 					Psi_transformed_imag_state_0_byte_st = g.mem_gather( Psi_imag_bytes_mt_list[byte_idx], read_out_qubit_0_memory_tensor_st,
 												 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
-					Psi_transformed_imag_state_0_byte_st = g.reshape( Psi_transformed_imag_state_0_byte_st, [memory_addresses,1,320])
+					Psi_transformed_imag_state_0_byte_st = g.reshape( Psi_transformed_imag_state_0_byte_st, [memory_addresses//2,1,320])
 					Psi_transformed_imag_state_0_bytes_list.append( Psi_transformed_imag_state_0_byte_st )
 
 					################
 					output_stream_offset = 5*4
 					Psi_transformed_real_state_0_copy_byte_st = g.mem_gather( Psi_real_bytes_copy_mt_list[byte_idx], read_out_qubit_1_memory_tensor_st,
 												 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
-					Psi_transformed_real_state_0_copy_byte_st = g.reshape( Psi_transformed_real_state_0_copy_byte_st, [memory_addresses,1,320])
+					Psi_transformed_real_state_0_copy_byte_st = g.reshape( Psi_transformed_real_state_0_copy_byte_st, [memory_addresses//2,1,320])
 					Psi_transformed_real_state_0_copy_bytes_list.append( Psi_transformed_real_state_0_copy_byte_st )
 
 
@@ -412,7 +423,7 @@ class Gate(Gate_counters):
 					output_stream_offset = 7*4
 					Psi_transformed_imag_state_0_copy_byte_st = g.mem_gather( Psi_imag_bytes_copy_mt_list[byte_idx], read_out_qubit_1_memory_tensor_st,
 												 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
-					Psi_transformed_imag_state_0_copy_byte_st = g.reshape( Psi_transformed_imag_state_0_copy_byte_st, [memory_addresses,1,320])
+					Psi_transformed_imag_state_0_copy_byte_st = g.reshape( Psi_transformed_imag_state_0_copy_byte_st, [memory_addresses//2,1,320])
 					Psi_transformed_imag_state_0_copy_bytes_list.append( Psi_transformed_imag_state_0_copy_byte_st )
 
 					
@@ -434,7 +445,7 @@ class Gate(Gate_counters):
 						
 				gate_element_counter_first_column_list  = []
 				gate_element_counter_second_column_list = []
-				for idx in range(memory_addresses//4):
+				for idx in range(memory_addresses//8):
 					gate_element_counter_first_column_list.append( self.gate_counter_gate_element_selector_00_mt)
 					gate_element_counter_first_column_list.append( self.gate_counter_gate_element_selector_00_mt )
 					gate_element_counter_first_column_list.append( self.gate_counter_gate_element_selector_10_mt )
@@ -447,9 +458,9 @@ class Gate(Gate_counters):
 					
 					
 				gate_element_counter_first_column_mt  = g.stack( gate_element_counter_first_column_list, dim=0 )
-				gate_element_counter_first_column_mt  = gate_element_counter_first_column_mt.reshape( memory_addresses, 320 )
+				gate_element_counter_first_column_mt  = gate_element_counter_first_column_mt.reshape( memory_addresses//2, 320 )
 				gate_element_counter_second_column_mt = g.stack( gate_element_counter_second_column_list, dim=0 )
-				gate_element_counter_second_column_mt = gate_element_counter_second_column_mt.reshape( memory_addresses, 320 )
+				gate_element_counter_second_column_mt = gate_element_counter_second_column_mt.reshape( memory_addresses//2, 320 )
 
 			
 				gate_element_counter_first_column_st  = gate_element_counter_first_column_mt.read( streams=g.SG1_W[17] )		
@@ -485,7 +496,7 @@ class Gate(Gate_counters):
 											gate_element_counter_first_column_st, 
 											output_streams=[g.SG1_W[output_stream_offset+slice_idx]] )
 
-					gate_element_real_byte_st = g.reshape( gate_element_real_byte_st, [memory_addresses,1,320])
+					gate_element_real_byte_st = g.reshape( gate_element_real_byte_st, [memory_addresses//2,1,320])
 					gate_element_real_list.append( gate_element_real_byte_st )
 					
 					#### first column imag part					
@@ -494,7 +505,7 @@ class Gate(Gate_counters):
 										gate_element_counter_first_column_st, 
 										output_streams=[g.SG1[output_stream_offset+slice_idx]] )
 
-					gate_element_imag_byte_st = g.reshape( gate_element_imag_byte_st, [memory_addresses,1,320])
+					gate_element_imag_byte_st = g.reshape( gate_element_imag_byte_st, [memory_addresses//2,1,320])
 					gate_element_imag_list.append( gate_element_imag_byte_st )
 
 
@@ -504,7 +515,7 @@ class Gate(Gate_counters):
 											gate_element_counter_second_column_st, 
 											output_streams=[g.SG1_W[output_stream_offset+slice_idx]] )
 
-					gate_element_real_copy_byte_st = g.reshape( gate_element_real_copy_byte_st, [memory_addresses,1,320])
+					gate_element_real_copy_byte_st = g.reshape( gate_element_real_copy_byte_st, [memory_addresses//2,1,320])
 					gate_element_real_copy_list.append( gate_element_real_copy_byte_st )
 
 
@@ -514,7 +525,7 @@ class Gate(Gate_counters):
 											gate_element_counter_second_column_st, 
 											output_streams=[g.SG1_W[output_stream_offset+slice_idx]] )
 
-					gate_element_imag_copy_byte_st = g.reshape( gate_element_imag_copy_byte_st, [memory_addresses,1,320])
+					gate_element_imag_copy_byte_st = g.reshape( gate_element_imag_copy_byte_st, [memory_addresses//2,1,320])
 					gate_element_imag_copy_list.append( gate_element_imag_copy_byte_st )
 					
 
@@ -559,7 +570,7 @@ class Gate(Gate_counters):
 				
 				#target_qubit_L_write_map_st = self.target_qubit_write_maps_L_mt.read( streams=g.SG1_W[16] )
 
-				target_qubit_L_write_map_st = self.select_target_qbit_write_map_east()
+				target_qubit_L_write_map_st = self.select_target_qbit_write_map_east_LL()
 				
 				for byte_idx in range(4):
 					

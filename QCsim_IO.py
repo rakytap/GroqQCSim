@@ -161,6 +161,75 @@ class IO:
 				
 
 		return mem_gather_map
+
+
+	def generate_target_qubit_LL_control_qbit_read_maps(self):
+	
+		# memory map containing all of the memory maps
+		# maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
+		# maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_slices+1,...,memory_slices)		
+		mem_read_map = np.zeros( (memory_addresses//2, 320,), dtype=np.uint8 )		
+					
+		half_slice = 1 << 12
+
+		
+
+		for control_qbit in range(9, 17):
+
+			if control_qbit == 16:
+				continue  #TODO!!!!!!!!!!!!!!!!!!!!!!!!
+
+			print( 'control_qbit: ', control_qbit )
+
+			target_qbit = control_qbit + 1 # as we get the same control qubit memory maps for each target qbit
+			
+		
+			horizontal_offset_in_memory_map = (control_qbit-1-small_qbit_num_limit)*2 
+
+			control_qbit_mask = 1<<(control_qbit-8)
+		
+			target_qbit_index_pairs = [ [x, x^(1<<(target_qbit-8))] for x in range(memory_addresses) if x < x^(1<<(target_qbit-8))  ]
+			target_qbit_index_pairs = np.array( target_qbit_index_pairs )
+
+
+			# indices in the target qbit maps having control qubit states 1
+			controlled_qubit_state_1_map_indices = np.argwhere( (target_qbit_index_pairs[:,0] & control_qbit_mask) > 0 )
+			#print( controlled_qubit_state_1_map_indices.size, mem_read_map.shape )
+			#print( controlled_qubit_state_1_map_indices )
+			
+			for idx in range( controlled_qubit_state_1_map_indices.size//2 ):
+				
+				idx_mem_a = controlled_qubit_state_1_map_indices[2*idx]
+				idx_mem_b = controlled_qubit_state_1_map_indices[2*idx+1]
+																			
+								
+				# the 2-byte (16-bit) memory offset needs to be splitted into two bytes
+				lower_bits_of_addresses_idx_mem_a  = idx_mem_a & 255
+				higher_bits_of_addresses_idx_mem_a = (idx_mem_a >> 8 ) & 255
+
+				lower_bits_of_addresses_idx_mem_b  = idx_mem_b & 255
+				higher_bits_of_addresses_idx_mem_b = (idx_mem_b >> 8 ) & 255
+					
+								
+				for superlane_idx in range(20):
+					col_idx = horizontal_offset_in_memory_map + 16*superlane_idx
+					
+					mem_read_map[ 4*idx+0, col_idx ]   = lower_bits_of_addresses_idx_mem_a
+					mem_read_map[ 4*idx+0, col_idx+1 ] = higher_bits_of_addresses_idx_mem_a
+
+					mem_read_map[ 4*idx+1, col_idx ]   = lower_bits_of_addresses_idx_mem_b
+					mem_read_map[ 4*idx+1, col_idx+1 ] = higher_bits_of_addresses_idx_mem_b
+
+					mem_read_map[ 4*idx+2, col_idx ]   = lower_bits_of_addresses_idx_mem_a
+					mem_read_map[ 4*idx+2, col_idx+1 ] = higher_bits_of_addresses_idx_mem_a
+
+					mem_read_map[ 4*idx+3, col_idx ]   = lower_bits_of_addresses_idx_mem_b
+					mem_read_map[ 4*idx+3, col_idx+1 ] = higher_bits_of_addresses_idx_mem_b
+					
+																				
+			
+		print( mem_read_map[:,0:2] )
+		return mem_read_map
 			
 	def generate_target_qubit_L_read_maps(self):
 	
@@ -237,6 +306,79 @@ class IO:
 																				
 
 		return mem_read_map, mem_read_pair_map
+
+
+
+	def generate_target_qubit_LL_control_qbit_write_maps(self):
+	
+		# memory map containing all of the memory maps
+		# maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
+		# maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_slices+1,...,memory_slices)		
+		mem_write_map = np.zeros( (memory_addresses//2, 320,), dtype=np.uint8 )		
+					
+		half_slice = 1 << 12
+
+		
+
+		for control_qbit in range(9, 17):
+
+			if control_qbit == 16:
+				continue  #TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+			print( 'control_qbit: ', control_qbit )
+
+			target_qbit = control_qbit + 1 # as we get the same control qubit memory maps for each target qbit
+			
+		
+			horizontal_offset_in_memory_map = (control_qbit-1-small_qbit_num_limit)*2 
+
+			control_qbit_mask = 1<<(control_qbit-8)
+		
+			target_qbit_index_pairs = [ [x, x^(1<<(target_qbit-8))] for x in range(memory_addresses) if x < x^(1<<(target_qbit-8))  ]
+			target_qbit_index_pairs = np.array( target_qbit_index_pairs )
+
+			target_qbit_index_pairs_write = np.zeros( (len(target_qbit_index_pairs)*2, ), dtype=np.uint16 )		
+			for idx in range( len(target_qbit_index_pairs)//2 ):
+				
+				idx1 = target_qbit_index_pairs[2*idx][0]
+				idx2 = target_qbit_index_pairs[2*idx+1][0]
+				idx3 = target_qbit_index_pairs[2*idx][1]
+				idx4 = target_qbit_index_pairs[2*idx+1][1]	
+											
+				target_qbit_index_pairs_write[ 4*idx+0 ] = idx1
+				target_qbit_index_pairs_write[ 4*idx+1 ] = idx2
+				target_qbit_index_pairs_write[ 4*idx+2 ] = idx3
+				target_qbit_index_pairs_write[ 4*idx+3 ] = idx4
+
+
+			# indices in the target qbit maps having control qubit states 1
+			controlled_qubit_state_1_map_indices = np.argwhere( (target_qbit_index_pairs_write[:] & control_qbit_mask) > 0 )
+			#print( 'write ', controlled_qubit_state_1_map_indices.size, mem_write_map.shape )
+			#print( controlled_qubit_state_1_map_indices )
+			#print( target_qbit_index_pairs_write )
+											
+																				
+			
+			for idx in range( controlled_qubit_state_1_map_indices.size ):
+				
+				idx_mem = controlled_qubit_state_1_map_indices[idx]
+																			
+								
+				# the 2-byte (16-bit) memory offset needs to be splitted into two bytes
+				lower_bits_of_addresses_idx_mem  = idx_mem & 255
+				higher_bits_of_addresses_idx_mem = (idx_mem >> 8 ) & 255
+					
+								
+				for superlane_idx in range(20):
+					col_idx = horizontal_offset_in_memory_map + 16*superlane_idx
+					
+					mem_write_map[ idx, col_idx ]   = lower_bits_of_addresses_idx_mem
+					mem_write_map[ idx, col_idx+1 ] = higher_bits_of_addresses_idx_mem
+					
+																		
+			
+
+		return mem_write_map
 		
 		
 	def generate_target_qubit_L_write_maps(self):
@@ -277,7 +419,7 @@ class IO:
 				higher_bits_of_addresses_idx3 = (idx3 >> 8 ) & 255
 				
 				lower_bits_of_addresses_idx4  = idx4 & 255
-				higher_bits_of_addresses_idx4 = (idx4 >> 8 ) & 255												
+				higher_bits_of_addresses_idx4 = (idx4 >> 8 ) & 255
 					
 										
 				for superlane_idx in range(20):
@@ -590,7 +732,7 @@ class IO:
 			# generate memeory write maps for target qubits L
 			mem_write_map = self.generate_target_qubit_L_write_maps()
 			
-			self.target_qubit_write_maps_L_mt = g.from_data(mem_write_map, layout=target_qubit_write_maps_L_layout)
+			self.target_qubit_write_maps_L_mt = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_L)
 			self.target_qubit_write_maps_L_mt.is_static = True
 			
 			
@@ -602,6 +744,24 @@ class IO:
 			self.target_qubit_read_pair_maps_L_mt.is_static = True
 			self.target_qubit_read_maps_L_mt.is_static      = True			
 			
+
+
+			####################################
+
+
+			mem_write_map = self.generate_target_qubit_LL_control_qbit_write_maps()
+
+			self.target_qubit_write_maps_LL_mt = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_LL)
+			self.target_qubit_write_maps_LL_mt.is_static = True
+
+
+			mem_read_map = self.generate_target_qubit_LL_control_qbit_read_maps()	
+
+			self.target_qubit_read_maps_LL_mt      = g.from_data(mem_read_map, layout=layout_target_qubit_read_maps_LL)	
+			self.target_qubit_read_maps_LL_mt.is_static      = True				
+
+
+			####################################	
 			
 			
 			#distributor_map_np = np.zeros( (320,), dtype=np.uint8 )

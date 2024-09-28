@@ -43,7 +43,7 @@ class Gate(Gate_counters):
 
 
 	def gather_gate_elements(self, gate_element_selector_mt, gate_element_selector_stream, gate_element_real_mt, gate_element_imag_mt, output_stream_offset = 0, time=None ):
-	
+		#DONT NEED HERE THIS METHOD
 		if time is None:
 			gate_element_selector_st_for_real      = gate_element_selector_mt.read(streams=gate_element_selector_stream)
 			gate_element_selector_st_for_imag      = gate_element_selector_mt.read(streams=gate_element_selector_stream)
@@ -344,7 +344,7 @@ class Gate(Gate_counters):
 				Psi_imag_bytes_copy_mt_list  = g.split(Psi_imag_copy_mt_320_8, dim=-2, num_splits=g.float32.size)
 				
 
-
+				'''
 				target_qubit_0_state_read_maps_list = self.target_qubit_read_maps_L_mt.split( dim=0, num_splits=memory_addresses)
 				target_qubit_1_state_read_maps_list = self.target_qubit_read_pair_maps_L_mt.split( dim=0, num_splits=memory_addresses)
 				read_out_state_0_memory_tensor_list = []
@@ -372,7 +372,7 @@ class Gate(Gate_counters):
 
 				read_out_qubit_1_memory_tensor_mt = g.stack( read_out_state_1_memory_tensor_list, dim=0 )
 				#read_out_qubit_1_memory_tensor_st = read_out_qubit_1_memory_tensor_mt.read( streams=g.SG1_E[1] )
-
+				'''
 				# ???????????????????
 				read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st = self.select_target_qbit_read_map_west()
 				
