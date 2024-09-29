@@ -96,7 +96,10 @@ class Gate(Gate_L):
 
 		control_qbit_state_1_selector_st = self.target_qubit_read_maps_LL_mt.read( streams=g.SG1[16] )
 		
-		distributor_map_st                      = self.distributor_map_mt.read( streams=g.SG1[17] )
+		
+		gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1_W[17]] )		
+		distributor_map_st                      = g.mem_gather(self.distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[17]] )
+		#distributor_map_st                      = self.distributor_map_mt.read( streams=g.SG1[17] )
 		
 		control_qbit_state_1_selector_st = g.distribute_8( control_qbit_state_1_selector_st, 
 									distributor_map_st,
@@ -177,8 +180,9 @@ class Gate(Gate_L):
 
 		control_qbit_state_1_selector_st = self.target_qubit_write_maps_LL_mt.read( streams=g.SG1[15] )
 		
-		
-		distributor_map_st                      = self.distributor_map_mt.read( )
+		gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1_W[9]] )		
+		distributor_map_st                      = g.mem_gather(self.distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[9]] )
+		#distributor_map_st                      = self.distributor_map_mt.read( )
 		
 		control_qbit_state_1_selector_st = g.distribute_8( control_qbit_state_1_selector_st, 
 									distributor_map_st,
