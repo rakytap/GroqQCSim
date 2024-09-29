@@ -186,12 +186,24 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	for gate_idx in range(gate_count):
 	
 		control_qbit = control_qbits[gate_idx]
-		if control_qbit > 8 and control_qbit <= 16:
+		target_qbit  = target_qbits[gate_idx]
+		if control_qbit > 8 and control_qbit <= 16 and target_qbit < 8:
+			# SL gate
 			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - small_qbit_num_limit - 1)
 			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - small_qbit_num_limit - 1) + 1
-		elif control_qbit > 16 and control_qbit < 21:
+		elif control_qbit > 16 and control_qbit < 21 and target_qbit < 8:
+			# SH gate
 			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - 17)
 			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - 17) + 1
+		elif control_qbit > 8 and control_qbit <= 16 and target_qbit > 8 and target_qbit < 21:
+			# LL gate
+			if control_qbit < target_qbit:
+				offset = control_qbit
+			else: 
+				offset = control_qbit - 1
+			
+			distributor_map_np[gate_idx, 0:320:16] = 2*(offset - small_qbit_num_limit - 1)
+			distributor_map_np[gate_idx, 1:320:16] = 2*(offset - small_qbit_num_limit - 1) + 1
 		else:
 			# when the control qubits is not L or H, no valid distributor map is required
 			pass

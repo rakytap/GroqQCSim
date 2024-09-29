@@ -34,7 +34,7 @@ class Gate(Gate_counters):
         
 		super().__init__(pgm_pkg, mxm_permutation = mxm_permutation )
 		
-		self.target_qubit = 9
+		#self.target_qubit = 9
 
 		self.transposer_request_to_qubit_state_readout  = g.tensor.create_transposer_request( [0], 1) # request transposer on the west side
 		self.transposer_request_to_qubit_state_write    = g.tensor.create_transposer_request( [3], 1) # request transposer on the east side
@@ -42,51 +42,6 @@ class Gate(Gate_counters):
 		self.distributor_request_to_qubit_state_write   = g.tensor.create_distributor_request( [6], 1 )  # East side	
 
 
-	def gather_gate_elements(self, gate_element_selector_mt, gate_element_selector_stream, gate_element_real_mt, gate_element_imag_mt, output_stream_offset = 0, time=None ):
-		#DONT NEED HERE THIS METHOD
-		if time is None:
-			gate_element_selector_st_for_real      = gate_element_selector_mt.read(streams=gate_element_selector_stream)
-			gate_element_selector_st_for_imag      = gate_element_selector_mt.read(streams=gate_element_selector_stream)
-		else:
-			gate_element_selector_st_for_real      = gate_element_selector_mt.read(streams=gate_element_selector_stream, time=time)
-			gate_element_selector_st_for_imag      = gate_element_selector_mt.read(streams=gate_element_selector_stream, time=time+1)
-
-		gate_element_real_mt_8      = g.reinterpret( gate_element_real_mt, dtype=g.uint8 )
-		gate_element_real_byte_list = g.split( gate_element_real_mt_8, dim=1, num_splits=4 )
-			
-		gate_element_imag_mt_8      = g.reinterpret( gate_element_imag_mt, dtype=g.uint8 )
-		gate_element_imag_byte_list = g.split( gate_element_imag_mt_8, dim=1, num_splits=4 )
-
-
-		gate_element_real_list = []
-		gate_element_imag_list = []
-		for slice_idx in range(4):
-
-			gate_element_real_byte_st = g.mem_gather(gate_element_real_byte_list[slice_idx], 
-											gate_element_selector_st_for_real, 
-											output_streams=[g.SG1[output_stream_offset+slice_idx]] )
-
-			gate_element_real_byte_st = g.reshape( gate_element_real_byte_st, [1,320])
-			gate_element_real_list.append( gate_element_real_byte_st )
-
-			gate_element_imag_byte_st = g.mem_gather(gate_element_imag_byte_list[slice_idx], 
-										gate_element_selector_st_for_imag, 
-										output_streams=[g.SG1[output_stream_offset+slice_idx]] )
-
-			gate_element_imag_byte_st = g.reshape( gate_element_imag_byte_st, [1,320])
-			gate_element_imag_list.append( gate_element_imag_byte_st )
-
-
-
-		gate_element_real_st = g.concat( gate_element_real_list )
-		gate_element_real_st = g.reinterpret(gate_element_real_st, dtype=g.float32 )
-
-		gate_element_imag_st = g.concat( gate_element_imag_list )
-		gate_element_imag_st = g.reinterpret(gate_element_imag_st, dtype=g.float32 )
-			
-		gate_element_st 	= g.stack( [gate_element_real_st, gate_element_imag_st], dim=0 )
-			
-		return gate_element_st
 
 	
 	def two_complex_dot_product(self, s_r_0, s_i_0, s_r_1, s_i_1, g_r_0, g_i_0, g_r_1, g_i_1):
@@ -308,7 +263,7 @@ class Gate(Gate_counters):
 			with g.ResourceScope(name=f"apply_gate_scope", is_buffered=True, predecessors=[], time=0) as apply_gate_scope :
 
 
-				index_pairs = [ [x, x^(1<<(self.target_qubit-8))] for x in range(memory_addresses) if x < x^(1<<(self.target_qubit-8)) ]
+				#index_pairs = [ [x, x^(1<<(self.target_qubit-8))] for x in range(memory_addresses) if x < x^(1<<(self.target_qubit-8)) ]
 
 
 				# print("=============================>", pairs)

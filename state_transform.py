@@ -16,8 +16,8 @@ if __name__ == "__main__":
 	#target_qbits  = [12,  0,  6,  4,  3, 5, 12, 7]
 	#control_qbits = [-1, 15, 10, -1, 5, 0, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
 	
-	target_qbits  = [14]
-	control_qbits = [9] #-1 ... no cotrol qubit is incolved in the operation	
+	target_qbits  = [10]
+	control_qbits = [16] #-1 ... no cotrol qubit is incolved in the operation	
 	
 	
 

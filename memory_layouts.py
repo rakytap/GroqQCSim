@@ -35,6 +35,7 @@ layout_gate_counter_perm_map_selector = f"H1(W), A{1}(0), S1(37)"
 # control qubit dependent distributor map for SL gate
 layout_distributor_maps_west         = f"H1(W), A{gate_count}(1-{1+gate_count-1}), S1(37)"  #TODO HAVE A disptributor map also on the east
 layout_target_qubit_distributor_maps = f"H1(W), A{gate_count}({gate_count+1}-{2*gate_count}), S1(37)"  #TODO HAVE A disptributor map also on the east
+layout_control_qubit_distributor_maps = f"H1(W), A{gate_count}({2*gate_count+1}-{3*gate_count}), S1(37)"  #TODO HAVE A disptributor map also on the east
 
 # permute maps used to reorder the state vector elements according to the given target qubit (permute map is also stored on the easter hemisphere)
 layout_permute_maps_west = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(36)"
