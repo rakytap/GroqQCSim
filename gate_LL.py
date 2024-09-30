@@ -225,240 +225,40 @@ class Gate(Gate_L_base):
 
 				#index_pairs = [ [x, x^(1<<(self.target_qubit-8))] for x in range(memory_addresses) if x < x^(1<<(self.target_qubit-8)) ]
 
-
-				# print("=============================>", pairs)
-				# print(len(inner_dims))
-				# print(Psi_transformed_real_mt.physical_shape, Psi_transformed_real_mt.shape)
-				#Psi_transformed_mt (memory_addresses, matrix_size)
-
-
-				Psi_transformed_real_splits = Psi_transformed_real_mt.split(dim=0, num_splits=memory_addresses)
-				Psi_transformed_imag_splits = Psi_transformed_imag_mt.split(dim=0, num_splits=memory_addresses)
-
-				Psi_transformed_real_copy_splits = Psi_transformed_real_copy_mt.split(dim=0, num_splits=memory_addresses)
-				Psi_transformed_imag_copy_splits = Psi_transformed_imag_copy_mt.split(dim=0, num_splits=memory_addresses)
-
-
-				# define state with 320 vectors instead of 256 inner splits
-				Psi_real_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=State_input_real_shared.storage_request, initialized=False)		
-				Psi_imag_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=State_input_imag_shared.storage_request, initialized=False)
-				Psi_real_copy_mt_320 = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=State_input_real_copy_shared.storage_request, initialized=False)
-				Psi_imag_copy_mt_320 = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=State_input_imag_copy_shared.storage_request, initialized=False)
-
-				
-				# separating the tensors along the slice dimension (separating the bytes)
-				Psi_real_mt_320_8       = g.reinterpret(Psi_real_mt_320, dtype=g.int8)
-				Psi_imag_mt_320_8       = g.reinterpret(Psi_imag_mt_320, dtype=g.int8)			
-				Psi_real_bytes_mt_list  = g.split(Psi_real_mt_320_8, dim=-2, num_splits=g.float32.size)
-				Psi_imag_bytes_mt_list  = g.split(Psi_imag_mt_320_8, dim=-2, num_splits=g.float32.size)
-
-
-				Psi_real_copy_mt_320_8       = g.reinterpret(Psi_real_copy_mt_320, dtype=g.int8)
-				Psi_imag_copy_mt_320_8       = g.reinterpret(Psi_imag_copy_mt_320, dtype=g.int8)			
-				Psi_real_bytes_copy_mt_list  = g.split(Psi_real_copy_mt_320_8, dim=-2, num_splits=g.float32.size)
-				Psi_imag_bytes_copy_mt_list  = g.split(Psi_imag_copy_mt_320_8, dim=-2, num_splits=g.float32.size)
-				
-
 				read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st = self.select_target_qbit_read_map_west_LL()
 				
+				
+				# readout quantum state to be stransformed
+				Psi_transformed_real_state_0_st, Psi_transformed_imag_state_0_st, Psi_transformed_real_state_1_st, Psi_transformed_imag_state_1_st  = \
+							 self.read_out_state_2_transform( read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st)
+				
 
-
-				Psi_transformed_real_state_0_bytes_list = []
-				Psi_transformed_imag_state_0_bytes_list = []
-				Psi_transformed_real_state_0_copy_bytes_list = []
-				Psi_transformed_imag_state_0_copy_bytes_list = []
-				#gate_element_real_copy_list = []
-				#gate_element_imag_copy_list = []
-				for byte_idx in range(4):
-					
-					################
-					output_stream_offset = 4*4
-					Psi_transformed_real_state_0_byte_st = g.mem_gather( Psi_real_bytes_mt_list[byte_idx], read_out_qubit_0_memory_tensor_st,
-												 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
-					Psi_transformed_real_state_0_byte_st = g.reshape( Psi_transformed_real_state_0_byte_st, [memory_addresses//2,1,320])
-					Psi_transformed_real_state_0_bytes_list.append( Psi_transformed_real_state_0_byte_st )
-
-					################
-					output_stream_offset = 1*4
-					Psi_transformed_imag_state_0_byte_st = g.mem_gather( Psi_imag_bytes_mt_list[byte_idx], read_out_qubit_0_memory_tensor_st,
-												 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
-					Psi_transformed_imag_state_0_byte_st = g.reshape( Psi_transformed_imag_state_0_byte_st, [memory_addresses//2,1,320])
-					Psi_transformed_imag_state_0_bytes_list.append( Psi_transformed_imag_state_0_byte_st )
-
-					################
-					output_stream_offset = 5*4
-					Psi_transformed_real_state_0_copy_byte_st = g.mem_gather( Psi_real_bytes_copy_mt_list[byte_idx], read_out_qubit_1_memory_tensor_st,
-												 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
-					Psi_transformed_real_state_0_copy_byte_st = g.reshape( Psi_transformed_real_state_0_copy_byte_st, [memory_addresses//2,1,320])
-					Psi_transformed_real_state_0_copy_bytes_list.append( Psi_transformed_real_state_0_copy_byte_st )
-
-
-					################
-					output_stream_offset = 7*4
-					Psi_transformed_imag_state_0_copy_byte_st = g.mem_gather( Psi_imag_bytes_copy_mt_list[byte_idx], read_out_qubit_1_memory_tensor_st,
-												 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
-					Psi_transformed_imag_state_0_copy_byte_st = g.reshape( Psi_transformed_imag_state_0_copy_byte_st, [memory_addresses//2,1,320])
-					Psi_transformed_imag_state_0_copy_bytes_list.append( Psi_transformed_imag_state_0_copy_byte_st )
-
-					
-					
-				Psi_transformed_real_state_0      = g.concat( Psi_transformed_real_state_0_bytes_list, dim=1 )
-				Psi_transformed_imag_state_0      = g.concat( Psi_transformed_imag_state_0_bytes_list, dim=1 )
-				Psi_transformed_real_state_1      = g.concat( Psi_transformed_real_state_0_copy_bytes_list, dim=1 )
-				Psi_transformed_imag_state_1      = g.concat( Psi_transformed_imag_state_0_copy_bytes_list, dim=1 )
-							
-				Psi_transformed_real_state_0      = g.reinterpret(Psi_transformed_real_state_0, dtype=g.float32 )
-				Psi_transformed_imag_state_0      = g.reinterpret(Psi_transformed_imag_state_0, dtype=g.float32 )
-				Psi_transformed_real_state_1      = g.reinterpret(Psi_transformed_real_state_1, dtype=g.float32 )
-				Psi_transformed_imag_state_1      = g.reinterpret(Psi_transformed_imag_state_1, dtype=g.float32 )
-
-
-				###################################################
-
-							
+				# readout gate elements				
+				element_num = read_out_qubit_0_memory_tensor_st.shape[0]
 						
-				gate_element_counter_first_column_list  = []
-				gate_element_counter_second_column_list = []
-				for idx in range(memory_addresses//8):
-					gate_element_counter_first_column_list.append( self.gate_counter_gate_element_selector_00_mt)
-					gate_element_counter_first_column_list.append( self.gate_counter_gate_element_selector_00_mt )
-					gate_element_counter_first_column_list.append( self.gate_counter_gate_element_selector_10_mt )
-					gate_element_counter_first_column_list.append( self.gate_counter_gate_element_selector_10_mt )	
-
-					gate_element_counter_second_column_list.append( self.gate_counter_gate_element_selector_01_mt )
-					gate_element_counter_second_column_list.append( self.gate_counter_gate_element_selector_01_mt )
-					gate_element_counter_second_column_list.append( self.gate_counter_gate_element_selector_11_mt )
-					gate_element_counter_second_column_list.append( self.gate_counter_gate_element_selector_11_mt )	
-					
-					
-				gate_element_counter_first_column_mt  = g.stack( gate_element_counter_first_column_list, dim=0 )
-				gate_element_counter_first_column_mt  = gate_element_counter_first_column_mt.reshape( memory_addresses//2, 320 )
-				gate_element_counter_second_column_mt = g.stack( gate_element_counter_second_column_list, dim=0 )
-				gate_element_counter_second_column_mt = gate_element_counter_second_column_mt.reshape( memory_addresses//2, 320 )
-
-			
-				gate_element_counter_first_column_st  = gate_element_counter_first_column_mt.read( streams=g.SG1_W[17] )		
-				gate_element_counter_second_column_st = gate_element_counter_second_column_mt.read( streams=g.SG1_W[18] )	
-				
-				
-				gate_kernels_broadcasted_real_mt_8 = g.reinterpret( self.gate_kernels_broadcasted_real_mt, dtype=g.uint8 )
-				gate_element_real_byte_list        = g.split( gate_kernels_broadcasted_real_mt_8, dim=1, num_splits=4 )
-				
-				gate_kernels_broadcasted_imag_mt_8 = g.reinterpret( self.gate_kernels_broadcasted_imag_mt, dtype=g.uint8 )
-				gate_element_imag_byte_list        = g.split( gate_kernels_broadcasted_imag_mt_8, dim=1, num_splits=4 )
-
-				gate_kernels_broadcasted_real_copy_mt_8 = g.reinterpret( self.gate_kernels_broadcasted_real_copy_mt, dtype=g.uint8 )
-				gate_element_real_copy_byte_list        = g.split( gate_kernels_broadcasted_real_copy_mt_8, dim=1, num_splits=4 )
-
-				gate_kernels_broadcasted_imag_copy_mt_8 = g.reinterpret( self.gate_kernels_broadcasted_imag_copy_mt, dtype=g.uint8 )
-				gate_element_imag_copy_byte_list        = g.split( gate_kernels_broadcasted_imag_copy_mt_8, dim=1, num_splits=4 )
-				
-				
-				gate_element_real_list = []
-				gate_element_imag_list = []
-				gate_element_real_copy_list = []
-				gate_element_imag_copy_list = []
-				for slice_idx in range(4):
-
-					#### first column real part
-					output_stream_offset = 7*4
-					gate_element_real_byte_st = g.mem_gather(gate_element_real_byte_list[slice_idx], 
-											gate_element_counter_first_column_st, 
-											output_streams=[g.SG1_W[output_stream_offset+slice_idx]] )
-
-					gate_element_real_byte_st = g.reshape( gate_element_real_byte_st, [memory_addresses//2,1,320])
-					gate_element_real_list.append( gate_element_real_byte_st )
-					
-					#### first column imag part					
-					output_stream_offset = 3*4
-					gate_element_imag_byte_st = g.mem_gather(gate_element_imag_byte_list[slice_idx], 
-										gate_element_counter_first_column_st, 
-										output_streams=[g.SG1[output_stream_offset+slice_idx]] )
-
-					gate_element_imag_byte_st = g.reshape( gate_element_imag_byte_st, [memory_addresses//2,1,320])
-					gate_element_imag_list.append( gate_element_imag_byte_st )
-
-
-					#### second column real part
-					output_stream_offset = 5*4
-					gate_element_real_copy_byte_st = g.mem_gather(gate_element_real_copy_byte_list[slice_idx], 
-											gate_element_counter_second_column_st, 
-											output_streams=[g.SG1_W[output_stream_offset+slice_idx]] )
-
-					gate_element_real_copy_byte_st = g.reshape( gate_element_real_copy_byte_st, [memory_addresses//2,1,320])
-					gate_element_real_copy_list.append( gate_element_real_copy_byte_st )
-
-
-					#### second column imag part
-					output_stream_offset = 6*4
-					gate_element_imag_copy_byte_st = g.mem_gather(gate_element_imag_copy_byte_list[slice_idx], 
-											gate_element_counter_second_column_st, 
-											output_streams=[g.SG1_W[output_stream_offset+slice_idx]] )
-
-					gate_element_imag_copy_byte_st = g.reshape( gate_element_imag_copy_byte_st, [memory_addresses//2,1,320])
-					gate_element_imag_copy_list.append( gate_element_imag_copy_byte_st )
-					
-
-
-				gate_element_real_st      = g.concat( gate_element_real_list, dim=1 )
-				gate_element_imag_st      = g.concat( gate_element_imag_list, dim=1 )
-				gate_element_real_copy_st = g.concat( gate_element_real_copy_list, dim=1 )	
-				gate_element_imag_copy_st = g.concat( gate_element_imag_copy_list, dim=1 )	
+				gate_element_real_st, gate_element_imag_st, gate_element_real_copy_st, gate_element_imag_copy_st = \
+							self.read_out_gate_elements( element_num )
 							
-				gate_element_real_st      = g.reinterpret(gate_element_real_st, dtype=g.float32 )
-				gate_element_imag_st      = g.reinterpret(gate_element_imag_st, dtype=g.float32 )				
-				gate_element_real_copy_st = g.reinterpret(gate_element_real_copy_st, dtype=g.float32 )
-				gate_element_imag_copy_st = g.reinterpret(gate_element_imag_copy_st, dtype=g.float32 )
-				
-				          
-				#switch to row pair order (memory_addresses//2, matrix_size) so we can write result and copy without overwriting future needed values (cannot implicit latch gates, but saves double memory if crossing VXM or extra copy operations)
-
-				
 				
 
 				# calculate the VXM round trip                            
 				Psi_transformed_real_st, Psi_transformed_imag_st = self.two_complex_dot_product( 
-												Psi_transformed_real_state_0,#pairs0[0], 
-												Psi_transformed_imag_state_0,#pairs0[1], 
-												Psi_transformed_real_state_1,#pairs1[0], 
-												Psi_transformed_imag_state_1,#pairs1[1], 
+												Psi_transformed_real_state_0_st,#pairs0[0], 
+												Psi_transformed_imag_state_0_st,#pairs0[1], 
+												Psi_transformed_real_state_1_st,#pairs1[0], 
+												Psi_transformed_imag_state_1_st,#pairs1[1], 
 												gate_element_real_st, 
 												gate_element_imag_st, 
 												gate_element_real_copy_st, 
 												gate_element_imag_copy_st)
 												
 				
-				
-				
-				
-				
-				# write the calculated states into the memory with mem scatter
-				Psi_transformed_real_mt_320_8       = g.reinterpret(Psi_transformed_real_st, dtype=g.int8)
-				Psi_transformed_imag_mt_320_8       = g.reinterpret(Psi_transformed_imag_st, dtype=g.int8)			
-				Psi_transformed_real_bytes_mt_list  = g.split(Psi_transformed_real_mt_320_8, dim=-2, num_splits=g.float32.size)
-				Psi_transformed_imag_bytes_mt_list  = g.split(Psi_transformed_imag_mt_320_8, dim=-2, num_splits=g.float32.size)
-				
-				#target_qubit_L_write_map_st = self.target_qubit_write_maps_L_mt.read( streams=g.SG1_W[16] )
 
+				
+				
+				# export the calculated state into memory and set program output
 				target_qubit_L_write_map_st = self.select_target_qbit_write_map_east_LL()
-				
-				for byte_idx in range(4):
-					
-					g.mem_scatter( Psi_transformed_real_bytes_mt_list[byte_idx], Psi_real_bytes_mt_list[byte_idx], target_qubit_L_write_map_st)
-					g.mem_scatter( Psi_transformed_real_bytes_mt_list[byte_idx], Psi_real_bytes_copy_mt_list[byte_idx], target_qubit_L_write_map_st)
-					g.mem_scatter( Psi_transformed_imag_bytes_mt_list[byte_idx], Psi_imag_bytes_mt_list[byte_idx], target_qubit_L_write_map_st)
-					g.mem_scatter( Psi_transformed_imag_bytes_mt_list[byte_idx], Psi_imag_bytes_copy_mt_list[byte_idx], target_qubit_L_write_map_st)
-					
-					
-					
-
-				Psi_transformed_real_mt_output = g.constant_tensor( Psi_transformed_real_mt.shape, g.float32, storage_req=Psi_transformed_real_mt.storage_request, 
-                                                                                    name=f"Psi_transformed_real", initialized=False)
-				Psi_transformed_imag_mt_output = g.constant_tensor( Psi_transformed_imag_mt.shape, g.float32, storage_req=Psi_transformed_imag_mt.storage_request, 
-                                                                                    name=f"Psi_transformed_imag", initialized=False)
-
-				Psi_transformed_real_mt_output.set_program_output()
-				Psi_transformed_imag_mt_output.set_program_output()
+				self.write_tranformed_states_2_mem( Psi_transformed_real_st, Psi_transformed_imag_st, target_qubit_L_write_map_st )
 				
 				
 			with g.ResourceScope(name=f"increase_gate_counters_scope", is_buffered=True, predecessors=[apply_gate_scope], time=None) as increase_gate_counters_scope :

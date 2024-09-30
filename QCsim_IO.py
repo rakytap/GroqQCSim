@@ -39,7 +39,28 @@ class IO:
 		
 		
 	def broadcast_element( self, element_to_broadcast_st, distribute_map_mt, distributor_request, transposer_request):
-	
+		"""
+		Function to broadcast an element over the whole 320 vector
+		This function is used to broadcast either of the first 4 elements
+		
+		Parameters
+		----------
+		element_to_broadcast_st : StreamTensor
+			A stream tensor containing the element to be broadcasted
+		distribute_map_mt : StreamTensor
+			A distributor map to bring the selected element onto the 0-th place.
+		distributor_request : DistributorRequest
+			A resource request for a distributor
+		transposer_request : TransposerRequest		
+			A resource request for a transposer						
+			
+			
+		Return
+		--------
+		returns with the broadcatsed stream tensor
+		"""
+		
+		
 		# broadcast the element
 		
 		if distributor_request.distributors == [4]:
@@ -76,6 +97,13 @@ class IO:
 		
 		
 	def generate_control_qbit_maps_for_SL(self):
+		"""
+		Function to generate memory maps for the control qubits to gather state vector elements from the memory for target qubits S corresponding to control qbit state 1
+		
+		Return
+		--------
+		returns with the generated numpy version of the memmory maps
+		"""
 	
 		
 		control_qbit_min = 9
@@ -164,6 +192,13 @@ class IO:
 
 
 	def generate_target_qubit_LL_control_qbit_read_maps(self):
+		"""
+		Function to generate memory maps for the control qubits to gather state vector elements from the memory for target qubits L corresponding to control qbit state 1
+		
+		Return
+		--------
+		returns with the generated numpy version of the memmory maps
+		"""
 	
 		# memory map containing all of the memory maps
 		# maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
@@ -228,10 +263,17 @@ class IO:
 					
 																				
 			
-		print( mem_read_map[:,0:2] )
+		#print( mem_read_map[:,0:2] )
 		return mem_read_map
 			
 	def generate_target_qubit_L_read_maps(self):
+		"""
+		Function to generate memory maps to gather state vector elements from the memory for target qubits L
+		
+		Return
+		--------
+		returns with the generated numpy version of the memmory maps, separate for state 0 and state 1 of the target qbit
+		"""
 	
 		# memory map containing all of the memory maps
 		# maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
@@ -310,6 +352,13 @@ class IO:
 
 
 	def generate_target_qubit_LL_control_qbit_write_maps(self):
+		"""
+		Function to generate memory maps for the control qubits L to scatter the transformed state vector into the memory
+		
+		Return
+		--------
+		returns with the generated numpy version of the memmory maps
+		"""
 	
 		# memory map containing all of the memory maps
 		# maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
@@ -382,6 +431,13 @@ class IO:
 		
 		
 	def generate_target_qubit_L_write_maps(self):
+		"""
+		Function to generate memory maps to scatter state vector elements into the memory for target qubits L
+		
+		Return
+		--------
+		returns with the generated numpy version of the memmory maps
+		"""
 	
 		# memory map containing all of the memory maps		
 		mem_write_map = np.zeros( (memory_addresses, 320,), dtype=np.uint8 )
@@ -443,6 +499,9 @@ class IO:
 
 
 	def upload_program(self):
+		"""
+		Function implementing the upload program
+		"""
 
 		# Defines a program to upload the inputs
 		name = "upload"
