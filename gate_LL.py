@@ -1,4 +1,3 @@
-#from gate_L import Gate as Gate_L
 from gate_L_base import Gate_L_base
 from memory_layouts import *
 import groq.api as g
@@ -61,39 +60,6 @@ class Gate(Gate_L_base):
 		Returns with the stream tensor of the target qubits memory map.
 		"""
 
-		#################################
-		'''
-		target_qubit_0_state_read_maps_list = self.target_qubit_read_maps_L_mt.split( dim=0, num_splits=memory_addresses)
-		target_qubit_1_state_read_maps_list = self.target_qubit_read_pair_maps_L_mt.split( dim=0, num_splits=memory_addresses)
-		read_out_state_0_memory_tensor_list = []
-		read_out_state_1_memory_tensor_list = []
-		for idx in range(memory_addresses//8):
-
-			# idx, idx+1 needed for bank alternation strategy
-			read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ 2*idx ] )	# for upper row of the gate kernel (output state is 0)
-			read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ 2*idx+1 ] )	# for upper row of the gate kernel (output state is 0)
-			read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ 2*idx ] )	# for lower row of the gate kernel (output state is 1) 
-			read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ 2*idx+1 ] )	# for lower row of the gate kernel (output state is 1) 
-
-			# idx, idx+1 needed for bank alternation strategy
-			read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ 2*idx ] )	# for upper row of the gate kernel (output state is 0)
-			read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ 2*idx+1 ] )	# for upper row of the gate kernel (output state is 0)
-			read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ 2*idx ] )	# for lower row of the gate kernel (output state is 1) 
-			read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ 2*idx+1 ] )	# for lower row of the gate kernel (output state is 1) 
-
-
-		read_out_qubit_0_memory_tensor_mt = g.stack( read_out_state_0_memory_tensor_list, dim=0 )
-		read_out_qubit_0_memory_tensor_st = read_out_qubit_0_memory_tensor_mt.read( streams=g.SG1[0] )
-		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_0_memory_tensor_st, [memory_addresses//2,320])
-
-
-		read_out_qubit_1_memory_tensor_mt = g.stack( read_out_state_1_memory_tensor_list, dim=0 )
-		#read_out_qubit_1_memory_tensor_mt.set_program_output()
-		#read_out_qubit_1_memory_tensor_mt.name = "rrrrwwww1"
-		read_out_qubit_1_memory_tensor_st = read_out_qubit_1_memory_tensor_mt.read( streams=g.SG1[1] )
-		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_1_memory_tensor_st, [memory_addresses//2,320])
-		'''
-		#############################x
 
 		control_qbit_state_1_selector_st = self.target_qubit_read_maps_LL_mt.read( streams=g.SG1[16] )
 		
@@ -293,36 +259,6 @@ class Gate(Gate_L_base):
 				Psi_imag_bytes_copy_mt_list  = g.split(Psi_imag_copy_mt_320_8, dim=-2, num_splits=g.float32.size)
 				
 
-				'''
-				target_qubit_0_state_read_maps_list = self.target_qubit_read_maps_L_mt.split( dim=0, num_splits=memory_addresses)
-				target_qubit_1_state_read_maps_list = self.target_qubit_read_pair_maps_L_mt.split( dim=0, num_splits=memory_addresses)
-				read_out_state_0_memory_tensor_list = []
-				read_out_state_1_memory_tensor_list = []
-				for idx in range(memory_addresses//4):
-
-					# idx, idx+1 needed for bank alternation strategy
-					read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ 2*idx ] )	# for upper row of the gate kernel (output state is 0)
-					read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ 2*idx+1 ] )	# for upper row of the gate kernel (output state is 0)
-					read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ 2*idx ] )	# for lower row of the gate kernel (output state is 1) 
-					read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ 2*idx+1 ] )	# for lower row of the gate kernel (output state is 1) 
-
-
-					# idx, idx+1 needed for bank alternation strategy
-					read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ 2*idx ] )	# for upper row of the gate kernel (output state is 0)
-					read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ 2*idx+1 ] )	# for upper row of the gate kernel (output state is 0)
-					read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ 2*idx ] )	# for lower row of the gate kernel (output state is 1) 
-					read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ 2*idx+1 ] )	# for lower row of the gate kernel (output state is 1) 
-
-
-				#read_out_qubit_0_memory_tensor_mt = g.stack( read_out_state_0_memory_tensor_list, dim=0 )
-				#read_out_qubit_0_memory_tensor_st = read_out_qubit_0_memory_tensor_mt.read( streams=g.SG1_E[0] )
-				
-
-
-				#read_out_qubit_1_memory_tensor_mt = g.stack( read_out_state_1_memory_tensor_list, dim=0 )
-				#read_out_qubit_1_memory_tensor_st = read_out_qubit_1_memory_tensor_mt.read( streams=g.SG1_E[1] )
-				'''
-				# ???????????????????
 				read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st = self.select_target_qbit_read_map_west_LL()
 				
 
@@ -416,12 +352,8 @@ class Gate(Gate_L_base):
 
 				gate_kernels_broadcasted_imag_copy_mt_8 = g.reinterpret( self.gate_kernels_broadcasted_imag_copy_mt, dtype=g.uint8 )
 				gate_element_imag_copy_byte_list        = g.split( gate_kernels_broadcasted_imag_copy_mt_8, dim=1, num_splits=4 )
-				'''		
-		g_r_0_st_m4 = g_r_0#.read(streams=g.SG4[7]) #direction=Direction.WESTWARD
-		g_i_0_st_m4 = g_i_0#.read(streams=g.SG4[3]) #direction=Direction.WESTWARD
-		g_r_1_st_m4 = g_r_1#.read(streams=g.SG4[5]) #direction=Direction.WESTWARD
-		g_i_1_st_m4 = g_i_1#.read(streams=g.SG4[6]) #direction=Direction.WESTWARD
-				'''
+				
+				
 				gate_element_real_list = []
 				gate_element_imag_list = []
 				gate_element_real_copy_list = []

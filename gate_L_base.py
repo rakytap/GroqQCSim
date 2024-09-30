@@ -44,33 +44,6 @@ class Gate_L_base(Gate_counters):
 
 	
 	def two_complex_dot_product(self, s_r_0, s_i_0, s_r_1, s_i_1, g_r_0, g_i_0, g_r_1, g_i_1):
-		'''
-		s_r_0_st = s_r_0.read(streams=g.SG4[4]) #direction=Direction.EASTWARD
-		s_i_0_st = s_i_0.read(streams=g.SG4[6]) #direction=Direction.EASTWARD
-		s_r_1_st = s_r_1.read(streams=g.SG4[1]) #direction=Direction.EASTWARD
-		s_i_1_st = s_i_1.read(streams=g.SG4[5]) #direction=Direction.EASTWARD
-		g_r_0_st = g_r_0#.read(streams=g.SG4[7]) #direction=Direction.WESTWARD
-		g_i_0_st = g_i_0#.read(streams=g.SG4[5]) #direction=Direction.WESTWARD
-		g_r_1_st = g_r_1#.read(streams=g.SG4[6]) #direction=Direction.WESTWARD
-		g_i_1_st = g_i_1#.read(streams=g.SG4[3]) #direction=Direction.WESTWARD
-		rr0_st = g.mul(s_r_0_st, g_r_0_st, alus=[11], output_streams=[g.SG4[4]]) #input_streams=[g.SG4_E[4], g.SG4_W[7]], direction=Direction.WESTWARD
-		ii0_st = g.mul(s_i_0_st, g_i_0_st, alus=[10], output_streams=[g.SG4[7]]) #input_streams=[g.SG4_E[6], g.SG4_W[5]], direction=Direction.WESTWARD
-		ri0_st = g.mul(s_r_0_st, g_i_0_st, alus=[7], output_streams=[g.SG4[2]]) #input_streams=[g.SG4_E[4], g.SG4_W[5]], direction=Direction.WESTWARD
-		ir0_st = g.mul(s_i_0_st, g_r_0_st, alus=[15], output_streams=[g.SG4[0]]) #input_streams=[g.SG4_E[6], g.SG4_W[7]], direction=Direction.WESTWARD
-		r0_st = g.sub(rr0_st, ii0_st, alus=[9], output_streams=[g.SG4[5]]) #input_streams=[g.SG4_W[4], g.SG4_W[7]], direction=Direction.EASTWARD
-		i0_st = g.add(ri0_st, ir0_st, alus=[2], output_streams=[g.SG4[0]]) #input_streams=[g.SG4_W[2], g.SG4_W[0]], direction=Direction.EASTWARD
-		rr1_st = g.mul(s_r_1_st, g_r_1_st, alus=[12], output_streams=[g.SG4[0]]) #input_streams=[g.SG4_E[1], g.SG4_W[6]], direction=Direction.EASTWARD
-		ii1_st = g.mul(s_i_1_st, g_i_1_st, alus=[4], output_streams=[g.SG4[2]]) #input_streams=[g.SG4_E[5], g.SG4_W[3]], direction=Direction.EASTWARD
-		ri1_st = g.mul(s_r_1_st, g_i_1_st, alus=[0], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_E[1], g.SG4_W[3]], direction=Direction.EASTWARD
-		ir1_st = g.mul(s_i_1_st, g_r_1_st, alus=[8], output_streams=[g.SG4[7]]) #input_streams=[g.SG4_E[5], g.SG4_W[6]], direction=Direction.EASTWARD
-		r1_st = g.sub(rr1_st, ii1_st, alus=[1], output_streams=[g.SG4[2]]) #input_streams=[g.SG4_E[0], g.SG4_E[2]], direction=Direction.EASTWARD
-		i1_st = g.add(ri1_st, ir1_st, alus=[14], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_E[1], g.SG4_E[7]], direction=Direction.EASTWARD
-		r_st = g.add(r0_st, r1_st, alus=[6], output_streams=[g.SG4[5]], time=0) #input_streams=[g.SG4_E[5], g.SG4_E[2]], direction=Direction.WESTWARD
-		i_st = g.add(i0_st, i1_st, alus=[3], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_E[0], g.SG4_E[1]], direction=Direction.WESTWARD
-		r_delay_st = g.vxm_identity(r_st, alus=[5], output_streams=[g.SG4[2]]) #input_streams=[g.SG4_W[5]], direction=Direction.WESTWARD
-		i_delay_st = g.vxm_identity(i_st, alus=[13], output_streams=[g.SG4[7]]) #input_streams=[g.SG4_W[1]], direction=Direction.WESTWARD
-		return r_delay_st, i_delay_st #directions=[Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD]
-		'''
 		
 		s_r_0_st_m4 = s_r_0#.read(streams=g.SG4[4]) #direction=Direction.EASTWARD
 		s_i_0_st_m4 = s_i_0#.read(streams=g.SG4[1]) #direction=Direction.EASTWARD
