@@ -1,4 +1,5 @@
-from gate_L import Gate as Gate_L
+#from gate_L import Gate as Gate_L
+from gate_L_base import Gate_L_base
 from memory_layouts import *
 import groq.api as g
 import numpy as np
@@ -6,7 +7,7 @@ import numpy as np
 	
 	
 
-class Gate(Gate_L):
+class Gate(Gate_L_base):
 	"""
 	A class used to implement the gate operation on qubits S with no control qubits
 
