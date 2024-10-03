@@ -217,6 +217,8 @@ class Split_gates(IO):
 
 					self.gate_kernels_broadcasted_real_mt = g.concat( gate_kernels_broadcasted_real_list )
 					self.gate_kernels_broadcasted_imag_mt = g.concat( gate_kernels_broadcasted_imag_list )
+					self.gate_kernels_broadcasted_real_mt.name = 'gate_kernels_broadcasted_real'
+					self.gate_kernels_broadcasted_imag_mt.name = 'gate_kernels_broadcasted_imag'					
 					
 
 					gate_kernels_broadcasted_real_copy_list.append( gate_kernels_broadcasted_real_copy_mt )
@@ -226,6 +228,8 @@ class Split_gates(IO):
 
 					self.gate_kernels_broadcasted_real_copy_mt = g.concat( gate_kernels_broadcasted_real_copy_list )
 					self.gate_kernels_broadcasted_imag_copy_mt = g.concat( gate_kernels_broadcasted_imag_copy_list )
+					self.gate_kernels_broadcasted_real_copy_mt.name = 'gate_kernels_broadcasted_real_copy'
+					self.gate_kernels_broadcasted_imag_copy_mt.name = 'gate_kernels_broadcasted_imag_copy'	
 				
 				############################################################################################################x
 			'''

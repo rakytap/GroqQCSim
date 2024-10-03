@@ -87,7 +87,7 @@ class Gate(Gate_L_base):
 
 		read_out_qubit_1_memory_tensor_st = g.mem_gather(self.target_qubit_read_pair_maps_L_mt, control_qbit_state_1_selector_st, output_streams=[g.SG1[1]] )
 		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_1_memory_tensor_st, [memory_addresses//2,320])
-		###########################xx
+		###########################
 
 		read_out_qubit_memory_tensor_st = g.stack( [read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st], dim=1 )
 		
@@ -196,7 +196,7 @@ class Gate(Gate_L_base):
 	
 	def gate_LL_program(self):
 		"""
-		Function implementing the S gate operation on the Groq chip
+		Function implementing the LL gate operation on the Groq chip
 		"""
         
 		#############################################################################################################x		

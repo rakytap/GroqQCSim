@@ -4,7 +4,7 @@ qbit_num = 17
 gate_kernel_element_labels = ["00", "01", "10", "11"]
 
 # gate count stored in a single packed vector 
-gate_count = 9
+gate_count = 11
 
 # the number og qubits for which the gate operations need the permutor (need to reorganize the elements in a vector)
 small_qbit_num_limit = 8
@@ -116,8 +116,8 @@ layout_control_state_0_broadcasted	= f"H1(E), A{gate_count}({gate_count}-{2*gate
 
 
 # memory layout for the tensors full of ones and zeros
-layout_zeros = f"H1(E), A1(0), S4(32-35)"
-layout_ones = f"H1(E), A1(1), S4(32-35)"
+layout_zeros = f"H1(E), A1(1), S4(32-35)"
+layout_ones = f"H1(E), A1(2), S4(32-35)"
 
 
 

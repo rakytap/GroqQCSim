@@ -35,142 +35,11 @@ class Gate(Gate_L_base):
 		
 
 
-	def select_target_qbit_read_map_west(self):
-		"""
-		Function used to read out the correct target qubit map to gather the target qubits L from the memory
-		The target qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
-		The target memory maps of control qubits 9, ..., 17 are stored in the lower half of one slice (addresses 0,1,..., 2^12).
-		The target memory maps of control qubits 18, ..., 20 are stored in the upper half of one slice (addresses 2^12,..., 2^13). 		
-		The 320-byte vector is splitted into 20 16-byte superlanes. 
-		In each 16-byte segments the first two bytes are used to address a memory on a slice. 
-		Thus, 8 memory maps can be stored in a single 16-byte superlane. Distributors are used to move the memory addresses into the position of the first two bytes.
-		 
-       
-		Parameters
-		----------
 
-		Return
-		------
-		Returns with the stream tensor of the target qubits memory map.
-		"""
-
-
-		target_qubit_0_state_read_maps_list = self.target_qubit_read_maps_L_mt.split( dim=0, num_splits=memory_addresses)
-		target_qubit_1_state_read_maps_list = self.target_qubit_read_pair_maps_L_mt.split( dim=0, num_splits=memory_addresses)
-		read_out_state_0_memory_tensor_list = []
-		read_out_state_1_memory_tensor_list = []
-		for idx in range(memory_addresses//4):
-
-			# idx, idx+1 needed for bank alternation strategy
-			read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ 2*idx ] )	# for upper row of the gate kernel (output state is 0)
-			read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ 2*idx+1 ] )	# for upper row of the gate kernel (output state is 0)
-			read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ 2*idx ] )	# for lower row of the gate kernel (output state is 1) 
-			read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ 2*idx+1 ] )	# for lower row of the gate kernel (output state is 1) 
-
-			# idx, idx+1 needed for bank alternation strategy
-			read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ 2*idx ] )	# for upper row of the gate kernel (output state is 0)
-			read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ 2*idx+1 ] )	# for upper row of the gate kernel (output state is 0)
-			read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ 2*idx ] )	# for lower row of the gate kernel (output state is 1) 
-			read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ 2*idx+1 ] )	# for lower row of the gate kernel (output state is 1) 
-
-
-		read_out_qubit_0_memory_tensor_mt = g.stack( read_out_state_0_memory_tensor_list, dim=0 )
-		read_out_qubit_0_memory_tensor_st = read_out_qubit_0_memory_tensor_mt.read( streams=g.SG1[0] )
-		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_0_memory_tensor_st, [memory_addresses,320])
-
-
-		read_out_qubit_1_memory_tensor_mt = g.stack( read_out_state_1_memory_tensor_list, dim=0 )
-		#read_out_qubit_1_memory_tensor_mt.set_program_output()
-		#read_out_qubit_1_memory_tensor_mt.name = "rrrrwwww1"
-		read_out_qubit_1_memory_tensor_st = read_out_qubit_1_memory_tensor_mt.read( streams=g.SG1[1] )
-		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_1_memory_tensor_st, [memory_addresses,320])
-
-
-		read_out_qubit_memory_tensor_st = g.stack( [read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st], dim=1 )
-		
-		
-		gate_counter_distribute_map_selector_st = self.gate_counter_target_qubit_L_distributor_maps_write_mt.read( streams=[g.SG1_W[12]] )		
-		distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
-		#distributor_map_st                      = self.target_qubit_distributor_map_mt.read( streams=g.SG1[6] )
-		
-		read_out_qubit_memory_tensor_st = g.distribute_8( read_out_qubit_memory_tensor_st, 
-									distributor_map_st,
-									distributor_req=self.distributor_request_to_qubit_state_readout,
-									map_stream_req=g.SG1[6],
-									bypass8=0b11111100,
-									)	
-
-		
-		read_out_qubit_memory_tensor_st = g.transpose_null(read_out_qubit_memory_tensor_st, 
-					                             transposer_req=self.transposer_request_to_qubit_state_readout, 
-					                             stream_order=[0,1])
-
-
-		read_out_qubit_memory_tensor_st_list = read_out_qubit_memory_tensor_st.split( dim=1, num_splits=2)	
-		
-		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[0], [memory_addresses,320])
-		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[1], [memory_addresses,320])
-
-
-		#read_out_qubit_0_memory_tensor_st.write( name="rrww0", layout='H1(W), -1, S1', program_output=True )
-		#read_out_qubit_1_memory_tensor_st.write( name="rrww1", layout='H1(W), -1, S1(43)', program_output=True )
-		#distributor_map_st.write( name="distr_map", layout='H1(W), -1, S1(43)', program_output=True )
-		#self.target_qubit_distributor_map_mt.set_program_output()
-		
-
-		return read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st		
-
-
-
-
-	def select_target_qbit_write_map_east(self):
-		"""
-		Function used to read out the correct target qubit map for scattering the target qubits L into the memory
-		The target qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
-		The target memory maps of control qubits 9, ..., 17 are stored in the lower half of one slice (addresses 0,1,..., 2^12).
-		The target memory maps of control qubits 18, ..., 20 are stored in the upper half of one slice (addresses 2^12,..., 2^13). 		
-		The 320-byte vector is splitted into 20 16-byte superlanes. 
-		In each 16-byte segments the first two bytes are used to address a memory on a slice. 
-		Thus, 8 memory maps can be stored in a single 16-byte superlane. Distributors are used to move the memory addresses into the position of the first two bytes.
-		 
-       
-		Parameters
-		----------
-
-		Return
-		------
-		Returns with the stream tensor of the target qubits memory map.
-		"""
-
-
-		target_qubit_write_maps_L_st = self.target_qubit_write_maps_L_mt.read( streams=g.SG1[16] )
-
-		
-		
-		
-		gate_counter_distribute_map_selector_st = self.gate_counter_target_qubit_L_distributor_maps_write_mt.read( streams=[g.SG1_W[12]] )		
-		distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
-		#distributor_map_st                      = self.target_qubit_distributor_map_mt.read( streams=g.SG1[8] )
-		
-		target_qubit_write_maps_L_st = g.distribute_8( target_qubit_write_maps_L_st, 
-									distributor_map_st,
-									distributor_req=self.distributor_request_to_qubit_state_write,
-									map_stream_req=g.SG1[8],
-									bypass8=0b11111110,
-									)	
-
-		
-		target_qubit_write_maps_L_st = g.transpose_null(target_qubit_write_maps_L_st, 
-					                             transposer_req=self.transposer_request_to_qubit_state_write, 
-					                             stream_order=[0])	
-
-		#rr = target_qubit_write_maps_L_st.write(name="uuu", layout='H1(W), -1, S1(43)', program_output=True )
-
-		return target_qubit_write_maps_L_st	
 	
 	def gate_L_program(self):
 		"""
-		Function implementing the S gate operation on the Groq chip
+		Function implementing the L gate operation on the Groq chip
 		"""
         
 		#############################################################################################################x		
@@ -178,20 +47,6 @@ class Gate(Gate_L_base):
 		name = "gate_L"
 		
 		with self.pgm_pkg.create_program_context(name) as pgm6:
-
-
-			# Creates a shared tensor to reuse the memory allocation made by program pgm1
-			State_input_real_shared      = g.shared_memory_tensor(self.State_input_real_mt, name="State_input_real_shared")
-			State_input_imag_shared      = g.shared_memory_tensor(self.State_input_imag_mt, name="State_input_imag_shared")
-			State_input_real_copy_shared = g.shared_memory_tensor(self.State_input_real_copy_mt, name="State_input_real_copy_shared")
-			State_input_imag_copy_shared = g.shared_memory_tensor(self.State_input_imag_copy_mt, name="State_input_imag_copy_shared")
-
-
-			# the transformed states are interated further from gate to gate, but for the first gate they are set to the initial state
-			Psi_transformed_real_mt = State_input_real_shared
-			Psi_transformed_imag_mt = State_input_imag_shared
-			Psi_transformed_real_copy_mt = State_input_real_copy_shared
-			Psi_transformed_imag_copy_mt = State_input_imag_copy_shared
 
 
 			with g.ResourceScope(name=f"apply_gate_scope", is_buffered=True, predecessors=[], time=0) as apply_gate_scope :
