@@ -66,6 +66,9 @@ def compile(mxm_permutation = True) -> List[str]:
 	# program to perform gate_LS operation
 	program.gate_LS_program()
 
+	# program to perform gate_8 operation
+	program.gate_8_program()
+
 	iops = pgm_pkg.assemble()
 
 	return iops
@@ -129,6 +132,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device.load(iop[8], unsafe_keep_entry_points=True) #L
 	device.load(iop[9], unsafe_keep_entry_points=True) #LL
 	device.load(iop[10], unsafe_keep_entry_points=True) #LS	
+	device.load(iop[11], unsafe_keep_entry_points=True) #8	
 	'''
 	if target_qbit >= small_qbit_num_limit :
 		raise ValueError( "the target qubit in this program should be less than 8" )
@@ -338,8 +342,15 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_LS operation
 			index_of_gate_program = 10
-			entry_point = iop["gate_LS"]["mono"]
+			entry_point = iop["gate_LS"]["compute"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			
+		elif target_qbit == 8 and control_qbit == -1: 
+			# pogram perfroming the Gate_S operation
+			index_of_gate_program = 11
+			entry_point = iop["gate_8"]["mono"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output )			
 			#gr0 = gate_output["gr0"]
 			#print( gr0.shape )	
 			#print( memory_addresses )
@@ -349,7 +360,9 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			#print( 	gate_output["rrrrwwww1"][0:20,0:2] )
 			#print( 	gate_output["rrww1"][0:20,0:2] )
 			#print( gate_output["distr_map"] )
-			print( 	gate_output )			
+			#print( 	gate_output )	
+
+		
 
 		else:
 

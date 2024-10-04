@@ -13,11 +13,11 @@ gate_count = groqQCsim.gate_count
 
 if __name__ == "__main__":
 
-	target_qbits  = [12,  0,  10, 6,   4, 15, 3, 13, 5, 12, 7]
-	control_qbits = [-1, 15,  4,  10, -1, 10, 5, 7,  0, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
+	#target_qbits  = [12,  0,  10, 6,   4, 15, 3, 13, 5, 12, 7]
+	#control_qbits = [-1, 15,  4,  10, -1, 10, 5, 7,  0, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
 	
-	#target_qbits  = [10, 14]
-	#control_qbits = [3,  5] #-1 ... no cotrol qubit is incolved in the operation	
+	target_qbits  = [8]
+	control_qbits = [-1] #-1 ... no cotrol qubit is incolved in the operation	
 	
 	
 
@@ -48,7 +48,7 @@ if __name__ == "__main__":
 		if target_qbit == control_qbit:
 			error("The control qubit and target qubit should be different")
 
-		elif target_qbit >= 0 and target_qbit != 8 and target_qbit < 21 and control_qbit == -1:
+		elif target_qbit >= 0 and target_qbit < 21 and control_qbit == -1:
 
 			circuit.add_U3( target_qbit )
 		
