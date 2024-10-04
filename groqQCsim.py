@@ -360,7 +360,6 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			#print( 	gate_output["rrrrwwww1"][0:20,0:2] )
 			#print( 	gate_output["rrww1"][0:20,0:2] )
 			#print( gate_output["distr_map"] )
-			#print( 	gate_output )	
 
 		
 
