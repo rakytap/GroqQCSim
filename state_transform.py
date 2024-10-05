@@ -13,11 +13,11 @@ gate_count = groqQCsim.gate_count
 
 if __name__ == "__main__":
 
-	target_qbits  = [12,  0,  10, 6,   8,  4, 15, 3, 13,  8, 5, 12, 7]
-	control_qbits = [-1, 15,  4,  10, -1, -1, 10, 5, 7,  -1, 0, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
+	target_qbits  = [12,  0,  10, 8, 6,   8,  4, 15, 3, 13,  8, 5, 8, 12, 7]
+	control_qbits = [-1, 15,  4,  2, 10, -1, -1, 10, 5, 7,  -1, 0, 7, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
 	
-	#target_qbits  = [ 8,  8]
-	#control_qbits = [-1, -1] #-1 ... no cotrol qubit is incolved in the operation	
+	#target_qbits  = [8, 8]
+	#control_qbits = [4, 4] #-1 ... no cotrol qubit is incolved in the operation	
 	
 	
 
@@ -56,7 +56,7 @@ if __name__ == "__main__":
 			circuit_1.add_U3( 0 )
 			one_qubit_circuits.append( circuit_1 )
 		
-		elif target_qbit >= 0 and target_qbit < 21 and control_qbit >= 0 and control_qbit < 21 and target_qbit != 8 and control_qbit != 8:	
+		elif target_qbit >= 0 and target_qbit < 21 and control_qbit >= 0 and control_qbit < 21 :	
 	
 
 			circuit.add_adaptive( target_qbit, control_qbit )
