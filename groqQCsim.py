@@ -69,8 +69,11 @@ def compile(mxm_permutation = True) -> List[str]:
 	# program to perform gate_8 operation
 	program.gate_8_program()
 	
-	# program to perform gate_8 operation
-	program.gate_8S_program()	
+	# program to perform gate_8S operation
+	program.gate_8S_program()
+	
+	# program to perform gate_L8 operation
+	program.gate_L8_program()			
 
 	iops = pgm_pkg.assemble()
 
@@ -137,6 +140,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device.load(iop[10], unsafe_keep_entry_points=True) #LS	
 	device.load(iop[11], unsafe_keep_entry_points=True) #8	
 	device.load(iop[12], unsafe_keep_entry_points=True) #8S		
+	device.load(iop[13], unsafe_keep_entry_points=True) #L8			
 	'''
 	if target_qbit >= small_qbit_num_limit :
 		raise ValueError( "the target qubit in this program should be less than 8" )
@@ -350,7 +354,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
 			
 		elif target_qbit == 8 and control_qbit == -1: 
-			# pogram perfroming the Gate_S operation
+			# pogram perfroming the Gate_8 operation
 			index_of_gate_program = 11
 			entry_point = iop["gate_8"]["compute"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
@@ -358,11 +362,19 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 		elif target_qbit == 8 and control_qbit < 8 and control_qbit >= 0: 
 
-			# pogram perfroming the Gate_SS operation
+			# pogram perfroming the Gate_8S operation
 			index_of_gate_program = 12
-			entry_point = iop["gate_8S"]["mono"]
+			entry_point = iop["gate_8S"]["compute"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
-			print( gate_output )			
+			#print( gate_output )	
+			
+		elif target_qbit > 8 and target_qbit < 21 and control_qbit == 8: 
+
+			# pogram perfroming the Gate_L8 operation
+			index_of_gate_program = 13
+			entry_point = iop["gate_L8"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output )						
 
 		
 

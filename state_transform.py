@@ -13,11 +13,11 @@ gate_count = groqQCsim.gate_count
 
 if __name__ == "__main__":
 
-	target_qbits  = [12,  0,  10, 8, 6,   8,  4, 15, 3, 13,  8, 5, 8, 12, 7]
-	control_qbits = [-1, 15,  4,  2, 10, -1, -1, 10, 5, 7,  -1, 0, 7, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
+	target_qbits  = [12,  12, 0,  10, 8, 6,   8,  4, 15, 3, 13, 16, 8, 5, 8, 12, 7]
+	control_qbits = [-1,  8, 15,  4,  2, 10, -1, -1, 10, 5, 7,  8, -1, 0, 7, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
 	
-	#target_qbits  = [8, 8]
-	#control_qbits = [4, 4] #-1 ... no cotrol qubit is incolved in the operation	
+	#target_qbits  = [9, 12]
+	#control_qbits = [8, 8] #-1 ... no cotrol qubit is incolved in the operation
 	
 	
 
@@ -62,23 +62,9 @@ if __name__ == "__main__":
 			circuit.add_adaptive( target_qbit, control_qbit )
 	
 			circuit_1 = Circuit( 1 )
-			circuit_1.add_RY( 0  )	
+			circuit_1.add_RY( 0  )		
 			one_qubit_circuits.append( circuit_1 )
-
-		elif target_qbit >= 0 and target_qbit < 8 and control_qbit > 8 and control_qbit <= 21:	
-	
-			circuit.add_adaptive( target_qbit, control_qbit )
-	
-			circuit_1 = Circuit( 1 )
-			circuit_1.add_RY( 0  )	
-			one_qubit_circuits.append( circuit_1 )			
-		elif target_qbit >= 0 and target_qbit < 8 and control_qbit == 8:	
-	
-			circuit.add_adaptive( target_qbit, control_qbit )
-	
-			circuit_1 = Circuit( 1 )
-			circuit_1.add_RY( 0  )	
-			one_qubit_circuits.append( circuit_1 )			
+		
 		else:
 			error("Unimplemented case wit target qubit and control qubit.")
 		
@@ -153,6 +139,11 @@ if __name__ == "__main__":
 	print( np.real( State_transformed_oracle[0:] ) )
 	print(' ')
 	print( real_part[0:] )
+	'''
+	for idx in range( State_transformed_oracle.size):
+		print( idx, idx & (1 << 8), State_orig_real_float32[idx], np.real( State_transformed_oracle[idx] ), real_part[idx] )
+	'''
+
 	isnan = np.isnan( real_part ) 
 	for idx in range(real_part.size):
 		if isnan[idx] == True:
