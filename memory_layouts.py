@@ -51,7 +51,7 @@ layout_gate_counter_target_qubit_L_distributor_maps = f"H1(W), A{1}(0), S1(34)"
 
 
 # memory layout for the mxm permutation marices (identical permutation matrices are also stored on the easterns hemisphere)
-layout_mxm_permutation_matrices_west = f"H1(W), A{small_qbit_num_limit*20}(0-{small_qbit_num_limit*20-1}), S16(18-36)" 
+layout_mxm_permutation_matrices_west = f"H1(W), A{small_qbit_num_limit*20}(4096-{4096+small_qbit_num_limit*20-1}), S16(18-36)" 
 
 
 # layout to gather map selecting the permutation map corresponding to the target qubit  -- the MT should be replaced by on chip determined gather map, currently it is uploaded from CPU

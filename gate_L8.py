@@ -128,7 +128,7 @@ class Gate(Gate_L_base):
 			g.mem_scatter( Psi_transformed_imag_bytes_mt_list[byte_idx], Psi_imag_bytes_mt_list[byte_idx], target_qubit_L_write_map_st_second_half)
 			g.mem_scatter( Psi_transformed_imag_bytes_mt_list[byte_idx], Psi_imag_bytes_copy_mt_list[byte_idx], target_qubit_L_write_map_st_second_half)
 			
-			# dummy 
+			# dummy storage of unneeded data
 			g.mem_scatter( Psi_transformed_real_bytes_mt_list_first_half[byte_idx], dummy_space_list[byte_idx], target_qubit_L_write_map_st_first_half)
 			g.mem_scatter( Psi_transformed_imag_bytes_mt_list_first_half[byte_idx], dummy_space2_list[byte_idx], target_qubit_L_write_map_st_first_half)			
 					
