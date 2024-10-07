@@ -77,60 +77,68 @@ class Gate(Gate_L_base):
 		# write the calculated states into the memory with mem scatter
 		
 		#choose every second data element in the streams to get control qubit state = 1 for qubit 8
-		Psi_transformed_real_st_list = g.split(Psi_transformed_real_st, dim=0, num_splits=memory_addresses )
-		Psi_transformed_real_st_half      = g.stack( Psi_transformed_real_st_list[1::2], dim=0 )
-		Psi_transformed_real_st_half2      = g.stack( Psi_transformed_real_st_list[0::2], dim=0 )		
+		Psi_transformed_real_st_list        = g.split(Psi_transformed_real_st, dim=0, num_splits=memory_addresses )
+		Psi_transformed_real_st_second_half = g.stack( Psi_transformed_real_st_list[1::2], dim=0 ) # data stored in bank0 corresponding to control qubit state 1	
+		Psi_transformed_real_st_first_half  = g.stack( Psi_transformed_real_st_list[0::2], dim=0 )	# data stored in bank0 corresponding to control qubit state 0	
 		
-		Psi_transformed_imag_st_list = g.split(Psi_transformed_imag_st, dim=0, num_splits=memory_addresses )
-		Psi_transformed_imag_st_half      = g.stack( Psi_transformed_imag_st_list[1::2], dim=0 )
-		Psi_transformed_imag_st_half2      = g.stack( Psi_transformed_imag_st_list[0::2], dim=0 )		
+		Psi_transformed_imag_st_list        = g.split(Psi_transformed_imag_st, dim=0, num_splits=memory_addresses )
+		Psi_transformed_imag_st_second_half = g.stack( Psi_transformed_imag_st_list[1::2], dim=0 ) # data stored in bank0 corresponding to control qubit state 1
+		Psi_transformed_imag_st_first_half  = g.stack( Psi_transformed_imag_st_list[0::2], dim=0 )	# data stored in bank0 corresponding to control qubit state 0	
 		
-		target_qubit_L_write_map_st_list = g.split(target_qubit_L_write_map_st, dim=0, num_splits=memory_addresses )
-		target_qubit_L_write_map_st_half      = g.stack( target_qubit_L_write_map_st_list[1::2], dim=0 )
-		target_qubit_L_write_map_st_half2      = g.stack( target_qubit_L_write_map_st_list[0::2], dim=0 )		
+		target_qubit_L_write_map_st_list        = g.split(target_qubit_L_write_map_st, dim=0, num_splits=memory_addresses )
+		target_qubit_L_write_map_st_second_half = g.stack( target_qubit_L_write_map_st_list[1::2], dim=0 ) # data stored in bank0 corresponding to control qubit state 1
+		target_qubit_L_write_map_st_first_half  = g.stack( target_qubit_L_write_map_st_list[0::2], dim=0 )	# data stored in bank0 corresponding to control qubit state 0	
 		
-		print('ooooooooooooooooooooo ', Psi_transformed_real_st.shape, Psi_transformed_real_st_half.shape )
-		
+
 				
 		
-		Psi_transformed_real_mt_320_8       = g.reinterpret(Psi_transformed_real_st_half, dtype=g.int8)
-		Psi_transformed_imag_mt_320_8       = g.reinterpret(Psi_transformed_imag_st_half, dtype=g.int8)			
+		Psi_transformed_real_mt_320_8       = g.reinterpret(Psi_transformed_real_st_second_half, dtype=g.int8)
+		Psi_transformed_imag_mt_320_8       = g.reinterpret(Psi_transformed_imag_st_second_half, dtype=g.int8)			
 		Psi_transformed_real_bytes_mt_list  = g.split(Psi_transformed_real_mt_320_8, dim=-2, num_splits=g.float32.size)
 		Psi_transformed_imag_bytes_mt_list  = g.split(Psi_transformed_imag_mt_320_8, dim=-2, num_splits=g.float32.size)	
 
-		Psi_transformed_real_mt_320_8_half2       = g.reinterpret(Psi_transformed_real_st_half2, dtype=g.int8)
-		Psi_transformed_imag_mt_320_8_half2       = g.reinterpret(Psi_transformed_imag_st_half2, dtype=g.int8)			
-		Psi_transformed_real_bytes_mt_list_half2  = g.split(Psi_transformed_real_mt_320_8_half2, dim=-2, num_splits=g.float32.size)
-		Psi_transformed_imag_bytes_mt_list_half2  = g.split(Psi_transformed_imag_mt_320_8_half2, dim=-2, num_splits=g.float32.size)	
+		Psi_transformed_real_mt_320_8_first_half       = g.reinterpret(Psi_transformed_real_st_first_half, dtype=g.int8)
+		Psi_transformed_imag_mt_320_8_first_half       = g.reinterpret(Psi_transformed_imag_st_first_half, dtype=g.int8)			
+		Psi_transformed_real_bytes_mt_list_first_half  = g.split(Psi_transformed_real_mt_320_8_first_half, dim=-2, num_splits=g.float32.size)
+		Psi_transformed_imag_bytes_mt_list_first_half  = g.split(Psi_transformed_imag_mt_320_8_first_half, dim=-2, num_splits=g.float32.size)	
 		
-		# constant tensors to address the slices for temporary storage
-		space_tmp = g.constant_tensor( [memory_addresses//2, 320], g.float32, layout= f'H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S4(25-29)',  name=f"rrrr", initialized=False)
-		space_tmp2 = g.constant_tensor( [memory_addresses//2, 320], g.float32, layout= f'H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S4(30-33)', name=f"rrrr2",initialized=False)
+		# constant tensors to address the slices for temporary storage as unsaved data give timing errors during compilation
+		dummy_space = g.constant_tensor( [memory_addresses//2, 320], 
+						g.float32, 
+						layout= f'H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S4(25-29)',  
+						name=f"dummy_space_for_L8", 
+						initialized=False)
+						
+		dummy_space_2 = g.constant_tensor( [memory_addresses//2, 320], 
+						g.float32, 
+						layout= f'H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S4(30-33)', 
+						name=f"dummy_space_for_L8_2",
+						initialized=False)
         
-		space_tmp_8       = g.reinterpret(space_tmp, dtype=g.int8)
-		space_tmp2_8       = g.reinterpret(space_tmp2, dtype=g.int8)			
-		space_tmp_list  = g.split(space_tmp_8, dim=-2, num_splits=g.float32.size)
-		space_tmp2_list  = g.split(space_tmp2_8, dim=-2, num_splits=g.float32.size)	
+		dummy_space_8     = g.reinterpret(dummy_space, dtype=g.int8)
+		dummy_space_2_8   = g.reinterpret(dummy_space_2, dtype=g.int8)			
+		dummy_space_list  = g.split(dummy_space_8, dim=-2, num_splits=g.float32.size)
+		dummy_space2_list = g.split(dummy_space_2_8, dim=-2, num_splits=g.float32.size)	
 		
 				
 		for byte_idx in range(4):
 					
-			g.mem_scatter( Psi_transformed_real_bytes_mt_list[byte_idx], Psi_real_bytes_mt_list[byte_idx], target_qubit_L_write_map_st_half)
-			g.mem_scatter( Psi_transformed_real_bytes_mt_list[byte_idx], Psi_real_bytes_copy_mt_list[byte_idx], target_qubit_L_write_map_st_half)
-			g.mem_scatter( Psi_transformed_imag_bytes_mt_list[byte_idx], Psi_imag_bytes_mt_list[byte_idx], target_qubit_L_write_map_st_half)
-			g.mem_scatter( Psi_transformed_imag_bytes_mt_list[byte_idx], Psi_imag_bytes_copy_mt_list[byte_idx], target_qubit_L_write_map_st_half)
+			g.mem_scatter( Psi_transformed_real_bytes_mt_list[byte_idx], Psi_real_bytes_mt_list[byte_idx], target_qubit_L_write_map_st_second_half)
+			g.mem_scatter( Psi_transformed_real_bytes_mt_list[byte_idx], Psi_real_bytes_copy_mt_list[byte_idx], target_qubit_L_write_map_st_second_half)
+			g.mem_scatter( Psi_transformed_imag_bytes_mt_list[byte_idx], Psi_imag_bytes_mt_list[byte_idx], target_qubit_L_write_map_st_second_half)
+			g.mem_scatter( Psi_transformed_imag_bytes_mt_list[byte_idx], Psi_imag_bytes_copy_mt_list[byte_idx], target_qubit_L_write_map_st_second_half)
 			
-			
-			g.mem_scatter( Psi_transformed_real_bytes_mt_list_half2[byte_idx], space_tmp_list[byte_idx], target_qubit_L_write_map_st_half2)
-			g.mem_scatter( Psi_transformed_imag_bytes_mt_list_half2[byte_idx], space_tmp2_list[byte_idx], target_qubit_L_write_map_st_half2)			
+			# dummy 
+			g.mem_scatter( Psi_transformed_real_bytes_mt_list_first_half[byte_idx], dummy_space_list[byte_idx], target_qubit_L_write_map_st_first_half)
+			g.mem_scatter( Psi_transformed_imag_bytes_mt_list_first_half[byte_idx], dummy_space2_list[byte_idx], target_qubit_L_write_map_st_first_half)			
 					
 					
 					
 
-		Psi_transformed_real_mt_output = g.constant_tensor( self.State_input_real_mt.shape, g.float32, storage_req=self.State_input_real_mt.storage_request, 
-                                                                                    name=f"Psi_transformed_real", initialized=False)
-		Psi_transformed_imag_mt_output = g.constant_tensor( self.State_input_imag_mt.shape, g.float32, storage_req=self.State_input_imag_mt.storage_request, 
-                                                                                    name=f"Psi_transformed_imag", initialized=False)
+		#Psi_transformed_real_mt_output = g.constant_tensor( self.State_input_real_mt.shape, g.float32, storage_req=self.State_input_real_mt.storage_request, 
+                #                                                                    name=f"Psi_transformed_real", initialized=False)
+		#Psi_transformed_imag_mt_output = g.constant_tensor( self.State_input_imag_mt.shape, g.float32, storage_req=self.State_input_imag_mt.storage_request, 
+                #                                                                    name=f"Psi_transformed_imag", initialized=False)
 
 		#Psi_transformed_real_mt_output.set_program_output()
 		#Psi_transformed_imag_mt_output.set_program_output()
