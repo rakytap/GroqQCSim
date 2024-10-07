@@ -68,10 +68,10 @@ class Gate(Gate_8_base):
 		Returns with the stream tensors of the transformed state vector (real and imaginary parts)
 		"""
 		
-		s_r_0_st_m4 = s_r_0.read(streams=g.SG4[4]) #direction=Direction.EASTWARD
-		s_i_0_st_m4 = s_i_0.read(streams=g.SG4[1]) #direction=Direction.EASTWARD
-		s_r_1_st_m4 = s_r_1.read(streams=g.SG4[5]) #direction=Direction.EASTWARD
-		s_i_1_st_m4 = s_i_1.read(streams=g.SG4[7]) #direction=Direction.EASTWARD
+		s_r_0_st_m4 = s_r_0#.read(streams=g.SG4[4]) #direction=Direction.EASTWARD
+		s_i_0_st_m4 = s_i_0#.read(streams=g.SG4[1]) #direction=Direction.EASTWARD
+		s_r_1_st_m4 = s_r_1#.read(streams=g.SG4[5]) #direction=Direction.EASTWARD
+		s_i_1_st_m4 = s_i_1#.read(streams=g.SG4[7]) #direction=Direction.EASTWARD
 		g_r_0_st_m4 = g_r_0#.read(streams=g.SG4[7]) #direction=Direction.WESTWARD
 		g_i_0_st_m4 = g_i_0#.read(streams=g.SG4[3]) #direction=Direction.WESTWARD
 		g_r_1_st_m4 = g_r_1#.read(streams=g.SG4[5]) #direction=Direction.WESTWARD
@@ -92,7 +92,258 @@ class Gate(Gate_8_base):
 		i_st = g.add(i0_st_m2, i1_st_m2, alus=[6], output_streams=[g.SG4[2]]) #input_streams=[g.SG4_E[3], g.SG4_E[4]], direction=Direction.WESTWARD
 		r_delay_st_p0 = g.vxm_identity(r_st, time=0, alus=[13], output_streams=[g.SG4[1]]) #input_streams=[g.SG4_W[0]], direction=Direction.WESTWARD
 		i_delay_st_p0 = g.vxm_identity(i_st, alus=[5], output_streams=[g.SG4[5]]) #input_streams=[g.SG4_W[2]], direction=Direction.WESTWARD
-		return r_st, i_st, r_delay_st_p0, i_delay_st_p0 #directions=[Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD]	
+		return r_st, i_st, r_delay_st_p0, i_delay_st_p0 #directions=[Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD]
+
+
+	def select_target_qbit_read_map_west_8L(self):
+		"""
+		Function used to read out the correct target qubit map to gather the target qubits L from the memory
+		The target qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
+		The target memory maps of control qubits 9, ..., 17 are stored in the lower half of one slice (addresses 0,1,..., 2^12).
+		The target memory maps of control qubits 18, ..., 20 are stored in the upper half of one slice (addresses 2^12,..., 2^13). 		
+		The 320-byte vector is splitted into 20 16-byte superlanes. 
+		In each 16-byte segments the first two bytes are used to address a memory on a slice. 
+		Thus, 8 memory maps can be stored in a single 16-byte superlane. Distributors are used to move the memory addresses into the position of the first two bytes.
+		 
+       
+		Parameters
+		----------
+
+		Return
+		------
+		Returns with the stream tensor of the target qubits memory map.
+		"""
+
+		read_out_qubit_0_memory_tensor_st = self.target_qubit_read_maps_8L_mt.read( streams=g.SG1[0] )
+		read_out_qubit_1_memory_tensor_st = self.target_qubit_read_maps_8L_pair_mt.read( streams=g.SG1[1] )
+
+
+
+		'''
+		read_out_qubit_memory_tensor_st = g.stack( [read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st], dim=1 )
+		
+		
+		gate_counter_distribute_map_selector_st = self.gate_counter_target_qubit_L_distributor_maps_write_mt.read( streams=[g.SG1_W[12]] )		
+		distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
+		#distributor_map_st                      = self.target_qubit_distributor_map_mt.read( streams=g.SG1[6] )
+		
+		read_out_qubit_memory_tensor_st = g.distribute_8( read_out_qubit_memory_tensor_st, 
+									distributor_map_st,
+									distributor_req=self.distributor_request_to_qubit_state_readout,
+									map_stream_req=g.SG1[6],
+									bypass8=0b11111100,
+									)	
+
+		
+		read_out_qubit_memory_tensor_st = g.transpose_null(read_out_qubit_memory_tensor_st, 
+					                             transposer_req=self.transposer_request_to_qubit_state_readout, 
+					                             stream_order=[0,1])
+
+
+		read_out_qubit_memory_tensor_st_list = read_out_qubit_memory_tensor_st.split( dim=1, num_splits=2)	
+		
+		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[0], [memory_addresses,320])
+		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[1], [memory_addresses,320])
+		
+
+		#read_out_qubit_0_memory_tensor_st.write( name="rrww0", layout='H1(W), -1, S1', program_output=True )
+		#read_out_qubit_1_memory_tensor_st.write( name="rrww1", layout='H1(W), -1, S1(43)', program_output=True )
+		#distributor_map_st.write( name="distr_map", layout='H1(W), -1, S1(43)', program_output=True )
+		#self.target_qubit_distributor_map_mt.set_program_output()
+		'''
+
+		return read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st
+
+
+	def read_out_state_2_transform_8L( self, read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st):
+	
+		"""
+		Function used to read out the state vector to be transfromed according to the predefined memory maps
+		
+		
+		Parameters
+		----------
+		read_out_qubit_0_memory_tensor_st : StreamTensor
+			The memory map to read out the state vector elements standing for target qbit state 0
+		read_out_qubit_1_memory_tensor_st : StreamTensor
+			The memory map to read out the state vector elements standing for target qbit state 1
+		
+		Return
+		------
+		Returns with the stream tensors of the state vector (real and imaginary parts)
+		
+		Psi_transformed_real_state_0 : StreamTensor
+			The real part of the input state vector, where the target qubit is in state 0
+		Psi_transformed_imag_state_0 : StreamTensor
+			The imaginary part of the input state vector, where the target qubit is in state 0
+		Psi_transformed_real_state_1 : StreamTensor
+			The real part of the input state vector, where the target qubit is in state 1
+		Psi_transformed_imag_state_1 : StreamTensor
+			The imaginary part of the input state vector, where the target qubit is in state 1
+		
+		"""
+
+		# define state with 320 vectors instead of 256 inner splits
+		Psi_real_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_real_mt.storage_request, initialized=False)		
+		Psi_imag_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_imag_mt.storage_request, initialized=False)
+		Psi_real_copy_mt_320 = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_real_copy_mt.storage_request, initialized=False)
+		Psi_imag_copy_mt_320 = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_imag_copy_mt.storage_request, initialized=False)
+
+				
+		# separating the tensors along the slice dimension (separating the bytes)
+		Psi_real_mt_320_8       = g.reinterpret(Psi_real_mt_320, dtype=g.int8)
+		Psi_imag_mt_320_8       = g.reinterpret(Psi_imag_mt_320, dtype=g.int8)			
+		Psi_real_bytes_mt_list  = g.split(Psi_real_mt_320_8, dim=-2, num_splits=g.float32.size)
+		Psi_imag_bytes_mt_list  = g.split(Psi_imag_mt_320_8, dim=-2, num_splits=g.float32.size)
+
+
+		Psi_real_copy_mt_320_8       = g.reinterpret(Psi_real_copy_mt_320, dtype=g.int8)
+		Psi_imag_copy_mt_320_8       = g.reinterpret(Psi_imag_copy_mt_320, dtype=g.int8)			
+		Psi_real_bytes_copy_mt_list  = g.split(Psi_real_copy_mt_320_8, dim=-2, num_splits=g.float32.size)
+		Psi_imag_bytes_copy_mt_list  = g.split(Psi_imag_copy_mt_320_8, dim=-2, num_splits=g.float32.size)
+					
+		element_num = read_out_qubit_1_memory_tensor_st.shape[0]
+				
+
+
+		Psi_transformed_real_state_0_bytes_list = []
+		Psi_transformed_imag_state_0_bytes_list = []
+		Psi_transformed_real_state_0_copy_bytes_list = []
+		Psi_transformed_imag_state_0_copy_bytes_list = []
+		#gate_element_real_copy_list = []
+		#gate_element_imag_copy_list = []
+		for byte_idx in range(4):
+
+			Psi_real_bytes_mt      = Psi_real_bytes_mt_list[byte_idx]
+			Psi_imag_bytes_mt      = Psi_imag_bytes_mt_list[byte_idx]
+			Psi_real_bytes_copy_mt = Psi_real_bytes_copy_mt_list[byte_idx]
+			Psi_imag_bytes_copy_mt = Psi_imag_bytes_copy_mt_list[byte_idx]
+			'''
+			Psi_real_bytes_mt_element_list = g.split( Psi_real_bytes_mt, dim=0, num_splits=memory_addresses )
+			Psi_imag_bytes_mt_element_list = g.split( Psi_imag_bytes_mt, dim=0, num_splits=memory_addresses )
+			Psi_real_bytes_copy_mt_element_list = g.split( Psi_real_bytes_copy_mt, dim=0, num_splits=memory_addresses )
+			Psi_imag_bytes_copy_mt_element_list = g.split( Psi_imag_bytes_copy_mt, dim=0, num_splits=memory_addresses )
+			'''
+			read_out_qubit_0_memory_tensor_st_element_list = g.split( read_out_qubit_0_memory_tensor_st, dim=0, num_splits=element_num )
+			read_out_qubit_1_memory_tensor_st_element_list = g.split( read_out_qubit_1_memory_tensor_st, dim=0, num_splits=element_num )
+
+			Psi_transformed_real_state_0_byte_st_list = []
+			Psi_transformed_imag_state_0_byte_st_list = []
+			Psi_transformed_real_state_1_byte_st_list = []
+			Psi_transformed_imag_state_1_byte_st_list = []
+
+			for element_idx in range(element_num):
+
+				if element_idx % 2 == 0:
+					output_stream_offset = 4*4
+					Psi_transformed_real_state_0_byte_st_list.append(
+										g.mem_gather( Psi_real_bytes_mt, read_out_qubit_0_memory_tensor_st_element_list[element_idx],
+										 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
+										)
+
+					output_stream_offset = 1*4
+					Psi_transformed_imag_state_0_byte_st_list.append(
+										g.mem_gather( Psi_imag_bytes_mt, read_out_qubit_0_memory_tensor_st_element_list[element_idx],
+										 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
+										)
+
+					output_stream_offset = 5*4
+					Psi_transformed_real_state_1_byte_st_list.append(
+										g.mem_gather( Psi_real_bytes_copy_mt, read_out_qubit_1_memory_tensor_st_element_list[element_idx],
+										 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
+										)
+
+					output_stream_offset = 7*4
+					Psi_transformed_imag_state_1_byte_st_list.append(
+										g.mem_gather( Psi_imag_bytes_copy_mt, read_out_qubit_1_memory_tensor_st_element_list[element_idx],
+										 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
+										)
+
+				else:
+					output_stream_offset = 4*4
+					Psi_transformed_real_state_0_byte_st_list.append(
+										g.mem_gather( Psi_real_bytes_copy_mt, read_out_qubit_0_memory_tensor_st_element_list[element_idx],
+										 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
+										)
+
+					output_stream_offset = 1*4
+					Psi_transformed_imag_state_0_byte_st_list.append(
+										g.mem_gather( Psi_imag_bytes_copy_mt, read_out_qubit_0_memory_tensor_st_element_list[element_idx],
+										 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
+										)
+
+
+					output_stream_offset = 5*4
+					Psi_transformed_real_state_1_byte_st_list.append(
+										g.mem_gather( Psi_real_bytes_mt, read_out_qubit_1_memory_tensor_st_element_list[element_idx],
+										 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
+										)
+
+					output_stream_offset = 7*4
+					Psi_transformed_imag_state_1_byte_st_list.append(
+										g.mem_gather( Psi_imag_bytes_mt, read_out_qubit_1_memory_tensor_st_element_list[element_idx],
+										 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
+										)
+
+				'''
+					
+				################
+				output_stream_offset = 4*4
+				Psi_transformed_real_state_0_byte_st = g.mem_gather( Psi_real_bytes_mt, read_out_qubit_0_memory_tensor_st,
+										 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
+
+
+
+				################
+				output_stream_offset = 1*4
+				Psi_transformed_imag_state_0_byte_st = g.mem_gather( Psi_imag_bytes_mt, read_out_qubit_0_memory_tensor_st,
+												 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
+
+
+
+				################
+				output_stream_offset = 5*4
+				Psi_transformed_real_state_0_copy_byte_st = g.mem_gather( Psi_real_bytes_copy_mt, read_out_qubit_1_memory_tensor_st,
+												 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
+
+
+
+
+				################
+				output_stream_offset = 7*4
+				Psi_transformed_imag_state_0_copy_byte_st = g.mem_gather( Psi_imag_bytes_copy_mt, read_out_qubit_1_memory_tensor_st,
+												 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
+				'''
+
+			Psi_transformed_real_state_0_byte_st = g.stack( Psi_transformed_real_state_0_byte_st_list, dim=0)
+			Psi_transformed_imag_state_0_byte_st = g.stack( Psi_transformed_imag_state_0_byte_st_list, dim=0)
+			Psi_transformed_real_state_1_byte_st = g.stack( Psi_transformed_real_state_1_byte_st_list, dim=0)
+			Psi_transformed_imag_state_1_byte_st = g.stack( Psi_transformed_imag_state_1_byte_st_list, dim=0)
+
+
+
+			Psi_transformed_real_state_0_byte_st = g.reshape( Psi_transformed_real_state_0_byte_st, [element_num,1,320])
+			Psi_transformed_imag_state_0_byte_st = g.reshape( Psi_transformed_imag_state_0_byte_st, [element_num,1,320])
+			Psi_transformed_real_state_0_copy_byte_st = g.reshape( Psi_transformed_real_state_1_byte_st, [element_num,1,320])
+			Psi_transformed_imag_state_0_copy_byte_st = g.reshape( Psi_transformed_imag_state_1_byte_st, [element_num,1,320])
+
+			Psi_transformed_real_state_0_bytes_list.append( Psi_transformed_real_state_0_byte_st )	
+			Psi_transformed_imag_state_0_bytes_list.append( Psi_transformed_imag_state_0_byte_st )			
+			Psi_transformed_real_state_0_copy_bytes_list.append( Psi_transformed_real_state_0_copy_byte_st )
+			Psi_transformed_imag_state_0_copy_bytes_list.append( Psi_transformed_imag_state_0_copy_byte_st )
+					
+		Psi_transformed_real_state_0      = g.concat( Psi_transformed_real_state_0_bytes_list, dim=1 )
+		Psi_transformed_imag_state_0      = g.concat( Psi_transformed_imag_state_0_bytes_list, dim=1 )
+		Psi_transformed_real_state_1      = g.concat( Psi_transformed_real_state_0_copy_bytes_list, dim=1 )
+		Psi_transformed_imag_state_1      = g.concat( Psi_transformed_imag_state_0_copy_bytes_list, dim=1 )
+							
+		Psi_transformed_real_state_0      = g.reinterpret(Psi_transformed_real_state_0, dtype=g.float32 )
+		Psi_transformed_imag_state_0      = g.reinterpret(Psi_transformed_imag_state_0, dtype=g.float32 )
+		Psi_transformed_real_state_1      = g.reinterpret(Psi_transformed_real_state_1, dtype=g.float32 )
+		Psi_transformed_imag_state_1      = g.reinterpret(Psi_transformed_imag_state_1, dtype=g.float32 )
+		
+		
+		return Psi_transformed_real_state_0, Psi_transformed_imag_state_0, Psi_transformed_real_state_1, Psi_transformed_imag_state_1			
 	
 	def gate_8L_program(self):
 		"""
@@ -123,7 +374,7 @@ class Gate(Gate_8_base):
 
 			with g.ResourceScope(name=f"apply_gate_scope", is_buffered=True, predecessors=[], time=0) as apply_gate_scope :
 				control_1 = [ x^(1<<(self.control_qubit-8)) for x in range(memory_addresses) if x < x^(1<<(self.control_qubit-8)) ]
-
+				
 				pairs = []
 				for x in range(memory_addresses):
 					if x < x^1 and x in control_1:
@@ -164,26 +415,36 @@ class Gate(Gate_8_base):
 				pairs0 = [x.reshape(2, memory_addresses//4, matrix_size) for x in pairs0.split(num_splits=2, dim=2)]
 				#pairs (2, memory_addresses//4, 2, matrix_size) -> [(2, memory_addresses//4, matrix_size)]*2
 				
+				new_shape = (2, memory_addresses//4, 1, matrix_size) if self.target_qubit==8 else (2, memory_addresses//8, 2, matrix_size)
+				pairs0[0] = pairs0[0].reshape(*new_shape).transpose(1, 0, 2, 3)
+				pairs0[1] = pairs0[1].reshape(*new_shape).transpose(1, 0, 2, 3)
+				pairs1[0] = pairs1[0].reshape(*new_shape).transpose(1, 0, 2, 3)
+				pairs1[1] = pairs1[1].reshape(*new_shape).transpose(1, 0, 2, 3)
+				'''
+				Psi_transformed_real_state_0_st = pairs0[0].read(streams=g.SG4[4]) #direction=Direction.EASTWARD
+				Psi_transformed_imag_state_0_st = pairs0[1].read(streams=g.SG4[1]) #direction=Direction.EASTWARD
+				Psi_transformed_real_state_1_st = pairs1[0].read(streams=g.SG4[5]) #direction=Direction.EASTWARD
+				Psi_transformed_imag_state_1_st = pairs1[1].read(streams=g.SG4[7])
+				'''
+				
+				read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st = self.select_target_qbit_read_map_west_8L()
 
+				# readout quantum state to be stransformed
+				Psi_transformed_real_state_0_st, Psi_transformed_imag_state_0_st, Psi_transformed_real_state_1_st, Psi_transformed_imag_state_1_st  = \
+							 self.read_out_state_2_transform_8L( read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st)
 
+				
 				# readout gate elements	
 				state_real_0_st = pairs0[0]
 				element_num = state_real_0_st.shape[0]*state_real_0_st.shape[1]
 						
 				gate_first_column_real_st, gate_first_column_imag_st, gate_second_column_real_st, gate_second_column_imag_st = \
 							self.read_out_gate_elements_8( element_num )
-	 	
-				
-				new_shape = (2, memory_addresses//4, 1, matrix_size) if self.target_qubit==8 else (2, memory_addresses//8, 2, matrix_size)
-				pairs0[0] = pairs0[0].reshape(*new_shape).transpose(1, 0, 2, 3)
-				pairs0[1] = pairs0[1].reshape(*new_shape).transpose(1, 0, 2, 3)
-				pairs1[0] = pairs1[0].reshape(*new_shape).transpose(1, 0, 2, 3)
-				pairs1[1] = pairs1[1].reshape(*new_shape).transpose(1, 0, 2, 3)
                             
-				pairs0[0], pairs0[1], pairs1[0], pairs1[1] = self.two_complex_dot_product_8L( pairs0[0],
-														pairs0[1], 
-														pairs1[0], 
-														pairs1[1], 
+				pairs0[0], pairs0[1], pairs1[0], pairs1[1] = self.two_complex_dot_product_8L( Psi_transformed_real_state_0_st,
+														Psi_transformed_imag_state_0_st, 
+														Psi_transformed_real_state_1_st, 
+														Psi_transformed_imag_state_1_st, 
 														gate_first_column_real_st, 
 														gate_first_column_imag_st, 
 														gate_second_column_real_st, 

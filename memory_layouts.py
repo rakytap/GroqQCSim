@@ -28,25 +28,27 @@ layout_target_qubit_read_maps_L = f"H1(W), A{memory_addresses}(0-{memory_address
 # each 2-byte column in the 16-byte blocks of the map tensor corresponds to a specific control qbit 	
 layout_control_qubit_address_maps_SL_west = f"H1(W), A{memory_slices}(0-{memory_slices-1}), S1(39)"
 
+layout_target_qubit_read_maps_8L_pair = f"H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S1(37)"
+
 
 # gate counter: for reading out the correct permute map selector (each gate act on a different target qubit)
-layout_gate_counter_perm_map_selector = f"H1(W), A{1}(0), S1(37)"
+layout_gate_counter_perm_map_selector = f"H1(W), A{1}(320), S1(36)"
 
 # control qubit dependent distributor map for SL gate
-layout_distributor_maps_west         = f"H1(W), A{gate_count}(1-{1+gate_count-1}), S1(37)"  #TODO HAVE A disptributor map also on the east
-layout_target_qubit_distributor_maps = f"H1(W), A{gate_count}({gate_count+1}-{2*gate_count}), S1(37)"  #TODO HAVE A disptributor map also on the east
-layout_control_qubit_distributor_maps = f"H1(W), A{gate_count}({2*gate_count+1}-{3*gate_count}), S1(37)"  #TODO HAVE A disptributor map also on the east
+layout_distributor_maps_west         = f"H1(W), A{gate_count}(1-{1+gate_count-1}), S1(36)"  #TODO HAVE A disptributor map also on the east
+layout_target_qubit_distributor_maps = f"H1(W), A{gate_count}({gate_count+1}-{2*gate_count}), S1(36)"  #TODO HAVE A disptributor map also on the east
+layout_control_qubit_distributor_maps = f"H1(W), A{gate_count}({2*gate_count+1}-{3*gate_count}), S1(36)"  #TODO HAVE A disptributor map also on the east
 
 # permute maps used to reorder the state vector elements according to the given target qubit (permute map is also stored on the easter hemisphere)
-layout_permute_maps_west = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(36)"
+layout_permute_maps_west = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(35)"
 
 
 # gate counter: for reading out the correct distributor map for choosing the correct L control qubit memory maps
-layout_gate_counter_distributor_maps_west = "H1(W), A1(0), S1(35)"
+layout_gate_counter_distributor_maps_west = "H1(W), A1(0), S1(34)"
 
 
 #gate counter: for reading control_state_1_broadcasted and control_state_0_boradcasted (each gate act on a different target qubit)
-layout_gate_counter_target_qubit_L_distributor_maps = f"H1(W), A{1}(0), S1(34)"
+layout_gate_counter_target_qubit_L_distributor_maps = f"H1(W), A{1}(0), S1(33)"
 
 
 

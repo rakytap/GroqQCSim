@@ -968,13 +968,15 @@ class IO:
 			print( mem_read_map_pair[:,0:2] )			
 
 			self.target_qubit_read_maps_8L_mt      = g.from_data(mem_read_map, layout=layout_target_qubit_read_maps_8L)	
+			self.target_qubit_read_maps_8L_pair_mt = g.from_data(mem_read_map_pair, layout=layout_target_qubit_read_maps_8L_pair)	
 			self.target_qubit_read_maps_8L_mt.is_static      = True				
+			self.target_qubit_read_maps_8L_pair_mt.is_static = True		
 			
 			
 			
 			
 			mem_write_map = self.generate_target_qubit_8L_control_qbit_write_maps()	
-			print( mem_write_map[:,0:2] )
+			#print( mem_write_map[:,0:2] )
 
 			#self.target_qubit_read_maps_8L_mt      = g.from_data(mem_read_map, layout=layout_target_qubit_read_maps_8L)	
 			#self.target_qubit_read_maps_8L_mt.is_static      = True	
