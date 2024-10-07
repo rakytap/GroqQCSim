@@ -41,7 +41,7 @@ def compile(mxm_permutation = True) -> List[str]:
 	program.upload_program()
 	program.download_state_program()
 	program.split_gates_program()
-
+	'''
 	# program to perform gate_S operation
 	program.gate_S_program()
 
@@ -74,6 +74,9 @@ def compile(mxm_permutation = True) -> List[str]:
 	
 	# program to perform gate_L8 operation
 	program.gate_L8_program()			
+	'''
+	# program to perform gate_8L operation
+	program.gate_8L_program()	
 
 	iops = pgm_pkg.assemble()
 
@@ -131,6 +134,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device.load(iop[1], unsafe_keep_entry_points=True) # split_gates
 	device.load(iop[2], unsafe_keep_entry_points=True) # download
 	device.load(iop[3], unsafe_keep_entry_points=True) #S
+	'''
 	device.load(iop[4], unsafe_keep_entry_points=True) #SS
 	device.load(iop[5], unsafe_keep_entry_points=True) #SL
 	device.load(iop[6], unsafe_keep_entry_points=True) #S8
@@ -140,7 +144,8 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device.load(iop[10], unsafe_keep_entry_points=True) #LS	
 	device.load(iop[11], unsafe_keep_entry_points=True) #8	
 	device.load(iop[12], unsafe_keep_entry_points=True) #8S		
-	device.load(iop[13], unsafe_keep_entry_points=True) #L8			
+	device.load(iop[13], unsafe_keep_entry_points=True) #L8	
+	'''		
 	'''
 	if target_qbit >= small_qbit_num_limit :
 		raise ValueError( "the target qubit in this program should be less than 8" )
@@ -374,7 +379,16 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			index_of_gate_program = 13
 			entry_point = iop["gate_L8"]["compute"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
-			#print( gate_output )						
+			#print( gate_output )	
+
+			
+		elif target_qbit == 8 and target_qbit < 21 and control_qbit > 8: 
+
+			# pogram perfroming the Gate_L8 operation
+			index_of_gate_program = 3
+			entry_point = iop["gate_8L"]["mono"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output )					
 
 		
 

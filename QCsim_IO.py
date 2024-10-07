@@ -189,6 +189,84 @@ class IO:
 				
 
 		return mem_gather_map
+		
+		
+
+	def generate_target_qubit_8L_control_qbit_read_maps(self):
+		"""
+		Function to generate memory maps for the control qubits to gather state vector elements from the memory for target qubit 8 corresponding to control qbit state 1
+		
+		Return
+		--------
+		returns with the generated numpy version of the memmory maps
+		"""
+	
+		# memory map containing all of the memory maps
+		# maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
+		# maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_slices+1,...,memory_slices)		
+		mem_read_map      = np.zeros( (memory_addresses//2, 320,), dtype=np.uint8 )		
+		mem_read_map_pair = np.zeros( (memory_addresses//2, 320,), dtype=np.uint8 )				
+					
+		half_slice = 1 << 12
+
+		
+
+		for control_qbit in range(9, 17):
+
+			print( 'control_qbit: ', control_qbit, memory_addresses )
+			
+		
+			horizontal_offset_in_memory_map = (control_qbit-1-small_qbit_num_limit)*2 
+
+			control_qbit_mask = 1<<(control_qbit-small_qbit_num_limit)
+		
+			target_qbit_index_pairs = [ [x, x^1] for x in range(memory_addresses) if x < x^1  ]
+			target_qbit_index_pairs = np.array( target_qbit_index_pairs )
+
+
+			# indices in the target qbit maps having control qubit states 1
+			controlled_qubit_state_1_map_indices = np.argwhere( (target_qbit_index_pairs[:,0] & control_qbit_mask) > 0 )
+			controlled_qubit_state_1_map         = target_qbit_index_pairs[controlled_qubit_state_1_map_indices, 0]
+			controlled_qubit_state_1_map_pairs   = target_qbit_index_pairs[controlled_qubit_state_1_map_indices, 1]
+			#print( controlled_qubit_state_1_map_indices.size, mem_read_map.shape )
+			#print( controlled_qubit_state_1_map )
+			
+			for idx in range( controlled_qubit_state_1_map.size ):
+				
+				mem_addr      = controlled_qubit_state_1_map[idx]
+				mem_addr_pair = controlled_qubit_state_1_map_pairs[idx]
+				
+				# adding memory address offset for bank alternation
+				mem_addr      = mem_addr//2 if mem_addr % 2 == 0 else mem_addr//2 + half_slice
+				mem_addr_pair = mem_addr_pair//2 if mem_addr_pair % 2 == 0 else mem_addr_pair//2 + half_slice
+																							
+								
+				# the 2-byte (16-bit) memory offset needs to be splitted into two bytes
+				lower_bits_of_addresses_mem_addr  = mem_addr & 255
+				higher_bits_of_addresses_mem_addr = (mem_addr >> 8 ) & 255
+
+				lower_bits_of_addresses_mem_addr_pair  = mem_addr_pair & 255
+				higher_bits_of_addresses_mem_addr_pair = (mem_addr_pair >> 8 ) & 255
+					
+								
+				for superlane_idx in range(20):
+					col_idx = horizontal_offset_in_memory_map + 16*superlane_idx
+					
+					mem_read_map[ 2*idx+0, col_idx ]   = lower_bits_of_addresses_mem_addr
+					mem_read_map[ 2*idx+0, col_idx+1 ] = higher_bits_of_addresses_mem_addr
+					
+					mem_read_map[ 2*idx+1, col_idx ]   = lower_bits_of_addresses_mem_addr
+					mem_read_map[ 2*idx+1, col_idx+1 ] = higher_bits_of_addresses_mem_addr
+					
+					mem_read_map_pair[ 2*idx+0, col_idx ]   = lower_bits_of_addresses_mem_addr_pair
+					mem_read_map_pair[ 2*idx+0, col_idx+1 ] = higher_bits_of_addresses_mem_addr_pair
+					
+					mem_read_map_pair[ 2*idx+1, col_idx ]   = lower_bits_of_addresses_mem_addr_pair
+					mem_read_map_pair[ 2*idx+1, col_idx+1 ] = higher_bits_of_addresses_mem_addr_pair	
+																				
+
+		return mem_read_map, mem_read_map_pair
+
 
 
 	def generate_target_qubit_LL_control_qbit_read_maps(self):
@@ -214,7 +292,7 @@ class IO:
 			if control_qbit == 16:
 				continue  #TODO!!!!!!!!!!!!!!!!!!!!!!!!
 
-			print( 'control_qbit: ', control_qbit )
+			#print( 'control_qbit: ', control_qbit )
 
 			target_qbit = control_qbit + 1 # as we get the same control qubit memory maps for each target qbit
 			
@@ -348,6 +426,70 @@ class IO:
 																				
 
 		return mem_read_map, mem_read_pair_map
+
+
+	def generate_target_qubit_8L_control_qbit_write_maps(self):
+		"""
+		Function to generate memory maps to scatter state vector elements into the memory for target qubits L
+		
+		Return
+		--------
+		returns with the generated numpy version of the memmory maps
+		"""
+	
+		# memory map containing all of the memory maps		
+		mem_write_map      = np.zeros( (memory_addresses//2, 320,), dtype=np.uint8 )
+		
+		half_slice = 1 << 12
+		
+		for control_qbit in range(9, 17):
+		
+			horizontal_offset_in_memory_map = (control_qbit-1-small_qbit_num_limit)*2 
+
+			control_qbit_mask = 1<<(control_qbit-small_qbit_num_limit)
+		
+			target_qbit_index_pairs = [ [x, x^1] for x in range(memory_addresses) if x < x^1  ]
+			target_qbit_index_pairs = np.array( target_qbit_index_pairs )
+
+
+			# indices in the target qbit maps having control qubit states 1
+			controlled_qubit_state_1_map_indices = np.argwhere( (target_qbit_index_pairs[:,0] & control_qbit_mask) > 0 )
+			controlled_qubit_state_1_map         = target_qbit_index_pairs[controlled_qubit_state_1_map_indices, 0]
+			controlled_qubit_state_1_map_pairs   = target_qbit_index_pairs[controlled_qubit_state_1_map_indices, 1]
+			#print( controlled_qubit_state_1_map_indices.size, mem_write_map.shape )
+			#print( controlled_qubit_state_1_map )
+			
+			for idx in range( controlled_qubit_state_1_map.size ):
+				
+				mem_addr      = controlled_qubit_state_1_map[idx]
+				mem_addr_pair = controlled_qubit_state_1_map_pairs[idx]
+				
+				# adding memory address offset for bank alternation
+				mem_addr      = mem_addr//2 if mem_addr % 2 == 0 else mem_addr//2 + half_slice
+				mem_addr_pair = mem_addr_pair//2 if mem_addr_pair % 2 == 0 else mem_addr_pair//2 + half_slice
+																							
+								
+				# the 2-byte (16-bit) memory offset needs to be splitted into two bytes
+				lower_bits_of_addresses_mem_addr  = mem_addr & 255
+				higher_bits_of_addresses_mem_addr = (mem_addr >> 8 ) & 255
+
+				lower_bits_of_addresses_mem_addr_pair  = mem_addr_pair & 255
+				higher_bits_of_addresses_mem_addr_pair = (mem_addr_pair >> 8 ) & 255
+					
+								
+				for superlane_idx in range(20):
+					col_idx = horizontal_offset_in_memory_map + 16*superlane_idx
+					
+					mem_write_map[ 2*idx+0, col_idx ]   = lower_bits_of_addresses_mem_addr
+					mem_write_map[ 2*idx+0, col_idx+1 ] = higher_bits_of_addresses_mem_addr
+					
+					mem_write_map[ 2*idx+1, col_idx ]   = lower_bits_of_addresses_mem_addr_pair
+					mem_write_map[ 2*idx+1, col_idx+1 ] = higher_bits_of_addresses_mem_addr_pair
+						
+																				
+
+		return mem_write_map
+
 
 
 
@@ -820,6 +962,23 @@ class IO:
 			self.target_qubit_read_maps_LL_mt.is_static      = True				
 
 
+
+			mem_read_map, mem_read_map_pair = self.generate_target_qubit_8L_control_qbit_read_maps()	
+			print( mem_read_map[:,0:2] )
+			print( mem_read_map_pair[:,0:2] )			
+
+			self.target_qubit_read_maps_8L_mt      = g.from_data(mem_read_map, layout=layout_target_qubit_read_maps_8L)	
+			self.target_qubit_read_maps_8L_mt.is_static      = True				
+			
+			
+			
+			
+			mem_write_map = self.generate_target_qubit_8L_control_qbit_write_maps()	
+			print( mem_write_map[:,0:2] )
+
+			#self.target_qubit_read_maps_8L_mt      = g.from_data(mem_read_map, layout=layout_target_qubit_read_maps_8L)	
+			#self.target_qubit_read_maps_8L_mt.is_static      = True	
+			#exit()
 			####################################	
 			
 			

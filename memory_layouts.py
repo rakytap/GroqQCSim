@@ -4,7 +4,7 @@ qbit_num = 17
 gate_kernel_element_labels = ["00", "01", "10", "11"]
 
 # gate count stored in a single packed vector 
-gate_count = 17
+gate_count = 1 #17
 
 # the number og qubits for which the gate operations need the permutor (need to reorganize the elements in a vector)
 small_qbit_num_limit = 8
@@ -15,7 +15,7 @@ matrix_size   = int(2**small_qbit_num_limit)
 memory_slices = 1 << (qbit_num-small_qbit_num_limit) # TODO:replace all the occurances to memory_addresses
 memory_addresses = 1 << (qbit_num-small_qbit_num_limit)
 
-
+layout_target_qubit_read_maps_8L = f"H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S1(43)"
 layout_target_qubit_read_maps_LL = f"H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S1(42)"
 
 # memory gather maps for L target qubits
