@@ -90,6 +90,134 @@ class Gate_8_base(Gate_counters):
 		i_delay_st_p0 = g.vxm_identity(i_st, alus=[5], output_streams=[g.SG4[5]]) #input_streams=[g.SG4_W[2]], direction=Direction.WESTWARD
 		return r_st, i_st, r_delay_st_p0, i_delay_st_p0 #directions=[Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD]
 
+
+
+	def read_out_gate_elements_8( self, element_num ):
+	
+		"""
+		Function used to read out the the gate kernel elements.
+		
+		
+		Parameters
+		----------
+		element_num : int
+			The number of the required gate elements to perform the unitary transformation on all of the state vector elements
+			
+			
+			
+		Return
+		------
+		Returns with the stream tensors of the extracted gate elements			
+			
+		g_r_0 : StreamTensor
+			The real part of the first column of gate kernel orgnaized into first row -- first row -- second row -- second row -- first row -- first row -- second row
+			 -- second row -- .... sequence
+		g_i_0 : StreamTensor
+			The imaginary part of the first column of gate kernel orgnaized into first row -- first row -- second row -- second row -- first row -- first row -- 
+			second row -- second row -- .... sequence
+		g_r_1 : StreamTensor
+			The real part of the second column of gate kernel orgnaized into first row -- first row -- second row -- second row -- first row -- first row -- s
+			econd row -- second row -- .... sequence
+		g_i_1 : StreamTensor
+			The imaginary part of the second column of gate kernel orgnaized into first row -- first row -- second row -- second row -- first row -- first row -- 
+			second row -- second row -- .... sequence  		
+		
+		"""
+	
+	
+		gate_element_counter_first_column_list  = []
+		gate_element_counter_second_column_list = []
+		for idx in range(element_num//2):
+			gate_element_counter_first_column_list.append( self.gate_counter_gate_element_selector_00_mt)
+			gate_element_counter_first_column_list.append( self.gate_counter_gate_element_selector_10_mt )
+
+			gate_element_counter_second_column_list.append( self.gate_counter_gate_element_selector_01_mt )
+			gate_element_counter_second_column_list.append( self.gate_counter_gate_element_selector_11_mt )
+					
+					
+		gate_element_counter_first_column_mt  = g.stack( gate_element_counter_first_column_list, dim=0 )
+		gate_element_counter_first_column_mt  = gate_element_counter_first_column_mt.reshape( element_num, 320 )
+		gate_element_counter_second_column_mt = g.stack( gate_element_counter_second_column_list, dim=0 )
+		gate_element_counter_second_column_mt = gate_element_counter_second_column_mt.reshape( element_num, 320 )
+
+			
+		gate_element_counter_first_column_st  = gate_element_counter_first_column_mt.read( streams=g.SG1_W[17] )		
+		gate_element_counter_second_column_st = gate_element_counter_second_column_mt.read( streams=g.SG1_W[18] )	
+				
+				
+		gate_kernels_broadcasted_real_mt_8 = g.reinterpret( self.gate_kernels_broadcasted_real_mt, dtype=g.uint8 )
+		gate_element_real_byte_list        = g.split( gate_kernels_broadcasted_real_mt_8, dim=1, num_splits=4 )
+				
+		gate_kernels_broadcasted_imag_mt_8 = g.reinterpret( self.gate_kernels_broadcasted_imag_mt, dtype=g.uint8 )
+		gate_element_imag_byte_list        = g.split( gate_kernels_broadcasted_imag_mt_8, dim=1, num_splits=4 )
+
+		gate_kernels_broadcasted_real_copy_mt_8 = g.reinterpret( self.gate_kernels_broadcasted_real_copy_mt, dtype=g.uint8 )
+		gate_element_real_copy_byte_list        = g.split( gate_kernels_broadcasted_real_copy_mt_8, dim=1, num_splits=4 )
+
+		gate_kernels_broadcasted_imag_copy_mt_8 = g.reinterpret( self.gate_kernels_broadcasted_imag_copy_mt, dtype=g.uint8 )
+		gate_element_imag_copy_byte_list        = g.split( gate_kernels_broadcasted_imag_copy_mt_8, dim=1, num_splits=4 )
+				
+				
+		gate_element_real_list = []
+		gate_element_imag_list = []
+		gate_element_real_copy_list = []
+		gate_element_imag_copy_list = []
+		for slice_idx in range(4):
+
+			#### first column real part
+			output_stream_offset = 7*4
+			gate_element_real_byte_st = g.mem_gather(gate_element_real_byte_list[slice_idx], 
+											gate_element_counter_first_column_st, 
+											output_streams=[g.SG1_W[output_stream_offset+slice_idx]] )
+
+			gate_element_real_byte_st = g.reshape( gate_element_real_byte_st, [element_num,1,320])
+			gate_element_real_list.append( gate_element_real_byte_st )
+					
+			#### first column imag part					
+			output_stream_offset = 3*4
+			gate_element_imag_byte_st = g.mem_gather(gate_element_imag_byte_list[slice_idx], 
+										gate_element_counter_first_column_st, 
+										output_streams=[g.SG1[output_stream_offset+slice_idx]] )
+
+			gate_element_imag_byte_st = g.reshape( gate_element_imag_byte_st, [element_num,1,320])
+			gate_element_imag_list.append( gate_element_imag_byte_st )
+
+
+			#### second column real part
+			output_stream_offset = 5*4
+			gate_element_real_copy_byte_st = g.mem_gather(gate_element_real_copy_byte_list[slice_idx], 
+											gate_element_counter_second_column_st, 
+											output_streams=[g.SG1_W[output_stream_offset+slice_idx]] )
+
+			gate_element_real_copy_byte_st = g.reshape( gate_element_real_copy_byte_st, [element_num,1,320])
+			gate_element_real_copy_list.append( gate_element_real_copy_byte_st )
+
+
+			#### second column imag part
+			output_stream_offset = 6*4
+			gate_element_imag_copy_byte_st = g.mem_gather(gate_element_imag_copy_byte_list[slice_idx], 
+											gate_element_counter_second_column_st, 
+											output_streams=[g.SG1_W[output_stream_offset+slice_idx]] )
+
+			gate_element_imag_copy_byte_st = g.reshape( gate_element_imag_copy_byte_st, [element_num,1,320])
+			gate_element_imag_copy_list.append( gate_element_imag_copy_byte_st )
+					
+
+
+		gate_element_real_st      = g.concat( gate_element_real_list, dim=1 )
+		gate_element_imag_st      = g.concat( gate_element_imag_list, dim=1 )
+		gate_element_real_copy_st = g.concat( gate_element_real_copy_list, dim=1 )	
+		gate_element_imag_copy_st = g.concat( gate_element_imag_copy_list, dim=1 )	
+							
+		gate_element_real_st      = g.reinterpret(gate_element_real_st, dtype=g.float32 )
+		gate_element_imag_st      = g.reinterpret(gate_element_imag_st, dtype=g.float32 )				
+		gate_element_real_copy_st = g.reinterpret(gate_element_real_copy_st, dtype=g.float32 )
+		gate_element_imag_copy_st = g.reinterpret(gate_element_imag_copy_st, dtype=g.float32 )
+		
+		
+		
+		return gate_element_real_st, gate_element_imag_st, gate_element_real_copy_st, gate_element_imag_copy_st
+
 	
 
 	
