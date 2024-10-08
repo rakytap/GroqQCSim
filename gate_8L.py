@@ -331,35 +331,6 @@ class Gate(Gate_8_base):
 										 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
 										)
 
-				'''
-					
-				################
-				output_stream_offset = 4*4
-				Psi_transformed_real_state_0_byte_st = g.mem_gather( Psi_real_bytes_mt, read_out_qubit_0_memory_tensor_st,
-										 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
-
-
-
-				################
-				output_stream_offset = 1*4
-				Psi_transformed_imag_state_0_byte_st = g.mem_gather( Psi_imag_bytes_mt, read_out_qubit_0_memory_tensor_st,
-												 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
-
-
-
-				################
-				output_stream_offset = 5*4
-				Psi_transformed_real_state_0_copy_byte_st = g.mem_gather( Psi_real_bytes_copy_mt, read_out_qubit_1_memory_tensor_st,
-												 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
-
-
-
-
-				################
-				output_stream_offset = 7*4
-				Psi_transformed_imag_state_0_copy_byte_st = g.mem_gather( Psi_imag_bytes_copy_mt, read_out_qubit_1_memory_tensor_st,
-												 output_streams=[g.SG1_E[output_stream_offset+byte_idx]])
-				'''
 
 			Psi_transformed_real_state_0_byte_st = g.stack( Psi_transformed_real_state_0_byte_st_list, dim=0)
 			Psi_transformed_imag_state_0_byte_st = g.stack( Psi_transformed_imag_state_0_byte_st_list, dim=0)
@@ -449,18 +420,7 @@ class Gate(Gate_8_base):
 			g.mem_scatter( Psi_transformed_imag_bytes_mt_list[byte_idx], Psi_imag_bytes_mt_list[byte_idx], target_qubit_L_write_map_st_a)
 			g.mem_scatter( Psi_transformed_imag_copy_bytes_mt_list[byte_idx], Psi_imag_bytes_copy_mt_list[byte_idx], target_qubit_L_write_map_st_b)
 					
-					
-					
-		'''
-		Psi_transformed_real_mt_output = g.constant_tensor( self.State_input_real_mt.shape, g.float32, storage_req=self.State_input_real_mt.storage_request, 
-                                                                                    name=f"Psi_transformed_real", initialized=False)
-		Psi_transformed_imag_mt_output = g.constant_tensor( self.State_input_imag_mt.shape, g.float32, storage_req=self.State_input_imag_mt.storage_request, 
-                                                                                    name=f"Psi_transformed_imag", initialized=False)
-
-		#Psi_transformed_real_mt_output.set_program_output()
-		#Psi_transformed_imag_mt_output.set_program_output()
-		'''
-
+				
 
 	def gate_8L_program(self):
 		"""
@@ -490,79 +450,25 @@ class Gate(Gate_8_base):
 
 
 			with g.ResourceScope(name=f"apply_gate_scope", is_buffered=True, predecessors=[], time=0) as apply_gate_scope :
-				control_1 = [ x^(1<<(self.control_qubit-8)) for x in range(memory_addresses) if x < x^(1<<(self.control_qubit-8)) ]
-				
-				pairs = []
-				for x in range(memory_addresses):
-					if x < x^1 and x in control_1:
-						pairs.append([x,x^1])
-                
-				# print("=============================>", pairs)
-				# print(len(inner_dims))
-				# print(Psi_transformed_real_mt.physical_shape, Psi_transformed_real_mt.shape)
-				#Psi_transformed_mt (memory_addresses, matrix_size)
-				Psi_transformed_mt      = g.stack( [Psi_transformed_real_mt, Psi_transformed_imag_mt], dim=0).split(dim=1, num_splits=memory_addresses)
-				Psi_transformed_copy_mt = g.stack( [Psi_transformed_real_copy_mt, Psi_transformed_imag_copy_mt], dim=0).split(dim=1, num_splits=memory_addresses)
-
-				inner_dims      = [x.reshape(2, matrix_size) for x in Psi_transformed_mt]
-				inner_dims_copy = [x.reshape(2, matrix_size) for x in Psi_transformed_copy_mt]
-				#inner_dims (2, memory_addresses, matrix_size) -> [(2, matrix_size)]*memory_addresses 
-
-				pairs_to_concat0_0 = []
-				pairs_to_concat0_1 = []
-				pairs_to_concat1_0 = []
-				pairs_to_concat1_1 = []
-				for i in pairs:
-					pairs_to_concat0_0.append(inner_dims[i[0]])
-					pairs_to_concat0_1.append(inner_dims[i[1]])
-					pairs_to_concat1_0.append(inner_dims_copy[i[0]])
-					pairs_to_concat1_1.append(inner_dims_copy[i[1]])
-
-				#pairs_to_concat [(2, 1<<small_qbit_num_limit)]*(memory_addresses//2)
-				pairs_to_concat0_0 = g.stack(pairs_to_concat0_0, dim=0)
-				pairs_to_concat0_1 = g.stack(pairs_to_concat0_1, dim=0)
-				pairs_to_concat1_0 = g.stack(pairs_to_concat1_0, dim=0)
-				pairs_to_concat1_1 = g.stack(pairs_to_concat1_1, dim=0)
-				#pairs_to_concat (memory_addresses//2, 2, matrix_size)
-
-				pairs0 = g.stack([pairs_to_concat0_0, pairs_to_concat1_0], dim=0)
-				pairs1 = g.stack([pairs_to_concat1_1, pairs_to_concat0_1], dim=0)
-				
-				pairs1 = [x.reshape(2, memory_addresses//4, matrix_size) for x in pairs1.split(num_splits=2, dim=2)]
-				pairs0 = [x.reshape(2, memory_addresses//4, matrix_size) for x in pairs0.split(num_splits=2, dim=2)]
-				#pairs (2, memory_addresses//4, 2, matrix_size) -> [(2, memory_addresses//4, matrix_size)]*2
-				
-				new_shape = (2, memory_addresses//4, 1, matrix_size) if self.target_qubit==8 else (2, memory_addresses//8, 2, matrix_size)
-				pairs0[0] = pairs0[0].reshape(*new_shape).transpose(1, 0, 2, 3)
-				pairs0[1] = pairs0[1].reshape(*new_shape).transpose(1, 0, 2, 3)
-				pairs1[0] = pairs1[0].reshape(*new_shape).transpose(1, 0, 2, 3)
-				pairs1[1] = pairs1[1].reshape(*new_shape).transpose(1, 0, 2, 3)
-				'''
-				Psi_transformed_real_state_0_st = pairs0[0].read(streams=g.SG4[4]) #direction=Direction.EASTWARD
-				Psi_transformed_imag_state_0_st = pairs0[1].read(streams=g.SG4[1]) #direction=Direction.EASTWARD
-				Psi_transformed_real_state_1_st = pairs1[0].read(streams=g.SG4[5]) #direction=Direction.EASTWARD
-				Psi_transformed_imag_state_1_st = pairs1[1].read(streams=g.SG4[7])
-				'''
 				
 				read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st = self.select_target_qbit_read_map_west_8L()
 
 				# readout quantum state to be stransformed
-				Psi_transformed_real_state_0_st, Psi_transformed_imag_state_0_st, Psi_transformed_real_state_1_st, Psi_transformed_imag_state_1_st  = \
+				Psi_real_state_0_st, Psi_imag_state_0_st, Psi_real_state_1_st, Psi_imag_state_1_st  = \
 							 self.read_out_state_2_transform_8L( read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st)
 
 				
 				# readout gate elements	
-				state_real_0_st = pairs0[0]
-				element_num = state_real_0_st.shape[0]*state_real_0_st.shape[1]
+				element_num = Psi_real_state_0_st.shape[0]*Psi_real_state_0_st.shape[1]
 						
 				gate_first_column_real_st, gate_first_column_imag_st, gate_second_column_real_st, gate_second_column_imag_st = \
 							self.read_out_gate_elements_8( element_num )
                             
 				Psi_transformed_real_copy_st, Psi_transformed_imag_copy_st, Psi_transformed_real_st, Psi_transformed_imag_st = \
-										self.two_complex_dot_product_8L( Psi_transformed_real_state_0_st,
-														Psi_transformed_imag_state_0_st, 
-														Psi_transformed_real_state_1_st, 
-														Psi_transformed_imag_state_1_st, 
+										self.two_complex_dot_product_8L( Psi_real_state_0_st,
+														Psi_imag_state_0_st, 
+														Psi_real_state_1_st, 
+														Psi_imag_state_1_st, 
 														gate_first_column_real_st, 
 														gate_first_column_imag_st, 
 														gate_second_column_real_st, 
