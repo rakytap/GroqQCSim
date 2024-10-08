@@ -209,8 +209,8 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	
 		control_qbit = control_qbits[gate_idx]
 		target_qbit  = target_qbits[gate_idx]
-		if control_qbit > 8 and control_qbit <= 16 and target_qbit < 8:
-			# SL gate
+		if control_qbit > 8 and control_qbit <= 16 and target_qbit <= 8:
+			# SL and 8L gates
 			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - small_qbit_num_limit - 1)
 			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - small_qbit_num_limit - 1) + 1
 		elif control_qbit > 16 and control_qbit < 21 and target_qbit < 8:
@@ -387,9 +387,9 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_L8 operation
 			index_of_gate_program = 3
-			entry_point = iop["gate_8L"]["compute"]
+			entry_point = iop["gate_8L"]["mono"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
-			#print( gate_output )					
+			print( gate_output )					
 
 		
 

@@ -117,20 +117,18 @@ class Gate(Gate_8_base):
 		read_out_qubit_0_memory_tensor_st = self.target_qubit_read_maps_8L_mt.read( streams=g.SG1[0] )
 		read_out_qubit_1_memory_tensor_st = self.target_qubit_read_maps_8L_pair_mt.read( streams=g.SG1[1] )
 
-
-
-		'''
+		
 		read_out_qubit_memory_tensor_st = g.stack( [read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st], dim=1 )
 		
 		
-		gate_counter_distribute_map_selector_st = self.gate_counter_target_qubit_L_distributor_maps_write_mt.read( streams=[g.SG1_W[12]] )		
-		distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
-		#distributor_map_st                      = self.target_qubit_distributor_map_mt.read( streams=g.SG1[6] )
+		gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1_W[12]] )		
+		distributor_map_st                      = g.mem_gather(self.distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
+		#distributor_map_st                      = self.distributor_map_mt.read( streams=g.SG1[6] )
 		
 		read_out_qubit_memory_tensor_st = g.distribute_8( read_out_qubit_memory_tensor_st, 
 									distributor_map_st,
 									distributor_req=self.distributor_request_to_qubit_state_readout,
-									map_stream_req=g.SG1[6],
+									map_stream_req=g.SG1[12],
 									bypass8=0b11111100,
 									)	
 
@@ -142,15 +140,15 @@ class Gate(Gate_8_base):
 
 		read_out_qubit_memory_tensor_st_list = read_out_qubit_memory_tensor_st.split( dim=1, num_splits=2)	
 		
-		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[0], [memory_addresses,320])
-		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[1], [memory_addresses,320])
+		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[0], [memory_addresses//2,320])
+		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[1], [memory_addresses//2,320])
 		
 
-		#read_out_qubit_0_memory_tensor_st.write( name="rrww0", layout='H1(W), -1, S1', program_output=True )
-		#read_out_qubit_1_memory_tensor_st.write( name="rrww1", layout='H1(W), -1, S1(43)', program_output=True )
+		#read_out_qubit_0_memory_tensor_st.write( name="rrww0", layout='H1(W), -1, S1(31)', program_output=True )
+		#read_out_qubit_1_memory_tensor_st.write( name="rrww1", layout='H1(W), -1, S1(30)', program_output=True )
 		#distributor_map_st.write( name="distr_map", layout='H1(W), -1, S1(43)', program_output=True )
 		#self.target_qubit_distributor_map_mt.set_program_output()
-		'''
+		
 
 		return read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st
 

@@ -1006,7 +1006,7 @@ class IO:
 			gate_counter_target_qubit_L_distributor_maps_write_np            = np.zeros( (320,), dtype=np.uint8 )
 			gate_counter_target_qubit_L_distributor_maps_write_np [0:320:16]  = gate_count+1
 			self.gate_counter_target_qubit_L_distributor_maps_write_mt  = g.from_data( gate_counter_target_qubit_L_distributor_maps_write_np,
-																						 layout=layout_gate_counter_target_qubit_L_distributor_maps )	
+											 layout=layout_gate_counter_target_qubit_L_distributor_maps )
 			self.gate_counter_target_qubit_L_distributor_maps_write_mt.is_static = True
 			
 									
