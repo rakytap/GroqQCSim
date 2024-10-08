@@ -172,17 +172,17 @@ class Gate(Gate_8_base):
 		"""
 
 
-		target_qubit_write_maps_L_st_a = self.target_qubit_write_maps_8L_mt.read( streams=g.SG1[16] )
-		target_qubit_write_maps_L_st_b = self.target_qubit_write_maps_8L_mt_b.read( streams=g.SG1[19] )
+		write_qubit_memory_tensor_st_a = self.target_qubit_write_maps_8L_mt.read( streams=g.SG1[16] )
+		write_qubit_memory_tensor_st_b = self.target_qubit_write_maps_8L_mt_b.read( streams=g.SG1[19] )
 
+		#write_qubit_memory_tensor_st = g.stack( [write_qubit_memory_tensor_st_a, write_qubit_memory_tensor_st_b], dim=1 )
 		
 		
-		'''
-		gate_counter_distribute_map_selector_st = self.gate_counter_target_qubit_L_distributor_maps_write_mt.read( streams=[g.SG1_W[12]] )		
-		distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
-		#distributor_map_st                      = self.target_qubit_distributor_map_mt.read( streams=g.SG1[8] )
+		#gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1_W[12]] )		
+		#distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
+		distributor_map_st                      = self.distributor_map_mt.read( streams=g.SG1[8] )
 		
-		target_qubit_write_maps_L_st = g.distribute_8( target_qubit_write_maps_L_st, 
+		write_qubit_memory_tensor_st_a = g.distribute_8( write_qubit_memory_tensor_st_a, 
 									distributor_map_st,
 									distributor_req=self.distributor_request_to_qubit_state_write,
 									map_stream_req=g.SG1[8],
@@ -190,13 +190,20 @@ class Gate(Gate_8_base):
 									)	
 
 		
-		target_qubit_write_maps_L_st = g.transpose_null(target_qubit_write_maps_L_st, 
+		write_qubit_memory_tensor_st_a = g.transpose_null(write_qubit_memory_tensor_st_a, 
 					                             transposer_req=self.transposer_request_to_qubit_state_write, 
 					                             stream_order=[0])	
 
-		#rr = target_qubit_write_maps_L_st.write(name="uuu", layout='H1(W), -1, S1(43)', program_output=True )
 		'''
-		return target_qubit_write_maps_L_st_a, target_qubit_write_maps_L_st_b
+		write_qubit_memory_tensor_st_list = write_qubit_memory_tensor_st.split( dim=1, num_splits=2)	
+		
+		write_qubit_memory_tensor_st_a = g.reshape( write_qubit_memory_tensor_st_list[0], [memory_addresses//2,320])
+		write_qubit_memory_tensor_st_b = g.reshape( write_qubit_memory_tensor_st_list[1], [memory_addresses//2,320])
+		'''
+		#rr = target_qubit_write_maps_L_st.write(name="uuu", layout='H1(W), -1, S1(43)', program_output=True )
+		print('iiiiiiiiiiiiiiii ', write_qubit_memory_tensor_st_a.shape )
+		print('iiiiiiiiiiiiiiii ', write_qubit_memory_tensor_st_b.shape )
+		return write_qubit_memory_tensor_st_a, write_qubit_memory_tensor_st_b
 
 
 	def read_out_state_2_transform_8L( self, read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st):

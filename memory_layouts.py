@@ -97,9 +97,9 @@ layout_gate_kernels_imag	="H1(E), S4(12-15)"
 # addresses from 0 to small_qbit_num_limit-1       			are occupied by vectors describing states |0> and |1> for different target qubits (states |1> are labeled by bits 1)
 # addresses from small_qbit_num_limit to 2*small_qbit_num_limit-1 	are occupied by vectors describing states |0> and |1> for different target qubits (states |0> are labeled by bits 1)
 # addresses from 2*small_qbit_num_limit to 2*small_qbit_num_limit+3 	are occupied by distributor maps to used to broadcast elements 01,10,11 of the gate kernel
-layout_states_1			    = f"H1(E), A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), S1(17)"
+layout_states_1			    = f"H1(E), A{small_qbit_num_limit}({2*gate_count}-{2*gate_count+small_qbit_num_limit-1}), S1(22)"
 layout_distribute_map_tensor        = "H1(E), S1(17)"
-layout_distribute_map_tensor_state1 = "H1(E), S1(17)"  
+layout_distribute_map_tensor_state1 = f"H1(E), S1(22), A1({2*gate_count+small_qbit_num_limit+4})"  
 layout_states_0			    = f"H1(E), A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), S1(18)"
 layout_distribute_map_tensor_state0 = "H1(E), S1(18)"
 
@@ -116,7 +116,9 @@ layout_state_0_broadcasted		= f"H1(E), A{gate_count}(0-{gate_count-1}), S4(27-31
 layout_control_state_0_broadcasted	= f"H1(E), A{gate_count}({gate_count}-{2*gate_count-1}), S4(27-31)" # slice 28 is reserved
 
 # to save controlled operations on target qbit 8, we need two concurrent streams for memory scatter (see layout_target_qubit_write_maps_8L_a)
-layout_target_qubit_write_maps_8L_b = f"H1(E), A{memory_addresses//2}({memory_addresses//2}-{memory_addresses-1}), S1(31)"
+#layout_target_qubit_write_maps_8L_b = f"H1(E), A{memory_addresses//2}({memory_addresses//2}-{memory_addresses-1}), S1(31)"
+#layout_target_qubit_write_maps_8L_b = f"H1(E), A{memory_addresses//2}(0-{memory_addresses//2-1}), S1(17)"
+layout_target_qubit_write_maps_8L_b = f"H1(E), A{(memory_slices//2) >> 1}(0-{((memory_slices//2) >> 1)-1}), B2, S1(17)"
 
 # memory layout for the tensors full of ones and zeros
 layout_zeros = f"H1(E), A1(1), S4(32-35)"

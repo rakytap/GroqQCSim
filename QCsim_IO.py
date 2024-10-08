@@ -865,28 +865,7 @@ class IO:
 				
 			
 			
-			# generate vectors to indicate which elements in a 320 vector correspond to state |1> of target qubit less than small_qbit_num_limit 
-			# if target_qubit_loc at the idx-th element is in state_1 |1> then all the 8 bits of the idx-th element is set to 1, thus state_1[idx] = 255
-			# if target_qubit_loc at the idx-th element is in state_0 |0> then all the 8 bits of the idx-th element is set to 1, thus state_0[idx] = 255
-			states_1_np = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint8 )
-			states_0_np = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint8 )
-			for target_qbit_loc in range(small_qbit_num_limit):
-				target_qbit_pair_diff = 1 << target_qbit_loc
-				for idx in range(256): # 256 = 2^8
-					if (idx & target_qbit_pair_diff > 0):
-						states_1_np[target_qbit_loc, idx] = 255
-						states_0_np[target_qbit_loc, idx] = 0
-					else:
-						states_1_np[target_qbit_loc, idx] = 0
-						states_0_np[target_qbit_loc, idx] = 255
-				print( "states |1> at target qubit ", target_qbit_loc, " is:" )
-				print( states_1_np[target_qbit_loc, 0:256] )
 
-			states_1_mt = g.from_data( np.asarray(states_1_np, dtype=np.uint8), layout=layout_states_1 )
-			states_1_mt.is_static = True
-
-			states_0_mt = g.from_data( np.asarray(states_0_np, dtype=np.uint8), layout=layout_states_0 )
-			states_0_mt.is_static = True
 
 			# create reusable distributor requests
 			distributor_requests = []
@@ -898,17 +877,7 @@ class IO:
 			transposer_requests.append(  g.tensor.create_transposer_request( [2], 1 ) ) # EAST
 			transposer_requests.append(  g.tensor.create_transposer_request( [3], 1 ) ) # EAST	
 
-			# distribute maps to broadcast the gate kernel elements over a vector
-			distribute_map_np = np.zeros( (320,), dtype=np.uint8 )
-			for idx in range(320):
-				distribute_map_np[idx] = idx % 16
-
-			distribute_map_tensor_state1_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state1 + f", A1({small_qbit_num_limit+4})" )
-			distribute_map_tensor_state0_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state0 + f", A1({small_qbit_num_limit+4})" )
-			g.add_mem_constraints([states_1_mt], [distribute_map_tensor_state1_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
-			g.add_mem_constraints([states_0_mt], [distribute_map_tensor_state0_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
-			g.add_mem_constraints([state_1_selector_mt], [control_state_1_selector_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
-			g.add_mem_constraints([state_0_selector_mt], [control_state_0_selector_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+			
 			
 			
 			# generate tensors full with float32 ones and zeros  
@@ -922,99 +891,45 @@ class IO:
 			
 			
 			
-			# generate control qubit memory maps for SL gate (to select the correct elements from the state vector if SL gate is performed)
-			mem_gather_map = self.generate_control_qbit_maps_for_SL()
-
-			self.control_qubit_address_maps_SL_west_mt = g.from_data(mem_gather_map, layout=layout_control_qubit_address_maps_SL_west)
-			self.control_qubit_address_maps_SL_east_mt = g.from_data(mem_gather_map, layout=layout_control_qubit_address_maps_SL_east_a)			
-			self.control_qubit_address_maps_SL_west_mt.is_static = True	
-			self.control_qubit_address_maps_SL_east_mt.is_static = True
-			
-			# generate memeory write maps for target qubits L
-			mem_write_map = self.generate_target_qubit_L_write_maps()
-			
-			self.target_qubit_write_maps_L_mt = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_L)
-			self.target_qubit_write_maps_L_mt.is_static = True
-			
-			
-			# generate memeory read maps for target qubits L
-			mem_read_map, mem_read_pair_map = self.generate_target_qubit_L_read_maps()
-			
-			self.target_qubit_read_pair_maps_L_mt = g.from_data(mem_read_pair_map, layout=layout_target_qubit_read_pair_maps_L)
-			self.target_qubit_read_maps_L_mt      = g.from_data(mem_read_map, layout=layout_target_qubit_read_maps_L)			
-			self.target_qubit_read_pair_maps_L_mt.is_static = True
-			self.target_qubit_read_maps_L_mt.is_static      = True			
-			
-
-
-			####################################
-
-			# tensor to store mem scatter maps for LL gates
-			mem_write_map = self.generate_target_qubit_LL_control_qbit_write_maps()
-
-			self.target_qubit_write_maps_LL_mt = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_LL)
-			self.target_qubit_write_maps_LL_mt.is_static = True
-
-			# tensor to store mem gather maps for LL gates
-			mem_read_map = self.generate_target_qubit_LL_control_qbit_read_maps()	
-
-			self.target_qubit_read_maps_LL_mt      = g.from_data(mem_read_map, layout=layout_target_qubit_read_maps_LL)	
-			self.target_qubit_read_maps_LL_mt.is_static      = True				
-
-
-			# tensor to store mem gather maps for 8L gates (two of them is needed because of the peculiar bank alternating strategy)
-			mem_read_map, mem_read_map_pair = self.generate_target_qubit_8L_control_qbit_read_maps()			
-
-			self.target_qubit_read_maps_8L_mt      = g.from_data(mem_read_map, layout=layout_target_qubit_read_maps_8L)	
-			self.target_qubit_read_maps_8L_pair_mt = g.from_data(mem_read_map_pair, layout=layout_target_qubit_read_maps_8L_pair)	
-			self.target_qubit_read_maps_8L_mt.is_static      = True				
-			self.target_qubit_read_maps_8L_pair_mt.is_static = True		
-			
-			
-			
-			# tensor to store mem scatter maps for 8L gates (two of them is needed because of the peculiar bank alternating strategy)
-			mem_write_map = self.generate_target_qubit_8L_control_qbit_write_maps()	
-
-			self.target_qubit_write_maps_8L_mt      = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_8L_a)	
-			self.target_qubit_write_maps_8L_mt_b    = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_8L_b)	
-			self.target_qubit_write_maps_8L_mt.is_static      = True	
-			self.target_qubit_write_maps_8L_mt_b.is_static      = True
-
-			####################################	
-			
-			
-			#distributor_map_np = np.zeros( (320,), dtype=np.uint8 )
-			#distributor_map_np[0:320:16] = 0
-			#distributor_map_np[1:320:16] = 1
-			#self.distributor_map_mt   = g.from_data(distributor_map_np, layout=layout_distributor_maps_west)
-			
-
-			self.distributor_map_mt              = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="control_qubit_distributor_maps", layout=layout_distributor_maps_west)
-			# distributor maps to select the correct memory maps for L and H target qubits 
-			self.target_qubit_distributor_map_mt = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="target_qubit_distributor_maps", layout=layout_target_qubit_distributor_maps)
-			
-			
-			
-			# distributor maps to select the correct memory maps to read data for SL and SH operations.
-			gate_counter_distributor_maps_west_np            = np.zeros( (320,), dtype=np.uint8 )
-			gate_counter_distributor_maps_west_np[0:320:16]  = 1
-			self.gate_counter_distributor_maps_west_mt       = g.from_data( gate_counter_distributor_maps_west_np, layout=layout_gate_counter_distributor_maps_west )	
-			self.gate_counter_distributor_maps_west_mt.is_static = True
-			
-			
-			# distributor maps to select the correct memory maps to write data on L and H target qubits.
-			gate_counter_target_qubit_L_distributor_maps_write_np            = np.zeros( (320,), dtype=np.uint8 )
-			gate_counter_target_qubit_L_distributor_maps_write_np [0:320:16]  = gate_count+1
-			self.gate_counter_target_qubit_L_distributor_maps_write_mt  = g.from_data( gate_counter_target_qubit_L_distributor_maps_write_np,
-											 layout=layout_gate_counter_target_qubit_L_distributor_maps )
-			self.gate_counter_target_qubit_L_distributor_maps_write_mt.is_static = True
-			
-									
-			
-			g.add_mem_constraints([self.gate_counter_perm_map_selector_mt], [self.distributor_map_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
-			g.add_mem_constraints([self.gate_counter_perm_map_selector_mt,self.distributor_map_mt], [self.target_qubit_distributor_map_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 			
 			with g.ResourceScope(name="distribute_state_indices_scope", is_buffered=True, time=0) as distribute_state_indices_scope :
+
+				# generate vectors to indicate which elements in a 320 vector correspond to state |1> of target qubit less than small_qbit_num_limit 
+				# if target_qubit_loc at the idx-th element is in state_1 |1> then all the 8 bits of the idx-th element is set to 1, thus state_1[idx] = 255
+				# if target_qubit_loc at the idx-th element is in state_0 |0> then all the 8 bits of the idx-th element is set to 1, thus state_0[idx] = 255
+				states_1_np = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint8 )
+				states_0_np = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint8 )
+				for target_qbit_loc in range(small_qbit_num_limit):
+					target_qbit_pair_diff = 1 << target_qbit_loc
+					for idx in range(256): # 256 = 2^8
+						if (idx & target_qbit_pair_diff > 0):
+							states_1_np[target_qbit_loc, idx] = 255
+							states_0_np[target_qbit_loc, idx] = 0
+						else:
+							states_1_np[target_qbit_loc, idx] = 0
+							states_0_np[target_qbit_loc, idx] = 255
+					print( "states |1> at target qubit ", target_qbit_loc, " is:" )
+					print( states_1_np[target_qbit_loc, 0:256] )
+
+				states_1_mt = g.from_data( np.asarray(states_1_np, dtype=np.uint8), layout=layout_states_1 )
+				#states_1_mt.is_static = True
+
+				states_0_mt = g.from_data( np.asarray(states_0_np, dtype=np.uint8), layout=layout_states_0 )
+				#states_0_mt.is_static = True
+
+
+				# distribute maps to broadcast the gate kernel elements over a vector
+				distribute_map_np = np.zeros( (320,), dtype=np.uint8 )
+				for idx in range(320):
+					distribute_map_np[idx] = idx % 16
+
+				distribute_map_tensor_state1_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state1 )
+				distribute_map_tensor_state0_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state0 + f", A1({small_qbit_num_limit+4})" )
+				g.add_mem_constraints([states_1_mt], [distribute_map_tensor_state1_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+				g.add_mem_constraints([states_0_mt], [distribute_map_tensor_state0_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+				g.add_mem_constraints([state_1_selector_mt], [control_state_1_selector_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+				g.add_mem_constraints([state_0_selector_mt], [control_state_0_selector_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+
 
 				state_1_selector_st = state_1_selector_mt.read(streams=[g.SG1[0]])
 				state_1_st = g.mem_gather(states_1_mt, state_1_selector_st, output_streams=[g.SG1[0]], time=0)
@@ -1039,6 +954,8 @@ class IO:
 
 				self.state_1_broadcasted_mt.is_static = True
 				self.state_0_broadcasted_mt.is_static = True
+
+
 				
 				# same as before but now for the control qbit
 				control_state_1_selector_st = control_state_1_selector_mt.read(streams=[g.SG1[0]])
@@ -1069,7 +986,104 @@ class IO:
 				g.add_mem_constraints([self.control_state_1_broadcasted_mt], [self.state_1_broadcasted_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 				g.add_mem_constraints([self.state_0_broadcasted_mt, self.control_state_0_broadcasted_mt], [self.zeros_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 
+				g.add_mem_constraints([self.state_1_broadcasted_mt, self.control_state_1_broadcasted_mt], [states_1_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+
 				g.add_mem_constraints([states_1_mt, states_0_mt, distribute_map_tensor_state1_mt, distribute_map_tensor_state0_mt, state_1_selector_mt, state_0_selector_mt], [self.state_0_broadcasted_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+
+			with g.ResourceScope(name="create_memory_maps", is_buffered=False, predecessors=[distribute_state_indices_scope], time=None) as create_memory_maps:
+
+# generate control qubit memory maps for SL gate (to select the correct elements from the state vector if SL gate is performed)
+				mem_gather_map = self.generate_control_qbit_maps_for_SL()
+
+				self.control_qubit_address_maps_SL_west_mt = g.from_data(mem_gather_map, layout=layout_control_qubit_address_maps_SL_west)
+				self.control_qubit_address_maps_SL_east_mt = g.from_data(mem_gather_map, layout=layout_control_qubit_address_maps_SL_east_a)			
+				self.control_qubit_address_maps_SL_west_mt.is_static = True	
+				self.control_qubit_address_maps_SL_east_mt.is_static = True
+			
+				# generate memeory write maps for target qubits L
+				mem_write_map = self.generate_target_qubit_L_write_maps()
+			
+				self.target_qubit_write_maps_L_mt = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_L)
+				self.target_qubit_write_maps_L_mt.is_static = True
+			
+			
+				# generate memeory read maps for target qubits L
+				mem_read_map, mem_read_pair_map = self.generate_target_qubit_L_read_maps()
+			
+				self.target_qubit_read_pair_maps_L_mt = g.from_data(mem_read_pair_map, layout=layout_target_qubit_read_pair_maps_L)
+				self.target_qubit_read_maps_L_mt      = g.from_data(mem_read_map, layout=layout_target_qubit_read_maps_L)			
+				self.target_qubit_read_pair_maps_L_mt.is_static = True
+				self.target_qubit_read_maps_L_mt.is_static      = True			
+			
+
+
+				####################################
+
+				# tensor to store mem scatter maps for LL gates
+				mem_write_map = self.generate_target_qubit_LL_control_qbit_write_maps()
+	
+				self.target_qubit_write_maps_LL_mt = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_LL)
+				self.target_qubit_write_maps_LL_mt.is_static = True
+
+				# tensor to store mem gather maps for LL gates
+				mem_read_map = self.generate_target_qubit_LL_control_qbit_read_maps()	
+
+				self.target_qubit_read_maps_LL_mt      = g.from_data(mem_read_map, layout=layout_target_qubit_read_maps_LL)	
+				self.target_qubit_read_maps_LL_mt.is_static      = True				
+
+
+				# tensor to store mem gather maps for 8L gates (two of them is needed because of the peculiar bank alternating strategy)
+				mem_read_map, mem_read_map_pair = self.generate_target_qubit_8L_control_qbit_read_maps()			
+
+				self.target_qubit_read_maps_8L_mt      = g.from_data(mem_read_map, layout=layout_target_qubit_read_maps_8L)	
+				self.target_qubit_read_maps_8L_pair_mt = g.from_data(mem_read_map_pair, layout=layout_target_qubit_read_maps_8L_pair)	
+				self.target_qubit_read_maps_8L_mt.is_static      = True				
+				self.target_qubit_read_maps_8L_pair_mt.is_static = True		
+			
+			
+			
+				# tensor to store mem scatter maps for 8L gates (two of them is needed because of the peculiar bank alternating strategy)
+				mem_write_map = self.generate_target_qubit_8L_control_qbit_write_maps()	
+	
+				self.target_qubit_write_maps_8L_mt      = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_8L_a)	
+				self.target_qubit_write_maps_8L_mt_b    = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_8L_b)	
+				self.target_qubit_write_maps_8L_mt.is_static      = True	
+				self.target_qubit_write_maps_8L_mt_b.is_static      = True
+
+				####################################	
+			
+				
+				#distributor_map_np = np.zeros( (320,), dtype=np.uint8 )
+				#distributor_map_np[0:320:16] = 0
+				#distributor_map_np[1:320:16] = 1
+				#self.distributor_map_mt   = g.from_data(distributor_map_np, layout=layout_distributor_maps_west)
+			
+
+				self.distributor_map_mt              = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="control_qubit_distributor_maps", layout=layout_distributor_maps_west)
+				# distributor maps to select the correct memory maps for L and H target qubits 
+				self.target_qubit_distributor_map_mt = g.input_tensor(shape=(gate_count,320,), dtype=g.uint8, name="target_qubit_distributor_maps", layout=layout_target_qubit_distributor_maps)
+			
+			
+			
+				# distributor maps to select the correct memory maps to read data for SL and SH operations.
+				gate_counter_distributor_maps_west_np            = np.zeros( (320,), dtype=np.uint8 )
+				gate_counter_distributor_maps_west_np[0:320:16]  = 1
+				self.gate_counter_distributor_maps_west_mt       = g.from_data( gate_counter_distributor_maps_west_np, layout=layout_gate_counter_distributor_maps_west )	
+				self.gate_counter_distributor_maps_west_mt.is_static = True
+			
+			
+				# distributor maps to select the correct memory maps to write data on L and H target qubits.
+				gate_counter_target_qubit_L_distributor_maps_write_np            = np.zeros( (320,), dtype=np.uint8 )
+				gate_counter_target_qubit_L_distributor_maps_write_np [0:320:16]  = gate_count+1
+				self.gate_counter_target_qubit_L_distributor_maps_write_mt  = g.from_data( gate_counter_target_qubit_L_distributor_maps_write_np,
+											 layout=layout_gate_counter_target_qubit_L_distributor_maps )
+				self.gate_counter_target_qubit_L_distributor_maps_write_mt.is_static = True
+			
+									
+			
+				g.add_mem_constraints([self.gate_counter_perm_map_selector_mt], [self.distributor_map_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+				g.add_mem_constraints([self.gate_counter_perm_map_selector_mt,self.distributor_map_mt], [self.target_qubit_distributor_map_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+			
 			
 			self.pgm_pkg.compile_program_context(pgm1)
 			
