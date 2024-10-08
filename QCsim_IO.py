@@ -213,7 +213,7 @@ class IO:
 
 		for control_qbit in range(9, 17):
 
-			print( 'control_qbit: ', control_qbit, memory_addresses )
+			#print( 'control_qbit: ', control_qbit, memory_addresses )
 			
 		
 			horizontal_offset_in_memory_map = (control_qbit-1-small_qbit_num_limit)*2 
@@ -516,7 +516,7 @@ class IO:
 			if control_qbit == 16:
 				continue  #TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-			print( 'control_qbit: ', control_qbit )
+			#print( 'control_qbit: ', control_qbit )
 
 			target_qbit = control_qbit + 1 # as we get the same control qubit memory maps for each target qbit
 			
@@ -568,7 +568,7 @@ class IO:
 					
 																		
 			
-
+		print( mem_write_map )
 		return mem_write_map
 		
 		
@@ -809,20 +809,20 @@ class IO:
 			# TODO: move these memory layouts to memory_layouts and update the ods file
 			gate_element_selector_00_np                   = np.zeros( (320,), dtype=np.uint8 )
 			gate_element_selector_00_np[0:320:16]         = 0 + small_qbit_num_limit*20
-			self.gate_counter_gate_element_selector_00_mt = g.from_data( gate_element_selector_00_np, layout="H1(E), A1(0), S1(36)" )
+			self.gate_counter_gate_element_selector_00_mt = g.from_data( gate_element_selector_00_np, layout=layout_gate_element_selector_00 )
 
 			gate_element_selector_11_np                   = np.zeros( (320,), dtype=np.uint8 )
 			gate_element_selector_11_np[0:320:16]         = 3*gate_count + small_qbit_num_limit*20
-			self.gate_counter_gate_element_selector_11_mt = g.from_data( gate_element_selector_11_np, layout="H1(E), A1(0), S1(35)" )
+			self.gate_counter_gate_element_selector_11_mt = g.from_data( gate_element_selector_11_np, layout=layout_gate_element_selector_11 )
 					
 					
 			gate_element_selector_01_np                   = np.zeros( (320,), dtype=np.uint8 )
 			gate_element_selector_01_np[0:320:16]         = gate_count + small_qbit_num_limit*20
-			self.gate_counter_gate_element_selector_01_mt = g.from_data( gate_element_selector_01_np, layout="H1(E), A1(0), S1(34)" )
+			self.gate_counter_gate_element_selector_01_mt = g.from_data( gate_element_selector_01_np, layout=layout_gate_element_selector_01 )
 
 			gate_element_selector_10_np                   = np.zeros( (320,), dtype=np.uint8 )
 			gate_element_selector_10_np[0:320:16]         = 2*gate_count + small_qbit_num_limit*20
-			self.gate_counter_gate_element_selector_10_mt = g.from_data( gate_element_selector_10_np, layout="H1(E), A1(0), S1(33)" )	
+			self.gate_counter_gate_element_selector_10_mt = g.from_data( gate_element_selector_10_np, layout=layout_gate_element_selector_10 )	
 					
 			g.add_mem_constraints([self.gate_counter_gate_element_selector_00_mt], [self.gate_counter_gate_element_selector_01_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 			g.add_mem_constraints([self.gate_counter_gate_element_selector_11_mt], [self.gate_counter_gate_element_selector_10_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)				
@@ -949,23 +949,21 @@ class IO:
 
 			####################################
 
-
+			# tensor to store mem scatter maps for LL gates
 			mem_write_map = self.generate_target_qubit_LL_control_qbit_write_maps()
 
 			self.target_qubit_write_maps_LL_mt = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_LL)
 			self.target_qubit_write_maps_LL_mt.is_static = True
 
-
+			# tensor to store mem gather maps for LL gates
 			mem_read_map = self.generate_target_qubit_LL_control_qbit_read_maps()	
 
 			self.target_qubit_read_maps_LL_mt      = g.from_data(mem_read_map, layout=layout_target_qubit_read_maps_LL)	
 			self.target_qubit_read_maps_LL_mt.is_static      = True				
 
 
-
-			mem_read_map, mem_read_map_pair = self.generate_target_qubit_8L_control_qbit_read_maps()	
-			print( mem_read_map[:,0:2] )
-			print( mem_read_map_pair[:,0:2] )			
+			# tensor to store mem gather maps for 8L gates (two of them is needed because of the peculiar bank alternating strategy)
+			mem_read_map, mem_read_map_pair = self.generate_target_qubit_8L_control_qbit_read_maps()			
 
 			self.target_qubit_read_maps_8L_mt      = g.from_data(mem_read_map, layout=layout_target_qubit_read_maps_8L)	
 			self.target_qubit_read_maps_8L_pair_mt = g.from_data(mem_read_map_pair, layout=layout_target_qubit_read_maps_8L_pair)	
@@ -974,13 +972,14 @@ class IO:
 			
 			
 			
-			
+			# tensor to store mem scatter maps for 8L gates (two of them is needed because of the peculiar bank alternating strategy)
 			mem_write_map = self.generate_target_qubit_8L_control_qbit_write_maps()	
-			#print( mem_write_map[:,0:2] )
 
-			#self.target_qubit_read_maps_8L_mt      = g.from_data(mem_read_map, layout=layout_target_qubit_read_maps_8L)	
-			#self.target_qubit_read_maps_8L_mt.is_static      = True	
-			#exit()
+			self.target_qubit_write_maps_8L_mt      = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_8L_a)	
+			self.target_qubit_write_maps_8L_mt_b    = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_8L_b)	
+			self.target_qubit_write_maps_8L_mt.is_static      = True	
+			self.target_qubit_write_maps_8L_mt_b.is_static      = True
+
 			####################################	
 			
 			

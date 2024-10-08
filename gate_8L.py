@@ -154,6 +154,52 @@ class Gate(Gate_8_base):
 
 		return read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st
 
+	def select_target_qbit_write_map_east_8L(self):
+		"""
+		Function used to read out the correct target qubit map for scattering the target qubits L into the memory
+		The target qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
+		The target memory maps of control qubits 9, ..., 17 are stored in the lower half of one slice (addresses 0,1,..., 2^12).
+		The target memory maps of control qubits 18, ..., 20 are stored in the upper half of one slice (addresses 2^12,..., 2^13). 		
+		The 320-byte vector is splitted into 20 16-byte superlanes. 
+		In each 16-byte segments the first two bytes are used to address a memory on a slice. 
+		Thus, 8 memory maps can be stored in a single 16-byte superlane. Distributors are used to move the memory addresses into the position of the first two bytes.
+		 
+       
+		Parameters
+		----------
+
+		Return
+		------
+		Returns with the stream tensor of the target qubits memory map.
+		"""
+
+
+		target_qubit_write_maps_L_st_a = self.target_qubit_write_maps_8L_mt.read( streams=g.SG1[16] )
+		target_qubit_write_maps_L_st_b = self.target_qubit_write_maps_8L_mt_b.read( streams=g.SG1[19] )
+
+		
+		
+		'''
+		gate_counter_distribute_map_selector_st = self.gate_counter_target_qubit_L_distributor_maps_write_mt.read( streams=[g.SG1_W[12]] )		
+		distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
+		#distributor_map_st                      = self.target_qubit_distributor_map_mt.read( streams=g.SG1[8] )
+		
+		target_qubit_write_maps_L_st = g.distribute_8( target_qubit_write_maps_L_st, 
+									distributor_map_st,
+									distributor_req=self.distributor_request_to_qubit_state_write,
+									map_stream_req=g.SG1[8],
+									bypass8=0b11111110,
+									)	
+
+		
+		target_qubit_write_maps_L_st = g.transpose_null(target_qubit_write_maps_L_st, 
+					                             transposer_req=self.transposer_request_to_qubit_state_write, 
+					                             stream_order=[0])	
+
+		#rr = target_qubit_write_maps_L_st.write(name="uuu", layout='H1(W), -1, S1(43)', program_output=True )
+		'''
+		return target_qubit_write_maps_L_st_a, target_qubit_write_maps_L_st_b
+
 
 	def read_out_state_2_transform_8L( self, read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st):
 	
@@ -345,6 +391,77 @@ class Gate(Gate_8_base):
 		
 		return Psi_transformed_real_state_0, Psi_transformed_imag_state_0, Psi_transformed_real_state_1, Psi_transformed_imag_state_1			
 	
+
+
+	def write_tranformed_states_2_mem_8L( self, Psi_transformed_real_st, Psi_transformed_imag_st, Psi_transformed_real_copy_st, Psi_transformed_imag_copy_st, target_qubit_L_write_map_st_a, target_qubit_L_write_map_st_b):
+	
+		"""
+		Function used to scatter the transformed state vector into the memory
+		
+		
+		Parameters
+		----------
+		Psi_transformed_real_st : StreamTensor
+			The real part of the transfromed state vector (both 0 and 1 states according to the first and second row of the gate kernel) 
+		Psi_transformed_real_st : StreamTensor
+			The imaginary part of the transfromed state vector (both 0 and 1 states according to the first and second row of the gate kernel) 
+		target_qubit_L_write_map_st : StreamTensor
+			The stream tensor for mem scatter operation
+		
+		"""	
+	
+		# define state with 320 vectors instead of 256 inner splits
+		Psi_real_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_real_mt.storage_request, initialized=False)		
+		Psi_imag_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_imag_mt.storage_request, initialized=False)
+		Psi_real_copy_mt_320 = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_real_copy_mt.storage_request, initialized=False)
+		Psi_imag_copy_mt_320 = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_imag_copy_mt.storage_request, initialized=False)
+
+				
+		# separating the tensors along the slice dimension (separating the bytes)
+		Psi_real_mt_320_8       = g.reinterpret(Psi_real_mt_320, dtype=g.int8)
+		Psi_imag_mt_320_8       = g.reinterpret(Psi_imag_mt_320, dtype=g.int8)			
+		Psi_real_bytes_mt_list  = g.split(Psi_real_mt_320_8, dim=-2, num_splits=g.float32.size)
+		Psi_imag_bytes_mt_list  = g.split(Psi_imag_mt_320_8, dim=-2, num_splits=g.float32.size)
+
+		
+		Psi_real_copy_mt_320_8       = g.reinterpret(Psi_real_copy_mt_320, dtype=g.int8)
+		Psi_imag_copy_mt_320_8       = g.reinterpret(Psi_imag_copy_mt_320, dtype=g.int8)			
+		Psi_real_bytes_copy_mt_list  = g.split(Psi_real_copy_mt_320_8, dim=-2, num_splits=g.float32.size)
+		Psi_imag_bytes_copy_mt_list  = g.split(Psi_imag_copy_mt_320_8, dim=-2, num_splits=g.float32.size)
+		
+	
+		# write the calculated states into the memory with mem scatter
+		Psi_transformed_real_mt_320_8       = g.reinterpret(Psi_transformed_real_st, dtype=g.int8)
+		Psi_transformed_imag_mt_320_8       = g.reinterpret(Psi_transformed_imag_st, dtype=g.int8)			
+		Psi_transformed_real_bytes_mt_list  = g.split(Psi_transformed_real_mt_320_8, dim=-2, num_splits=g.float32.size)
+		Psi_transformed_imag_bytes_mt_list  = g.split(Psi_transformed_imag_mt_320_8, dim=-2, num_splits=g.float32.size)	
+
+
+		Psi_transformed_real_copy_mt_320_8       = g.reinterpret(Psi_transformed_real_copy_st, dtype=g.int8)
+		Psi_transformed_imag_copy_mt_320_8       = g.reinterpret(Psi_transformed_imag_copy_st, dtype=g.int8)			
+		Psi_transformed_real_copy_bytes_mt_list  = g.split(Psi_transformed_real_copy_mt_320_8, dim=-2, num_splits=g.float32.size)
+		Psi_transformed_imag_copy_bytes_mt_list  = g.split(Psi_transformed_imag_copy_mt_320_8, dim=-2, num_splits=g.float32.size)		
+				
+		for byte_idx in range(4):
+					
+			g.mem_scatter( Psi_transformed_real_bytes_mt_list[byte_idx], Psi_real_bytes_mt_list[byte_idx], target_qubit_L_write_map_st_a)
+			g.mem_scatter( Psi_transformed_real_copy_bytes_mt_list[byte_idx], Psi_real_bytes_copy_mt_list[byte_idx], target_qubit_L_write_map_st_b)
+			g.mem_scatter( Psi_transformed_imag_bytes_mt_list[byte_idx], Psi_imag_bytes_mt_list[byte_idx], target_qubit_L_write_map_st_a)
+			g.mem_scatter( Psi_transformed_imag_copy_bytes_mt_list[byte_idx], Psi_imag_bytes_copy_mt_list[byte_idx], target_qubit_L_write_map_st_b)
+					
+					
+					
+		'''
+		Psi_transformed_real_mt_output = g.constant_tensor( self.State_input_real_mt.shape, g.float32, storage_req=self.State_input_real_mt.storage_request, 
+                                                                                    name=f"Psi_transformed_real", initialized=False)
+		Psi_transformed_imag_mt_output = g.constant_tensor( self.State_input_imag_mt.shape, g.float32, storage_req=self.State_input_imag_mt.storage_request, 
+                                                                                    name=f"Psi_transformed_imag", initialized=False)
+
+		#Psi_transformed_real_mt_output.set_program_output()
+		#Psi_transformed_imag_mt_output.set_program_output()
+		'''
+
+
 	def gate_8L_program(self):
 		"""
 		Function implementing the L gate operation on the Groq chip
@@ -441,7 +558,8 @@ class Gate(Gate_8_base):
 				gate_first_column_real_st, gate_first_column_imag_st, gate_second_column_real_st, gate_second_column_imag_st = \
 							self.read_out_gate_elements_8( element_num )
                             
-				pairs0[0], pairs0[1], pairs1[0], pairs1[1] = self.two_complex_dot_product_8L( Psi_transformed_real_state_0_st,
+				Psi_transformed_real_copy_st, Psi_transformed_imag_copy_st, Psi_transformed_real_st, Psi_transformed_imag_st = \
+										self.two_complex_dot_product_8L( Psi_transformed_real_state_0_st,
 														Psi_transformed_imag_state_0_st, 
 														Psi_transformed_real_state_1_st, 
 														Psi_transformed_imag_state_1_st, 
@@ -451,52 +569,20 @@ class Gate(Gate_8_base):
 														gate_second_column_imag_st)
 
 
-
-				pairs_to_store0 = g.stack([pairs_to_concat0_0, pairs_to_concat0_1], dim=0)
-				pairs_to_store1 = g.stack([pairs_to_concat1_0, pairs_to_concat1_1], dim=0)
-				#pairs_to_store (2, memory_addresses//2, 2, matrix_size)
-
-				pairs0_0, pairs0_1 = g.split(pairs_to_store0, num_splits=2, dim=2)
-				pairs1_0, pairs1_1 = g.split(pairs_to_store1, num_splits=2, dim=2)
-				#pairs (2, memory_addresses//2, 1, matrix_size)
-				
-				pairs0_0 = pairs0_0.reshape(*new_shape).transpose(1, 0, 2, 3)
-				pairs0_1 = pairs0_1.reshape(*new_shape).transpose(1, 0, 2, 3)
-				pairs1_0 = pairs1_0.reshape(*new_shape).transpose(1, 0, 2, 3)
-				pairs1_1 = pairs1_1.reshape(*new_shape).transpose(1, 0, 2, 3)
-
-					#for target_qbit >= 9, bank alternation works by utilizing the VXM identity delayed output as it passes through even ALUs (compute graph has depth of 4 ALUs)
-					#for target_qbit == 8, original is even/odd bank, copy is odd/even bank  
-				pairs1, pairs0 = pairs0, pairs1
 					
+				
+				# export the calculated state into memory and set program output
 
-				pairs0[0].write(storage_req=pairs0_0.storage_request, name="pairs0_0")
-				pairs0[1].write(storage_req=pairs0_1.storage_request, name="pairs0_1")
-				pairs1[0].write(storage_req=pairs1_0.storage_request, name="pairs1_0")
-				pairs1[1].write(storage_req=pairs1_1.storage_request, name="pairs1_1")
+				target_qubit_L_write_map_st_a, target_qubit_L_write_map_st_b = self.select_target_qbit_write_map_east_8L()
 
-				'''
-				Psi_transformed_real_mt_output = g.constant_tensor(
-									Psi_transformed_real_mt.shape, 
-									g.float32, 
-									storage_req=Psi_transformed_real_mt.storage_request, 
-									name=f"Psi_transformed_real_{gate_idx}", 
-									initialized=False)
+				self.write_tranformed_states_2_mem_8L( Psi_transformed_real_st, 
+									Psi_transformed_imag_st, 
+									Psi_transformed_real_copy_st, 
+									Psi_transformed_imag_copy_st, 
+									target_qubit_L_write_map_st_a, 
+									target_qubit_L_write_map_st_b )
+				
 
-				Psi_transformed_imag_mt_output = g.constant_tensor(
-					Psi_transformed_imag_mt.shape, g.float32, storage_req=Psi_transformed_imag_mt.storage_request, name=f"Psi_transformed_imag_{gate_idx}", initialized=False)
-
-				Psi_transformed_real_mt_output.set_program_output()
-				Psi_transformed_imag_mt_output.set_program_output()
-				gr0.name = "gr0"
-				gr1.name = "gr1"
-				gi0.name = "gi0"
-				gi1.name = "gi1"
-				gr0.set_program_output()
-				gr1.set_program_output()
-				gi0.set_program_output()
-				gi1.set_program_output()
-				'''
 				
 			with g.ResourceScope(name=f"increase_gate_counters_scope", is_buffered=True, predecessors=[apply_gate_scope], time=None) as increase_gate_counters_scope :
 			

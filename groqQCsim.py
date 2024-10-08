@@ -145,6 +145,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device.load(iop[11], unsafe_keep_entry_points=True) #8	
 	device.load(iop[12], unsafe_keep_entry_points=True) #8S		
 	device.load(iop[13], unsafe_keep_entry_points=True) #L8	
+	device.load(iop[14], unsafe_keep_entry_points=True) #8L	
 	'''		
 	'''
 	if target_qbit >= small_qbit_num_limit :
@@ -386,7 +387,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_L8 operation
 			index_of_gate_program = 3
-			entry_point = iop["gate_8L"]["mono"]
+			entry_point = iop["gate_8L"]["compute"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
 			#print( gate_output )					
 
