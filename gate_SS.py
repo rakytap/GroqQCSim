@@ -258,9 +258,7 @@ class Gate(Gate_S_base):
 				gate_kernels_broadcasted_real_shared_copy_dict[key] = gate_kernels_broadcasted_real_shared_copy
 				gate_kernels_broadcasted_imag_shared_copy_dict[key] = gate_kernels_broadcasted_imag_shared_copy				
 
-
-		
-			
+	
 			address_offset = 4*gate_count
 
 			layout_real_diag = layout_gate_kernels_real + f", A1({address_offset})"
@@ -328,9 +326,6 @@ class Gate(Gate_S_base):
 					
 				with g.ResourceScope(name=f"prepare_filtered_gate_elements_scope_SS", is_buffered=True, time=0) as prepare_filtered_gate_elements_scope :
 
-					gate_counter_gate_filtering_selector_shared = g.shared_memory_tensor(self.gate_counter_gate_filtering_selector_mt, name="gate_counter_gate_filtering_selector_shared") 
-
-
 					# gather streams to filter and mix gate elements for the unitary transformation
 					state_1_broadcasted_st, state_0_broadcasted_st = self.gather_gate_filter_tensors_SS() ##################################
 
@@ -338,8 +333,7 @@ class Gate(Gate_S_base):
 					#control_state_1_broadcasted_st = control_state_1_broadcasted_shared.read( streams=g.SG4[2] )
 					#control_state_0_broadcasted_st = control_state_0_broadcasted_shared.read( streams=g.SG4[5] )
 					ones_zeros_st = ones_zeros_mt.read( streams=g.SG4[3])
-
-
+					
 					
 					gate_counter_gate_element_selector_00_shared = g.shared_memory_tensor( \
 									self.gate_counter_gate_element_selector_00_mt, \

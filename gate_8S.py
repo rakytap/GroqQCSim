@@ -182,7 +182,7 @@ class Gate(Gate_8_base):
 				
 				
 				gate_11_real_filtered_mt, gate_11_imag_filtered_mt, gate_11_real_filtered_copy_mt, gate_11_imag_filtered_copy_mt = \
-									self.filter_gate_element( self.gate_counter_gate_element_selector_11_mt, complex_one_mt, 7*gate_count, 6, '11' )	
+									self.filter_gate_element( self.gate_counter_gate_element_selector_11_mt, complex_one_mt, 4*gate_count+3, 6, '11' )	
 									
 	
 	
@@ -194,7 +194,7 @@ class Gate(Gate_8_base):
 													
 									
 				gate_10_real_filtered_mt, gate_10_imag_filtered_mt, gate_10_real_filtered_copy_mt, gate_10_imag_filtered_copy_mt = \
-									self.filter_gate_element( self.gate_counter_gate_element_selector_10_mt, complex_zero_mt, 5*gate_count, 12, '10' )	
+									self.filter_gate_element( self.gate_counter_gate_element_selector_10_mt, complex_zero_mt, 4*gate_count+1, 12, '10' )	
 									
 	
 	
@@ -205,7 +205,7 @@ class Gate(Gate_8_base):
 				
 				
 				gate_01_real_filtered_mt, gate_01_imag_filtered_mt, gate_01_real_filtered_copy_mt, gate_01_imag_filtered_copy_mt = \
-									self.filter_gate_element( self.gate_counter_gate_element_selector_01_mt, complex_zero_mt, 6*gate_count, 18, '10' )	
+									self.filter_gate_element( self.gate_counter_gate_element_selector_01_mt, complex_zero_mt, 4*gate_count+2, 18, '10' )	
 									
 	
 	

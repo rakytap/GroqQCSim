@@ -688,7 +688,7 @@ class IO:
 			constant_1_address_offset_np[0:320:16] = 1
 			self.constant_1_address_offset_mt = g.from_data( np.asarray(constant_1_address_offset_np, dtype=np.uint8), layout=layout_constant_1_address_offset )
 			
-			self.State_input_real_mt.is_static 			 = True
+			self.State_input_real_mt.is_static 		= True
 			self.State_input_imag_mt.is_static 			 = True
 			self.State_input_real_copy_mt.is_static 	 = True
 			self.State_input_imag_copy_mt.is_static 	 = True
@@ -924,19 +924,20 @@ class IO:
 					distribute_map_np[idx] = idx % 16
 
 				distribute_map_tensor_state1_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state1 )
-				distribute_map_tensor_state0_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state0 + f", A1({small_qbit_num_limit+4})" )
+				distribute_map_tensor_state0_mt = g.from_data( np.asarray(distribute_map_np, dtype=np.uint8), layout=layout_distribute_map_tensor_state0 )
 				g.add_mem_constraints([states_1_mt], [distribute_map_tensor_state1_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 				g.add_mem_constraints([states_0_mt], [distribute_map_tensor_state0_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 				g.add_mem_constraints([state_1_selector_mt], [control_state_1_selector_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 				g.add_mem_constraints([state_0_selector_mt], [control_state_0_selector_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 
-
+	
 				state_1_selector_st = state_1_selector_mt.read(streams=[g.SG1[0]])
 				state_1_st = g.mem_gather(states_1_mt, state_1_selector_st, output_streams=[g.SG1[0]], time=0)
 				
 				state_0_selector_st = state_0_selector_mt.read(streams=[g.SG1[24]])
 				state_0_st = g.mem_gather(states_0_mt, state_0_selector_st, output_streams=[g.SG1[24]], time=0)
-								
+
+		
 				state_1_broadcasted_st = self.broadcast_element(state_1_st,
 				                                               distribute_map_tensor_state1_mt, 
 				                                               distributor_requests[0],
@@ -949,8 +950,9 @@ class IO:
 				                                               transposer_requests[1])
 
 		
-				self.state_1_broadcasted_mt = state_1_broadcasted_st.write(name="state_1_broadcasted", layout=layout_state_1_broadcasted, program_output=False)
-				self.state_0_broadcasted_mt = state_0_broadcasted_st.write(name="state_0_broadcasted", layout=layout_state_0_broadcasted, program_output=False)
+				self.state_1_broadcasted_mt = state_1_broadcasted_st.write(name="state_1_broadcasted", layout=layout_state_1_broadcasted)
+				self.state_0_broadcasted_mt = state_0_broadcasted_st.write(name="state_0_broadcasted", layout=layout_state_0_broadcasted)
+
 
 				self.state_1_broadcasted_mt.is_static = True
 				self.state_0_broadcasted_mt.is_static = True
@@ -958,12 +960,17 @@ class IO:
 
 				
 				# same as before but now for the control qbit
-				control_state_1_selector_st = control_state_1_selector_mt.read(streams=[g.SG1[0]])
+				control_state_1_selector_st = control_state_1_selector_mt.read(streams=[g.SG1[1]])
 				control_state_1_st = g.mem_gather(states_1_mt, control_state_1_selector_st, output_streams=[g.SG1[0]], time=gate_count+1)
+				#control_state_1_st.write(name="control_state_1_st_oo", layout='H1(E), -1, S1(36)', program_output=True)
 				
 				control_state_0_selector_st = control_state_0_selector_mt.read(streams=[g.SG1[24]])
 				control_state_0_st = g.mem_gather(states_0_mt, control_state_0_selector_st, output_streams=[g.SG1[24]], time=gate_count+1)
-				
+
+				#states_1_st = states_1_mt.read( streams=g.SG1[8], time=5000 )
+				#control_state_1_selector_st.write(name="states_1_st_ttt", layout='H1(E), -1, S1(43)', program_output=True)
+
+				#control_state_1_st.write(name="control_state_1_st_ttt", layout='H1(E), -1, S1(36)', program_output=True)				
 								
 				control_state_1_broadcasted_st = self.broadcast_element(control_state_1_st,
 				                                               distribute_map_tensor_state1_mt, 
@@ -977,8 +984,10 @@ class IO:
 				                                               transposer_requests[1])
 				
 				
-				self.control_state_1_broadcasted_mt = control_state_1_broadcasted_st.write(name="control_state_1_broadcasted", layout=layout_control_state_1_broadcasted, program_output=False)
-				self.control_state_0_broadcasted_mt = control_state_0_broadcasted_st.write(name="control_state_0_broadcasted", layout=layout_control_state_0_broadcasted, program_output=False)
+				self.control_state_1_broadcasted_mt = control_state_1_broadcasted_st.write(name="control_state_1_broadcasted", layout=layout_control_state_1_broadcasted)
+				self.control_state_0_broadcasted_mt = control_state_0_broadcasted_st.write(name="control_state_0_broadcasted", layout=layout_control_state_0_broadcasted)
+
+				#control_state_1_broadcasted_st.write(name="control_state_1_broadcasted_oo", layout='H1(E), -1, S4', program_output=True)
 				
 				self.control_state_1_broadcasted_mt.is_static = True
 				self.control_state_0_broadcasted_mt.is_static = True
@@ -987,6 +996,7 @@ class IO:
 				g.add_mem_constraints([self.state_0_broadcasted_mt, self.control_state_0_broadcasted_mt], [self.zeros_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 
 				g.add_mem_constraints([self.state_1_broadcasted_mt, self.control_state_1_broadcasted_mt], [states_1_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+				g.add_mem_constraints([self.state_1_broadcasted_mt, self.control_state_1_broadcasted_mt], [states_0_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 
 				g.add_mem_constraints([states_1_mt, states_0_mt, distribute_map_tensor_state1_mt, distribute_map_tensor_state0_mt, state_1_selector_mt, state_0_selector_mt], [self.state_0_broadcasted_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 
@@ -1041,7 +1051,7 @@ class IO:
 				self.target_qubit_read_maps_8L_pair_mt.is_static = True		
 			
 			
-			
+				
 				# tensor to store mem scatter maps for 8L gates (two of them is needed because of the peculiar bank alternating strategy)
 				mem_write_map = self.generate_target_qubit_8L_control_qbit_write_maps()	
 	
@@ -1049,7 +1059,7 @@ class IO:
 				self.target_qubit_write_maps_8L_mt_b    = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_8L_b)	
 				self.target_qubit_write_maps_8L_mt.is_static      = True	
 				self.target_qubit_write_maps_8L_mt_b.is_static      = True
-
+				
 				####################################	
 			
 				

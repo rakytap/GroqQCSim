@@ -45,8 +45,7 @@ class Gate_S_base(Gate_counters):
 		state_0_broadcasted_shared = g.shared_memory_tensor(self.state_0_broadcasted_mt, name="state_0_broadcasted_shared")	
 	
 	
-		gate_counter_gate_filtering_selector_shared = g.shared_memory_tensor(self.gate_counter_gate_filtering_selector_mt,   \
-												   										name="gate_counter_gate_filtering_selector_shared") 
+		gate_counter_gate_filtering_selector_shared = g.shared_memory_tensor(self.gate_counter_gate_filtering_selector_mt,   							   										name="gate_counter_gate_filtering_selector_shared") 
 		gate_counter_gate_filtering_selector_st     = gate_counter_gate_filtering_selector_shared.read( streams=g.SG1[0] )
 
 		# split state_1_broadcasted_shared and state_0_broadcasted_shared into slices to use mem_gather on the tensor
@@ -69,6 +68,7 @@ class Gate_S_base(Gate_counters):
 			state_0_broadcasted_byte_st = g.mem_gather(state_0_broadcasted_shared_list[slice_idx], 
 												gate_counter_gate_filtering_selector_st, 
 												output_streams=[g.SG1[slice_idx]] )
+
 			state_0_broadcasted_byte_st = g.reshape( state_0_broadcasted_byte_st, [1,320])
 			state_0_broadcasted_bytes_list.append( state_0_broadcasted_byte_st )
                                         	             	

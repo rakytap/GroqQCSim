@@ -41,31 +41,31 @@ def compile(mxm_permutation = True) -> List[str]:
 	program.upload_program()
 	program.download_state_program()
 	program.split_gates_program()
-	'''
+	
 	# program to perform gate_S operation
 	program.gate_S_program()
-
+	
 	# program to perform gate_SS operation
 	program.gate_SS_program()
-
+	
 	# program to perform gate_SL operation
 	program.gate_SL_program()
-
+	
 	# program to perform gate_S8 operation
 	program.gate_S8_program()
 	
 	# program to perform gate_SH operation
 	program.gate_SH_program()
-
+	
 	# program to perform gate_L operation
 	program.gate_L_program()
-
+	
 	# program to perform gate_LL operation
 	program.gate_LL_program()
 	
 	# program to perform gate_LS operation
 	program.gate_LS_program()
-
+	
 	# program to perform gate_8 operation
 	program.gate_8_program()
 	
@@ -74,10 +74,10 @@ def compile(mxm_permutation = True) -> List[str]:
 	
 	# program to perform gate_L8 operation
 	program.gate_L8_program()			
-	'''
+	
 	# program to perform gate_8L operation
 	program.gate_8L_program()	
-
+	
 	iops = pgm_pkg.assemble()
 
 	return iops
@@ -133,9 +133,8 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device.load(iop[0], unsafe_keep_entry_points=True) # upload
 	device.load(iop[1], unsafe_keep_entry_points=True) # split_gates
 	device.load(iop[2], unsafe_keep_entry_points=True) # download
-	device.load(iop[3], unsafe_keep_entry_points=True) #S
-	'''
-	device.load(iop[4], unsafe_keep_entry_points=True) #SS
+	device.load(iop[3], unsafe_keep_entry_points=True) #S	
+	device.load(iop[4], unsafe_keep_entry_points=True) #SS	
 	device.load(iop[5], unsafe_keep_entry_points=True) #SL
 	device.load(iop[6], unsafe_keep_entry_points=True) #S8
 	device.load(iop[7], unsafe_keep_entry_points=True) #SH
@@ -143,27 +142,40 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device.load(iop[9], unsafe_keep_entry_points=True) #LL
 	device.load(iop[10], unsafe_keep_entry_points=True) #LS	
 	device.load(iop[11], unsafe_keep_entry_points=True) #8	
-	device.load(iop[12], unsafe_keep_entry_points=True) #8S		
+	device.load(iop[12], unsafe_keep_entry_points=True) #8S			
 	device.load(iop[13], unsafe_keep_entry_points=True) #L8	
 	device.load(iop[14], unsafe_keep_entry_points=True) #8L	
-	'''		
+		
 	'''
 	if target_qbit >= small_qbit_num_limit :
 		raise ValueError( "the target qubit in this program should be less than 8" )
 
 	'''
+
+	# create memory maps to access the correct metadata on the chip to perform the gate operation on the chosen target_qubit
+	#if mxm_permutation :
+	#in case the MXM is used, the individual permute mtrices will occupy 20 memory addresses
+	mxm_permutation_selector = np.zeros( (gate_count,320,), dtype=np.uint8 ) #target_qbit_selector*20
+	#else:  ##### !!! gate SL needs the permutor !!! #####
+	
+	# in case the permutor is used for permutation
+	permutation_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )
 	
 	# maps for mem_gather to select the correct state_1 indices according to the target qubit
-	target_qbit_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )
+	state_1_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )#np.zeros( (2,320,), dtype=np.uint8 )
+	state_0_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )#np.zeros( (2,320,), dtype=np.uint8 )	
 	for gate_idx in range(gate_count):
 		target_qbit = target_qbits[gate_idx]
 		if target_qbit < 8:
-			target_qbit_selector[gate_idx, 0:320:16] = target_qbit
+			state_0_selector[gate_idx, 0:320:16] = target_qbit
+			state_1_selector[gate_idx, 0:320:16] = target_qbit
+			permutation_selector[gate_idx, 0:320:16] = target_qbit
 		else:
-			target_qbit_selector[gate_idx, 0:320:16] = 0
+			state_0_selector[gate_idx, 0:320:16] = 0
+			state_1_selector[gate_idx, 0:320:16] = 0
+			permutation_selector[gate_idx, 0:320:16] = 0
 		
-	state_1_selector = target_qbit_selector.copy()#np.zeros( (2,320,), dtype=np.uint8 )
-	state_0_selector = target_qbit_selector.copy()#np.zeros( (2,320,), dtype=np.uint8 )	
+
 	
 	control_state_1_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )
 	for gate_idx in range(gate_count):
@@ -179,28 +191,19 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			# control_state_1_selector is not used for L control qubits. 
 			# state 1 for control qubit states are collected via gather maps, that are selected using distributor maps (see distributor_map_np)
 			# It is just skiped over by gate counters
-			control_state_1_selector[gate_idx,0:320:16] = 0  
+			control_state_1_selector[gate_idx,0:320:16] = 0
 		elif (control_qbit == 8) :
 			# control qubit 8 is treated over outer splits. 
 			# control_state_1_selector is not used for control qubit 8. 
-			control_state_1_selector[gate_idx,0:320:16] = 0  
+			control_state_1_selector[gate_idx,0:320:16] = 0
 		elif ( control_qbit > 16 and control_qbit < 21 ) :
 			control_state_1_selector[gate_idx,0:320:16] = 0  
 		else: 
 			raise Exception( "control qubit must be lesser than 21" )
 
 	control_state_0_selector = control_state_1_selector
-
 	
 	
-	# create memory maps to access the correct metadata on the chip to perform the gate operation on the chosen target_qubit
-	#if mxm_permutation :
-	#in case the MXM is used, the individual permute mtrices will occupy 20 memory addresses
-	mxm_permutation_selector = target_qbit_selector*20
-	#else:  ##### !!! gate SL needs the permutor !!! #####
-	
-	# in case the permutor is used for permutation
-	permutation_selector = target_qbit_selector	
 
 
 	# control qubit distributor maps for SL gates
@@ -275,6 +278,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	# run the upload program
 	entry_point = iop["upload"]["mono"]
 	pgm_1_output = invoke(device, iop, 0, entry_point, {"State_input_real": input_real, "State_input_imag": input_imag, "mxm_permutation_selector": mxm_permutation_selector, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector, "control_qubit_distributor_maps": distributor_map_np, "target_qubit_distributor_maps": target_qubit_distributor_map_np})
+	#print(pgm_1_output)
 
 	# run the gate split program
 	index_of_split_program = 2
@@ -327,6 +331,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			index_of_gate_program = 6
 			entry_point = iop["gate_S8"]["compute"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output )
 
 		elif target_qbit >= 0 and target_qbit < 8 and control_qbit > 16 and control_qbit <= 21:
 
@@ -343,6 +348,8 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			index_of_gate_program = 8
 			entry_point = iop["gate_L"]["compute"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print(gate_output['ooo0'][:,0:2])
+			#print(gate_output['ooo1'][:,0:2])
 
 
 		elif target_qbit > 8 and target_qbit < 21 and control_qbit > 8 and control_qbit <= 16:
@@ -358,6 +365,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			index_of_gate_program = 10
 			entry_point = iop["gate_LS"]["compute"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output )
 			
 		elif target_qbit == 8 and control_qbit == -1: 
 			# pogram perfroming the Gate_8 operation
@@ -386,7 +394,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 		elif target_qbit == 8 and target_qbit < 21 and control_qbit > 8: 
 
 			# pogram perfroming the Gate_L8 operation
-			index_of_gate_program = 3
+			index_of_gate_program = 14
 			entry_point = iop["gate_8L"]["mono"]
 			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
 			print( gate_output )					

@@ -4,7 +4,7 @@ qbit_num = 17
 gate_kernel_element_labels = ["00", "01", "10", "11"]
 
 # gate count stored in a single packed vector 
-gate_count = 1 #17
+gate_count = 17 #13 #17
 
 # the number og qubits for which the gate operations need the permutor (need to reorganize the elements in a vector)
 small_qbit_num_limit = 8
@@ -97,11 +97,11 @@ layout_gate_kernels_imag	="H1(E), S4(12-15)"
 # addresses from 0 to small_qbit_num_limit-1       			are occupied by vectors describing states |0> and |1> for different target qubits (states |1> are labeled by bits 1)
 # addresses from small_qbit_num_limit to 2*small_qbit_num_limit-1 	are occupied by vectors describing states |0> and |1> for different target qubits (states |0> are labeled by bits 1)
 # addresses from 2*small_qbit_num_limit to 2*small_qbit_num_limit+3 	are occupied by distributor maps to used to broadcast elements 01,10,11 of the gate kernel
-layout_states_1			    = f"H1(E), A{small_qbit_num_limit}({2*gate_count}-{2*gate_count+small_qbit_num_limit-1}), S1(22)"
-layout_distribute_map_tensor        = "H1(E), S1(17)"
-layout_distribute_map_tensor_state1 = f"H1(E), S1(22), A1({2*gate_count+small_qbit_num_limit+4})"  
-layout_states_0			    = f"H1(E), A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), S1(18)"
-layout_distribute_map_tensor_state0 = "H1(E), S1(18)"
+layout_states_1			    = f"H1(E), A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), S1(32)"
+layout_distribute_map_tensor        = "H1(E), S1(17)" #TODO move to another slice
+layout_distribute_map_tensor_state1 = f"H1(E), S1(32), A1({small_qbit_num_limit+4})"  
+layout_states_0			    = f"H1(E), A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), S1(33)"
+layout_distribute_map_tensor_state0 = f"H1(E), S1(33), A1({small_qbit_num_limit+4})"
 
 
 layout_state_1_selector		= f"H1(E), A{gate_count}(0-{gate_count-1}), S1(19)" 
@@ -118,11 +118,12 @@ layout_control_state_0_broadcasted	= f"H1(E), A{gate_count}({gate_count}-{2*gate
 # to save controlled operations on target qbit 8, we need two concurrent streams for memory scatter (see layout_target_qubit_write_maps_8L_a)
 #layout_target_qubit_write_maps_8L_b = f"H1(E), A{memory_addresses//2}({memory_addresses//2}-{memory_addresses-1}), S1(31)"
 #layout_target_qubit_write_maps_8L_b = f"H1(E), A{memory_addresses//2}(0-{memory_addresses//2-1}), S1(17)"
-layout_target_qubit_write_maps_8L_b = f"H1(E), A{(memory_slices//2) >> 1}(0-{((memory_slices//2) >> 1)-1}), B2, S1(17)"
+layout_target_qubit_write_maps_8L_b = f"H1(E), A{(memory_slices//2) >> 1}(0-{((memory_slices//2) >> 1)-1}), B2, S1(42)"
+#layout_target_qubit_write_maps_8L_c = f"H1(E), A{(memory_slices//2) >> 1}(0-{((memory_slices//2) >> 1)-1}), B2, S1(17)"
 
 # memory layout for the tensors full of ones and zeros
-layout_zeros = f"H1(E), A1(1), S4(32-35)"
-layout_ones = f"H1(E), A1(2), S4(32-35)"
+layout_zeros = f"H1(E), A1(320), S4(32-35)"
+layout_ones = f"H1(E), A1(321), S4(32-35)"
 
 
 
@@ -168,7 +169,7 @@ layout_control_qubit_address_maps_SL_east_a = f"H1(E), A{memory_slices}(0-{memor
 layout_target_qubit_write_maps_L = f"H1(E), A{memory_addresses}(0-{memory_addresses-1}), S1(40)"
 # (41) saved for H target qubit maps
 
-layout_target_qubit_write_maps_LL = f"H1(E), A{memory_addresses//2}(0-{memory_addresses//2-1}), S1(42)"
+layout_target_qubit_write_maps_LL = f"H1(E), A{memory_addresses//2}(0-{memory_addresses//2-1}), S1(18)"
 
 # to save controlled operations on target qbit 8, we need two concurrent streams for memory scatter (see layout_target_qubit_write_maps_8L_b)
 layout_target_qubit_write_maps_8L_a = f"H1(E), A{memory_addresses//2}(0-{memory_addresses//2-1}), S1(43)"

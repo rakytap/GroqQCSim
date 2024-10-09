@@ -60,17 +60,20 @@ class Gate(Gate_L_base):
 				Psi_transformed_real_state_0_st, Psi_transformed_imag_state_0_st, Psi_transformed_real_state_1_st, Psi_transformed_imag_state_1_st  = \
 							 self.read_out_state_2_transform( read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st)
 
-					
+				#Psi_transformed_real_state_0_st.write( name='ooo2', layout='H1(E), -1, S4', program_output=True, time=0)
+
 				# readout gate elements	
 				element_num = read_out_qubit_0_memory_tensor_st.shape[0]
 						
 				gate_element_real_st, gate_element_imag_st, gate_element_real_copy_st, gate_element_imag_copy_st = \
 							self.read_out_gate_elements( element_num )	
-						
+				'''	
+				gate_element_real_st.write( name='ooo0', layout='H1(W), -1, S4')
+				gate_element_imag_st.write( name='ooo1', layout='H1(W), -1, S4', time=0)
+				gate_element_real_copy_st.write( name='ooo2', layout='H1(W), -1, S4', program_output=True)
+				gate_element_imag_copy_st.write( name='ooo3', layout='H1(W), -1, S4', time=2)
+				'''
 				
-				
-				
-
 				# calculate the VXM round trip                            
 				Psi_transformed_real_st, Psi_transformed_imag_st = self.two_complex_dot_product( 
 												Psi_transformed_real_state_0_st,#pairs0[0], 
@@ -86,6 +89,7 @@ class Gate(Gate_L_base):
 				
 				# export the calculated state into memory and set program output
 				target_qubit_L_write_map_st = self.select_target_qbit_write_map_east()
+				#target_qubit_L_write_map_st.write( name='ooo1', layout='H1(W), -1, S1', program_output=True)
 				self.write_tranformed_states_2_mem( Psi_transformed_real_st, Psi_transformed_imag_st, target_qubit_L_write_map_st )
 				
 				

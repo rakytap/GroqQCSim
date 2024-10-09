@@ -15,11 +15,22 @@ if __name__ == "__main__":
 
 	#target_qbits  = [12,  12, 0,  10, 8, 6,   8,  4, 15, 3, 13, 16, 8, 5, 8, 12, 7]
 	#control_qbits = [-1,  8, 15,  4,  2, 10, -1, -1, 10, 5, 7,  8, -1, 0, 7, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
+
+			# L   LL  SL  LS  8S SL   8   S
+	#target_qbits  = [12,  12]
+	#control_qbits = [-1,  8] #-1 ... no cotrol qubit is incolved in the operation
 	
-	target_qbits  = [8]
-	control_qbits = [9] #-1 ... no cotrol qubit is incolved in the operation
+	target_qbits  = [6,  2,  12, 1, 15, 8, 12, 4,  6, 16, 10, 11, 15,  8, 12, 13, 8]
+	control_qbits = [-1, -1, 3,  0, 3, -1, 9, 10,  8,  7, -1,  16,  7, -1, 2, 8, 11] #-1 ... no control qubit is incolved in the operation
+
+	#target_qbits  = [6, 6, 6, 6, 6, 6, 6, 6, 10, 11, 15,  8, 12]
+	#control_qbits = [8, 8, 8, 8, 8, 8, 8, 8, -1,  16,  7, -1, 2] #-1 ... no control qubit is incolved in the operation
+
+	#target_qbits  = [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 12]
+	#control_qbits = [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 0] #-1 ... no control qubit is incolved in the operation
 	
-	
+	#target_qbits  = [6, 6, 6, 6, 6, 6, 6, 10, 11, 15,  8, 12]
+	#control_qbits = [8, 8, 8, 8, 8, 8, 8, -1,  16,  7, -1, 2] #-1 ... no control qubit is incolved in the operation	
 
 	if len(target_qbits) != gate_count:
 		raise Exception("Number of target qubits in the list of target qubits should be equal to the gate count")
@@ -77,6 +88,10 @@ if __name__ == "__main__":
 
 	#create an array of random parameters
 	parameters = np.random.rand( parameter_num )*2*np.pi
+	#parameters = np.array( [1.4538327,  1.4728143,  4.73309153, 2.87384372] )
+	#parameters = np.array( [4.88227757, 2.24584162] )
+	print('parameters: ', parameters )
+	
 	'''
 	if parameters.size > 3:
 		for gate_idx in range( len(target_qbits)-1 ):
@@ -148,6 +163,10 @@ if __name__ == "__main__":
 	for idx in range(real_part.size):
 		if isnan[idx] == True:
 			print( idx, real_part[idx] )
+		'''
+		if ( abs( real_part[idx] - np.real( State_transformed_oracle[idx] ) ) > 1e-3 and idx < 5000) :
+			print( idx, idx & (1<<8), real_part[idx], np.real( State_transformed_oracle[idx] ) )
+		'''
 	#print( imag_part[0:512] )	
 	
 

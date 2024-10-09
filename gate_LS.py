@@ -39,7 +39,7 @@ class Gate(Gate_L_base):
 		self.alu_req_11 = g.tensor.create_alu_request( [8], 1 )
 		
 		
-	def gather_control_qubit_selector_LS(self ):
+	def gather_control_qubit_selector_LS(self, save=False ):
 	
 		# state_1_mt: if target_qubit_loc at the idx-th element is in state_1 |1> then all the 8 bits of the idx-th element is set to 1, thus state_1[idx] = 255
 		# state_0_mt: if target_qubit_loc at the idx-th element is in state_0 |0> then all the 8 bits of the idx-th element is set to 1, thus state_0[idx] = 255
@@ -93,8 +93,7 @@ class Gate(Gate_L_base):
 	
 	
 		control_state_0_broadcasted_st, control_state_1_broadcasted_st = self.gather_control_qubit_selector_LS()
-	
-
+		
 		filtering_element_st = filtering_element_mt.read( streams = g.SG4_W[6] )
 			
 				
@@ -331,7 +330,7 @@ class Gate(Gate_L_base):
 				
 				
 				gate_11_real_filtered_mt, gate_11_imag_filtered_mt, gate_11_real_filtered_copy_mt, gate_11_imag_filtered_copy_mt = \
-									self.filter_gate_element( self.gate_counter_gate_element_selector_11_mt, complex_one_mt, 7*gate_count, 6, '11' )	
+									self.filter_gate_element( self.gate_counter_gate_element_selector_11_mt, complex_one_mt, 4*gate_count+3, 6, '11' )	
 									
 	
 	
@@ -343,7 +342,7 @@ class Gate(Gate_L_base):
 													
 									
 				gate_10_real_filtered_mt, gate_10_imag_filtered_mt, gate_10_real_filtered_copy_mt, gate_10_imag_filtered_copy_mt = \
-									self.filter_gate_element( self.gate_counter_gate_element_selector_10_mt, complex_zero_mt, 5*gate_count, 12, '10' )	
+									self.filter_gate_element( self.gate_counter_gate_element_selector_10_mt, complex_zero_mt, 4*gate_count+1, 12, '10' )	
 									
 	
 	
@@ -354,7 +353,7 @@ class Gate(Gate_L_base):
 				
 				
 				gate_01_real_filtered_mt, gate_01_imag_filtered_mt, gate_01_real_filtered_copy_mt, gate_01_imag_filtered_copy_mt = \
-									self.filter_gate_element( self.gate_counter_gate_element_selector_01_mt, complex_zero_mt, 6*gate_count, 18, '10' )	
+									self.filter_gate_element( self.gate_counter_gate_element_selector_01_mt, complex_zero_mt, 4*gate_count+2, 18, '10' )	
 									
 	
 	
