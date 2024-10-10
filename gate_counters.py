@@ -1,4 +1,4 @@
-from split_gates import Split_gates
+from generate_static_data import Generate_static_data
 from memory_layouts import *
 import groq.api as g
 import numpy as np
@@ -6,7 +6,7 @@ import numpy as np
 
 	
 
-class Gate_counters(Split_gates):
+class Gate_counters(Generate_static_data):
 	"""
 	A base class used to implement the gate operation on qubits S.
 	S qubits are qubits 0,1,2,...,7

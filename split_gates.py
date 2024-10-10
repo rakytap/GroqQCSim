@@ -1,10 +1,10 @@
-from QCsim_IO import IO
+from generate_static_data import Generate_static_data
 from memory_layouts import *
 import groq.api as g
 import numpy as np
 from groq.api import instruction as inst
 
-class Split_gates(IO):
+class Split_gates(Generate_static_data):
 
 	def __init__(self, pgm_pkg, mxm_permutation=True):
 	

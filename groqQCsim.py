@@ -39,8 +39,8 @@ def compile(mxm_permutation = True) -> List[str]:
 	program = Gate_IOP(pgm_pkg, mxm_permutation = mxm_permutation)
 	# Defines a program to upload the inputs
 	program.upload_program()
-	program.download_state_program()
-	program.split_gates_program()
+	program.upload_state_program()	
+	program.download_state_program()	
 	
 	# program to perform gate_S operation
 	program.gate_S_program()
@@ -131,8 +131,8 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device = runtime.devices[0]
 	device.open()
 	device.load(iop[0], unsafe_keep_entry_points=True) # upload
-	device.load(iop[1], unsafe_keep_entry_points=True) # split_gates
-	device.load(iop[2], unsafe_keep_entry_points=True) # download
+	device.load(iop[1], unsafe_keep_entry_points=True) # upload state vector
+	device.load(iop[2], unsafe_keep_entry_points=True) # download state vector
 	device.load(iop[3], unsafe_keep_entry_points=True) #S	
 	device.load(iop[4], unsafe_keep_entry_points=True) #SS	
 	device.load(iop[5], unsafe_keep_entry_points=True) #SL
@@ -277,13 +277,17 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 	# run the upload program
 	entry_point = iop["upload"]["mono"]
-	pgm_1_output = invoke(device, iop, 0, entry_point, {"State_input_real": input_real, "State_input_imag": input_imag, "mxm_permutation_selector": mxm_permutation_selector, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector, "control_qubit_distributor_maps": distributor_map_np, "target_qubit_distributor_maps": target_qubit_distributor_map_np})
+	pgm_1_output = invoke(device, iop, 0, entry_point, {"mxm_permutation_selector": mxm_permutation_selector, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector, "control_qubit_distributor_maps": distributor_map_np, "target_qubit_distributor_maps": target_qubit_distributor_map_np})
 	#print(pgm_1_output)
+	
+	entry_point = iop["uplod_state_vector"]["mono"]	
+	pgm_upload_state_vector_output = invoke(device, iop, 1, entry_point, {"State_input_real": input_real, "State_input_imag": input_imag})
+
 
 	# run the gate split program
-	index_of_split_program = 2
-	entry_point = iop["split_gates"]["compute"] #4*index_of_split_program + 1
-	pgm_2_output = invoke(device, iop, index_of_split_program, entry_point, {})
+	#index_of_split_program = 3
+	#entry_point = iop["split_gates"]["compute"] #4*index_of_split_program + 1
+	#pgm_2_output = invoke(device, iop, index_of_split_program, entry_point, {})
 
 	#print( pgm_2_output )
 
