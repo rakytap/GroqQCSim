@@ -9,9 +9,39 @@ import groqQCsim
 import time
 
 qbit_num = groqQCsim.qbit_num
+gate_count = groqQCsim.gate_count
 
 if __name__ == "__main__":
-	target_qbit = [4]
+
+	#target_qbits  = [12,  12, 0,  10, 8, 6,   8,  4, 15, 3, 13, 16, 8, 5, 8, 12, 7]
+	#control_qbits = [-1,  8, 15,  4,  2, 10, -1, -1, 10, 5, 7,  8, -1, 0, 7, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
+
+			# L   LL  SL  LS  8S SL   8   S
+	#target_qbits  = [12,  12]
+	#control_qbits = [-1,  8] #-1 ... no cotrol qubit is incolved in the operation
+	
+	target_qbits  = [6,  2,  12, 1, 15, 8, 12, 4,  6, 16, 10, 11, 15,  8, 12, 13, 8]
+	control_qbits = [-1, -1, 3,  0, 3, -1, 9, 10,  8,  7, -1,  16,  7, -1, 2, 8, 11] #-1 ... no control qubit is incolved in the operation
+	
+	#target_qbits  = [6, 5]
+	#control_qbits = [-1, 2] #-1 ... no control qubit is incolved in the operation
+
+	#target_qbits  = [6, 6, 6, 6, 6, 6, 6, 6, 10, 11, 15,  8, 12]
+	#control_qbits = [8, 8, 8, 8, 8, 8, 8, 8, -1,  16,  7, -1, 2] #-1 ... no control qubit is incolved in the operation
+
+	#target_qbits  = [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 12]
+	#control_qbits = [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 0] #-1 ... no control qubit is incolved in the operation
+	
+	#target_qbits  = [6, 6, 6, 6, 6, 6, 6, 10, 11, 15,  8, 12]
+	#control_qbits = [8, 8, 8, 8, 8, 8, 8, -1,  16,  7, -1, 2] #-1 ... no control qubit is incolved in the operation	
+
+	if len(target_qbits) != gate_count:
+		raise Exception("Number of target qubits in the list of target qubits should be equal to the gate count")
+
+	if len(control_qbits) != gate_count:
+		raise Exception("Number of control qubits in the list of control qubits should be equal to the gate count")
+
+	gate_count = len(target_qbits)
 
 	# determine the soze of the unitary to be decomposed
 	matrix_size = 1 << qbit_num
@@ -21,12 +51,39 @@ if __name__ == "__main__":
 	State_orig = State_orig_real + 1j*State_orig_imag
 	State_orig = State_orig/np.linalg.norm(State_orig)
 
-	# define quantum circuit
-	circuit = Circuit(qbit_num)
-	circuit.add_U3( target_qbit[0] )
 
-	circuit_1 = Circuit( 1 )
-	circuit_1.add_U3( 0 )
+	one_qubit_circuits = []
+	circuit = Circuit(qbit_num)
+	for gate_idx in range( len(target_qbits) ):
+
+		target_qbit  = target_qbits[gate_idx]
+		control_qbit = control_qbits[gate_idx]
+
+		if target_qbit == control_qbit:
+			error("The control qubit and target qubit should be different")
+
+		elif target_qbit >= 0 and target_qbit < 21 and control_qbit == -1:
+
+			circuit.add_U3( target_qbit )
+		
+			circuit_1 = Circuit( 1 )
+			circuit_1.add_U3( 0 )
+			one_qubit_circuits.append( circuit_1 )
+		
+		elif target_qbit >= 0 and target_qbit < 21 and control_qbit >= 0 and control_qbit < 21 :	
+	
+
+			circuit.add_adaptive( target_qbit, control_qbit )
+	
+			circuit_1 = Circuit( 1 )
+			circuit_1.add_RY( 0  )		
+			one_qubit_circuits.append( circuit_1 )
+		
+		else:
+			error("Unimplemented case wit target qubit and control qubit.")
+		
+		
+		
 
 	# get the number of free parameters in the circuit
 	parameter_num = circuit.get_Parameter_Num()
@@ -34,10 +91,18 @@ if __name__ == "__main__":
 
 	#create an array of random parameters
 	parameters = np.random.rand( parameter_num )*2*np.pi
+	#parameters = np.array( [1.4538327,  1.4728143,  4.73309153, 2.87384372] )
+	#parameters = np.array( [4.88227757, 2.24584162] )
+	print('parameters: ', parameters )
+	
+	'''
+	if parameters.size > 3:
+		for gate_idx in range( len(target_qbits)-1 ):
+			parameters[gate_idx*3:3*(gate_idx+1)] = parameters[(len(target_qbits)-1)*3:]
 	#parameters[2] = -parameters[1]
-
-
-
+	
+	print( parameters )
+	'''
 
 	# apply the circuit to a quantum state
 	State = State_orig.copy()
@@ -50,13 +115,21 @@ if __name__ == "__main__":
 	#####################################################
 	# get the gate kernel
 
-	gate_kernel_single = circuit_1.get_Matrix( parameters )
-	print( 'The singla qubit gate kernel is:')
-	print( gate_kernel_single )
+	print( 'The single qubit gate kernels are:')
 
-	gate_kernels = np.zeros((80, 2, 2,), dtype=np.complex64) 	#np.array([[[0,1],[1,0]]])
+	gate_kernels = np.zeros((80, 2, 2,), dtype=np.complex64)
+	parameter_idx = parameters.size
 	for idx in range(80):
-		gate_kernels[idx] = gate_kernel_single
+		if idx < gate_count:
+			gate_parameter_num = one_qubit_circuits[idx].get_Parameter_Num()
+			parameters_1       = parameters[parameter_idx-gate_parameter_num : parameter_idx]
+			parameter_idx      = parameter_idx-gate_parameter_num
+
+			print( parameters_1 )
+			gate_kernel_single = one_qubit_circuits[idx].get_Matrix( parameters_1 )
+			gate_kernels[idx]  = gate_kernel_single
+			print( gate_kernel_single )
+			print(' ')
 
 	print( "gate kernel shape: ", gate_kernels.shape )
 
@@ -70,7 +143,7 @@ if __name__ == "__main__":
 	#State_orig_real_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
 	#State_orig_imag_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
 
-	real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbit, gate_kernels)
+	real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, gate_kernels, mxm_permutation = False)
 	print(' ')
 	print( 'difference between CPU oracle and Groq chip (real part): ', scipy.linalg.norm( real_part - np.real( State_transformed_oracle ) , 2), '(imag part): ', scipy.linalg.norm( imag_part - np.imag( State_transformed_oracle ) , 2) )
 
@@ -79,15 +152,27 @@ if __name__ == "__main__":
 
 	print("time elapsed with C++: ", time_Cpp )
 
-
-	print( 'The singla qubit gate kernel is:')
-	print( gate_kernel_single )
+	print( State_orig_real_float32[0:] )
 	print(' ' )
-
-	print( State_orig_real_float32[0:10] )
-	print(' ' )
-	print( np.real( State_transformed_oracle[0:10] ) )
+	print( np.real( State_transformed_oracle[0:] ) )
 	print(' ')
-	print( real_part[0:10] )
+	print( real_part[0:] )
+	'''
+	for idx in range( State_transformed_oracle.size):
+		print( idx, idx & (1 << 8), State_orig_real_float32[idx], np.real( State_transformed_oracle[idx] ), real_part[idx] )
+	'''
 
+	isnan = np.isnan( real_part ) 
+	for idx in range(real_part.size):
+		if isnan[idx] == True:
+			print( idx, real_part[idx] )
+		'''
+		if ( abs( real_part[idx] - np.real( State_transformed_oracle[idx] ) ) > 1e-3 and idx < 5000) :
+			print( idx, idx & (1<<8), real_part[idx], np.real( State_transformed_oracle[idx] ) )
+		'''
+	#print( imag_part[0:512] )	
+	
+
+	scipy.linalg.norm( real_part , 2)
+	scipy.linalg.norm( real_part - np.real( State_transformed_oracle ) , 2)
 

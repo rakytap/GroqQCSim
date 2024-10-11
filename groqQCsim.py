@@ -3,7 +3,8 @@ import groq.api.nn as nn
 import groq.runner.tsp as tsp;
 from groq.api import instruction as inst
 import numpy as np
-from gate import Gate
+from QCsim_IOP import Gate_IOP
+
 
 import os
 import shutil
@@ -24,7 +25,7 @@ print("Python packages imported successfully")
 #Note: MEM slices 16, 20, 24, and 28 on both the east and west hemispheres, and slice 38 on the west hemisphere are reserved for system use.
 
 
-def compile() -> List[str]:
+def compile(mxm_permutation = True) -> List[str]:
 	"""Compiles a program package with 2 programs.
 
 	Return: (List[str]): A list of IOP files.
@@ -33,16 +34,49 @@ def compile() -> List[str]:
 	shutil.rmtree(output_dir, ignore_errors=True)
 	pgm_pkg = g.ProgramPackage("QCsim_multi_program", output_dir)
 
-	print( dir(pgm_pkg) )
-	print( pgm_pkg.add_precompiled_program.__doc__ )
-	print( pgm_pkg.create_program_context.__doc__ )
+	
 
-	program = Gate(pgm_pkg)
+	program = Gate_IOP(pgm_pkg, mxm_permutation = mxm_permutation)
 	# Defines a program to upload the inputs
 	program.upload_program()
-	program.split_gates_program()
-	# program to perform gate operation in a target qubit less than small_qbit_num_limit
-	program.gate_program()
+	program.upload_state_program()	
+	program.download_state_program()	
+	
+	# program to perform gate_S operation
+	program.gate_S_program()
+	
+	# program to perform gate_SS operation
+	program.gate_SS_program()
+	
+	# program to perform gate_SL operation
+	program.gate_SL_program()
+	
+	# program to perform gate_S8 operation
+	program.gate_S8_program()
+	
+	# program to perform gate_SH operation
+	program.gate_SH_program()
+	
+	# program to perform gate_L operation
+	program.gate_L_program()
+	
+	# program to perform gate_LL operation
+	program.gate_LL_program()
+	
+	# program to perform gate_LS operation
+	program.gate_LS_program()
+	
+	# program to perform gate_8 operation
+	program.gate_8_program()
+	
+	# program to perform gate_8S operation
+	program.gate_8S_program()
+	
+	# program to perform gate_L8 operation
+	program.gate_L8_program()			
+	
+	# program to perform gate_8L operation
+	program.gate_8L_program()	
 	
 	iops = pgm_pkg.assemble()
 
@@ -50,12 +84,12 @@ def compile() -> List[str]:
 
 
 
-def invoke(device, iop, pgm_num, ep_num, tensors):
+def invoke(device, iop, pgm_num, ep, tensors):
 	"""Low level interface to the device driver to access multiple programs. A higher level abstraction
     will be provided in a future release that offers access to multiple programs and entry points."""
 
 	pgm = iop[pgm_num]
-	ep = pgm.entry_points[ep_num]
+	#ep = pgm.entry_points[ep_num]
 	input_buffer = runtime.BufferArray(ep.input, 1)[0]
 	output_buffer = runtime.BufferArray(ep.output, 1)[0]
 
@@ -76,7 +110,7 @@ def invoke(device, iop, pgm_num, ep_num, tensors):
 	return outs
 
 
-def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_kernels_imag):
+def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kernels_real, gate_kernels_imag, mxm_permutation = True):
 	"""
     This function interacts with the device driver at a lower level to show
     the control of loading 2 programs and invoking each program through
@@ -91,34 +125,132 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 
 	print(f"Running programs from {iop_file}")
 
-
+	
 
 	iop = runtime.IOProgram(iop_file)
 	device = runtime.devices[0]
 	device.open()
-	device.load(iop[0], unsafe_keep_entry_points=True)
-	device.load(iop[1], unsafe_keep_entry_points=True)
-	device.load(iop[2], unsafe_keep_entry_points=True)
-	"""
-	# encode the target qubits: the 320 lanes are organized into 20 16byte superlanes. The distributor can distribute elements in one superlane in one clock cycle. 
-	# so the target qubits is encoded in the first 1 byte of each 16byte segments
-	modified_qbits = np.zeros( (320,), dtype=np.uint8 )
-	modified_qbits[0:320:16] = target_qbit[0]
-	"""
-	# map for mem_gather to select the permutation map for the given target qubit. Th epermutor is used only for target qubits smaller than small_qbit_num_limit
-	state_permute_map_selector = np.zeros( (len(target_qbit),320,), dtype=np.uint8 )
-	for i in range(len(target_qbit)):
-		if ( target_qbit[i] < small_qbit_num_limit ) :
-			state_permute_map_selector[i,0:320:16] = target_qbit[i]
-		else :
-			state_permute_map_selector[i,0:320:16] = 0
-			
+	device.load(iop[0], unsafe_keep_entry_points=True) # upload
+	device.load(iop[1], unsafe_keep_entry_points=True) # upload state vector
+	device.load(iop[2], unsafe_keep_entry_points=True) # download state vector
+	device.load(iop[3], unsafe_keep_entry_points=True) #S	
+	device.load(iop[4], unsafe_keep_entry_points=True) #SS	
+	device.load(iop[5], unsafe_keep_entry_points=True) #SL
+	device.load(iop[6], unsafe_keep_entry_points=True) #S8
+	device.load(iop[7], unsafe_keep_entry_points=True) #SH
+	device.load(iop[8], unsafe_keep_entry_points=True) #L
+	device.load(iop[9], unsafe_keep_entry_points=True) #LL
+	device.load(iop[10], unsafe_keep_entry_points=True) #LS	
+	device.load(iop[11], unsafe_keep_entry_points=True) #8	
+	device.load(iop[12], unsafe_keep_entry_points=True) #8S			
+	device.load(iop[13], unsafe_keep_entry_points=True) #L8	
+	device.load(iop[14], unsafe_keep_entry_points=True) #8L	
+		
+	'''
+	if target_qbit >= small_qbit_num_limit :
+		raise ValueError( "the target qubit in this program should be less than 8" )
 
+	'''
 
+	# create memory maps to access the correct metadata on the chip to perform the gate operation on the chosen target_qubit
+	#if mxm_permutation :
+	#in case the MXM is used, the individual permute mtrices will occupy 20 memory addresses
+	mxm_permutation_selector = np.zeros( (gate_count,320,), dtype=np.uint8 ) #target_qbit_selector*20
+	#else:  ##### !!! gate SL needs the permutor !!! #####
+	
+	# in case the permutor is used for permutation
+	permutation_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )
+	
 	# maps for mem_gather to select the correct state_1 indices according to the target qubit
-	state_1_selector = state_permute_map_selector#np.zeros( (2,320,), dtype=np.uint8 )
-	state_0_selector = state_permute_map_selector#np.zeros( (2,320,), dtype=np.uint8 )
+	state_1_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )#np.zeros( (2,320,), dtype=np.uint8 )
+	state_0_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )#np.zeros( (2,320,), dtype=np.uint8 )	
+	for gate_idx in range(gate_count):
+		target_qbit = target_qbits[gate_idx]
+		if target_qbit < 8:
+			state_0_selector[gate_idx, 0:320:16] = target_qbit
+			state_1_selector[gate_idx, 0:320:16] = target_qbit
+			permutation_selector[gate_idx, 0:320:16] = target_qbit
+		else:
+			state_0_selector[gate_idx, 0:320:16] = 0
+			state_1_selector[gate_idx, 0:320:16] = 0
+			permutation_selector[gate_idx, 0:320:16] = 0
+		
 
+	
+	control_state_1_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )
+	for gate_idx in range(gate_count):
+		
+		control_qbit = control_qbits[gate_idx]
+
+		if ( control_qbit < small_qbit_num_limit and control_qbit >= 0 ) :
+			control_state_1_selector[gate_idx,0:320:16] = control_qbit
+		elif (control_qbit == -1 ): #no control qubit case
+			control_state_1_selector[gate_idx,0:320:16] = 0  # no control qubit is used when filetring the gate kernels
+		elif (control_qbit > 8 and control_qbit <= 16 ) :
+			# L control qubits are treated over outer splits. 
+			# control_state_1_selector is not used for L control qubits. 
+			# state 1 for control qubit states are collected via gather maps, that are selected using distributor maps (see distributor_map_np)
+			# It is just skiped over by gate counters
+			control_state_1_selector[gate_idx,0:320:16] = 0
+		elif (control_qbit == 8) :
+			# control qubit 8 is treated over outer splits. 
+			# control_state_1_selector is not used for control qubit 8. 
+			control_state_1_selector[gate_idx,0:320:16] = 0
+		elif ( control_qbit > 16 and control_qbit < 21 ) :
+			control_state_1_selector[gate_idx,0:320:16] = 0  
+		else: 
+			raise Exception( "control qubit must be lesser than 21" )
+
+	control_state_0_selector = control_state_1_selector
+	
+	
+
+
+	# control qubit distributor maps for SL gates
+	distributor_map_np = np.zeros( (gate_count, 320,), dtype=np.uint8 )
+	for gate_idx in range(gate_count):
+	
+		control_qbit = control_qbits[gate_idx]
+		target_qbit  = target_qbits[gate_idx]
+		if control_qbit > 8 and control_qbit <= 16 and target_qbit <= 8:
+			# SL and 8L gates
+			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - small_qbit_num_limit - 1)
+			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - small_qbit_num_limit - 1) + 1
+		elif control_qbit > 16 and control_qbit < 21 and target_qbit < 8:
+			# SH gate
+			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - 17)
+			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - 17) + 1
+		elif control_qbit > 8 and control_qbit <= 16 and target_qbit > 8 and target_qbit < 21:
+			# LL gate
+			if control_qbit < target_qbit:
+				offset = control_qbit
+			else: 
+				offset = control_qbit - 1
+			
+			distributor_map_np[gate_idx, 0:320:16] = 2*(offset - small_qbit_num_limit - 1)
+			distributor_map_np[gate_idx, 1:320:16] = 2*(offset - small_qbit_num_limit - 1) + 1
+		else:
+			# when the control qubits is not L or H, no valid distributor map is required
+			pass
+
+
+	# target qubit distributor maps for L(?) gates
+	target_qubit_distributor_map_np = np.zeros( (gate_count, 320,), dtype=np.uint8 )
+	for gate_idx in range(gate_count):
+	
+		target_qbit = target_qbits[gate_idx]
+		if target_qbit > 8 and target_qbit <= 16:
+			target_qubit_distributor_map_np[gate_idx, 0:320:16] = 2*(target_qbit - small_qbit_num_limit - 1)
+			target_qubit_distributor_map_np[gate_idx, 1:320:16] = 2*(target_qbit - small_qbit_num_limit - 1) + 1
+		elif target_qbit > 16 and target_qbit < 21:
+			target_qubit_distributor_map_np[gate_idx, 0:320:16] = 2*(target_qbit - 17)
+			target_qubit_distributor_map_np[gate_idx, 1:320:16] = 2*(target_qbit - 17) + 1
+		else:
+			# when the control qubits is not L or H, no valid distributor map is required
+			# the map selectors are padded with zeros for these cases
+			pass
+			
+			
 	# generate packed gate kernel data
 	gate_kernels_real_packed = np.zeros( (320,), dtype=np.float32 )
 	gate_kernels_imag_packed = np.zeros( (320,), dtype=np.float32 )
@@ -139,84 +271,178 @@ def run(iop_file, input_real, input_imag, target_qbit, gate_kernels_real, gate_k
 	gate_kernels_real_packed = np.ascontiguousarray( gate_kernels_real.reshape( (-1,) ) )
 	gate_kernels_imag_packed = np.ascontiguousarray( gate_kernels_imag.reshape( (-1,) ) )
 
-
-	# run the first program
-	pgm_1_output = invoke(device, iop, 0, 0, {"State_input_real": input_real, "State_input_imag": input_imag, "State_input_real_copy": input_real, "State_input_imag_copy": input_imag, "state_permute_map_selector": state_permute_map_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector})
 	
+
+
+
+	# run the upload program
+	entry_point = iop["upload"]["mono"]
+	pgm_1_output = invoke(device, iop, 0, entry_point, {"mxm_permutation_selector": mxm_permutation_selector, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector, "control_qubit_distributor_maps": distributor_map_np, "target_qubit_distributor_maps": target_qubit_distributor_map_np})
+	#print(pgm_1_output)
+	
+	entry_point = iop["uplod_state_vector"]["mono"]	
+	pgm_upload_state_vector_output = invoke(device, iop, 1, entry_point, {"State_input_real": input_real, "State_input_imag": input_imag})
+
+
 	# run the gate split program
-	index_of_split_program = 1
-	pgm_2_output = invoke(device, iop, index_of_split_program, 0, {})
-	#print( pgm_2_output.keys() )
-	'''
-	print( pgm_2_output["gate_kernel_broadcasted_real_0_00"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_0_00"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_1_00"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_1_00"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_0_01"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_0_01"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_1_01"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_1_01"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_0_10"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_0_10"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_1_10"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_1_10"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_0_11"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_0_11"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_broadcasted_real_1_11"] )
-	print( pgm_2_output["gate_kernel_broadcasted_imag_1_11"] )
-	print(' ')
-	print( pgm_2_output["gate_kernel_real_0"] )
-	print( pgm_2_output["gate_kernel_imag_0"] )
-	'''
+	#index_of_split_program = 3
+	#entry_point = iop["split_gates"]["compute"] #4*index_of_split_program + 1
+	#pgm_2_output = invoke(device, iop, index_of_split_program, entry_point, {})
 
-	# run the second program
-	index_of_gate_program = 2
-	pgm_3_output = invoke(device, iop, index_of_gate_program, 0, {})
-	#print(pgm_3_output["tmp_imag_mt"] == pgm_3_output["tmp_imag_mt2"])
-	#print(pgm_3_output["tmp_real_mt"] == pgm_3_output["tmp_real_mt2"])
-	#print(pgm_3_output["gate_first_column_real"])
-	#print(pgm_3_output["gate_first_column_imag"])
-	#print(pgm_3_output["Psi_transformed_real"])
-	#print(pgm_3_output["Psi_transformed_imag"])
+	#print( pgm_2_output )
 
-	Psi_transformed_real = pgm_3_output[f"Psi_transformed_real_0"]
+	for gate_idx in range(gate_count):
+
+		target_qbit  = target_qbits[gate_idx]
+		control_qbit = control_qbits[gate_idx]
+	
+		# run the gate program
+		if target_qbit == control_qbit:
+			error("QCsim::run: The control qubit and target qubit should be different")
+
+		elif target_qbit >= qbit_num:
+			error("QCsim::run: The target qubit should be less than teh number of qubits")
+
+		elif control_qbit >= qbit_num:
+			error("QCsim::run: The control qubit should be less than teh number of qubits")
+
+		elif target_qbit >= 0 and target_qbit < 8 and control_qbit == -1: 
+			# pogram perfroming the Gate_S operation
+			index_of_gate_program = 3
+			entry_point = iop["gate_S"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output )			
+
+		elif target_qbit >= 0 and target_qbit < 8 and control_qbit < 8 and control_qbit >= 0: 
+
+			# pogram perfroming the Gate_SS operation
+			index_of_gate_program = 4
+			entry_point = iop["gate_SS"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output )			
+
+		elif target_qbit >= 0 and target_qbit < 8 and control_qbit > 8 and control_qbit <= 16:
+
+			# pogram perfroming the Gate_SL operation
+			index_of_gate_program = 5
+			entry_point = iop["gate_SL"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output )	
+
+		elif target_qbit >= 0 and target_qbit < 8 and control_qbit == 8:
+
+			# pogram perfroming the Gate_S8 operation
+			index_of_gate_program = 6
+			entry_point = iop["gate_S8"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output )
+
+		elif target_qbit >= 0 and target_qbit < 8 and control_qbit > 16 and control_qbit <= 21:
+
+			# pogram perfroming the Gate_SH operation
+			index_of_gate_program = 7
+			entry_point = iop["gate_SH"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output )
+
+
+		elif target_qbit > 8 and target_qbit < 21 and control_qbit == -1:
+
+			# pogram perfroming the Gate_L operation
+			index_of_gate_program = 8
+			entry_point = iop["gate_L"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print(gate_output['ooo0'][:,0:2])
+			#print(gate_output['ooo1'][:,0:2])
+
+
+		elif target_qbit > 8 and target_qbit < 21 and control_qbit > 8 and control_qbit <= 16:
+
+			# pogram perfroming the Gate_LL operation
+			index_of_gate_program = 9
+			entry_point = iop["gate_LL"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			
+		elif target_qbit > 8 and target_qbit < 21 and control_qbit >=0 and control_qbit < 8:
+
+			# pogram perfroming the Gate_LS operation
+			index_of_gate_program = 10
+			entry_point = iop["gate_LS"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output )
+			
+		elif target_qbit == 8 and control_qbit == -1: 
+			# pogram perfroming the Gate_8 operation
+			index_of_gate_program = 11
+			entry_point = iop["gate_8"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+
+
+		elif target_qbit == 8 and control_qbit < 8 and control_qbit >= 0: 
+
+			# pogram perfroming the Gate_8S operation
+			index_of_gate_program = 12
+			entry_point = iop["gate_8S"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output )	
+			
+		elif target_qbit > 8 and target_qbit < 21 and control_qbit == 8: 
+
+			# pogram perfroming the Gate_L8 operation
+			index_of_gate_program = 13
+			entry_point = iop["gate_L8"]["compute"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			#print( gate_output )	
+
+			
+		elif target_qbit == 8 and target_qbit < 21 and control_qbit > 8: 
+
+			# pogram perfroming the Gate_L8 operation
+			index_of_gate_program = 14
+			entry_point = iop["gate_8L"]["mono"]
+			gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+			print( gate_output )					
+
+		
+
+		else:
+
+			error("QCsim::run: Unimplemented case wit target qubit and control qubit.")
+	
+	
+
+	# download the transformed state vector
+	index_of_download_program = 1
+	
+	entry_point = iop["download_state_vector"]["output"]
+	download_program_output = invoke(device, iop, index_of_download_program, entry_point, {})
+
+	Psi_transformed_real = download_program_output["State_transformed_real"]
 	Psi_transformed_real = np.reshape( Psi_transformed_real, (Psi_transformed_real.size,) )
 	
-	Psi_transformed_imag = pgm_3_output[f"Psi_transformed_imag_0"]
+	Psi_transformed_imag = download_program_output["State_transformed_imag"]
 	Psi_transformed_imag = np.reshape( Psi_transformed_imag, (Psi_transformed_imag.size,) )	
+	
 	return Psi_transformed_real, Psi_transformed_imag
 
 
 
-def main( State_orig_real_float32, State_orig_imag_float32, target_qbit, gate_kernels ):
+def main( State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, gate_kernels, mxm_permutation = True ):
 	"""Compiles and runs the example programs."""
 	
 	if qbit_num is None:
 		raise "qbit_num must be set with method initialize_qbit_num( qbit_num ) with a value greater or equal to 8"
 
-	iop_files = compile()
+	iop_files = compile( mxm_permutation )
 	print(f"Program compiled to IOP file: {iop_files}")
 
 	import time
 
 	start_time = time.time()
-	transformed_state = run(iop_files[0], State_orig_real_float32, State_orig_imag_float32, target_qbit, np.real(gate_kernels), np.imag(gate_kernels) )
+	transformed_state = run(iop_files[0], State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, np.real(gate_kernels), np.imag(gate_kernels), mxm_permutation )
 
 	print("time elapsed with groq: ", time.time() - start_time )
-	'''
-	##################################xx
-	import shutil
-	shutil.copyfile("build_iop/topo_0/gate/gate.aa", "build_iop/topo_0/gate/gate.0.aa")
-	utils.chain_aa("build_iop/topo_0/gate/gate.0.aa", 3)
-	##############################xx
-	'''
+	
 	return transformed_state
 
 
@@ -224,14 +450,4 @@ def main( State_orig_real_float32, State_orig_imag_float32, target_qbit, gate_ke
 
 if __name__ == "__main__":
     main()
-'''
-# compile the program
-iop_file = g.compile(base_name="QCsim", result_tensor=result)
-g.write_visualizer_data("QCsim")
-
-
-program = tsp.create_tsp_runner(iop_file)
-t0 = time.time()
-result = program(State_input_real=State_orig_real_float32, State_input_imag=State_orig_real_float32)
-groq_result_mm = result['result']
-'''
+    
