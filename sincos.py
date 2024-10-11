@@ -491,4 +491,3 @@ for dtype in (g.float32, g.float16):
     for func, skip_fmod in ((sin, True), (sin, False), (cos, True), (cos, False), (sincos, True), (sincos, False)):
         test_sincos(dtype, func, skip_fmod=skip_fmod)
 
-
