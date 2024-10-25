@@ -7,6 +7,7 @@ from scipy.stats import unitary_group
 import scipy
 import groqQCsim
 import time
+import random
 
 qbit_num = groqQCsim.qbit_num
 gate_count = groqQCsim.gate_count
@@ -16,24 +17,20 @@ if __name__ == "__main__":
 	#target_qbits  = [12,  12, 0,  10, 8, 6,   8,  4, 15, 3, 13, 16, 8, 5, 8, 12, 7]
 	#control_qbits = [-1,  8, 15,  4,  2, 10, -1, -1, 10, 5, 7,  8, -1, 0, 7, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
 
-			# L   LL  SL  LS  8S SL   8   S
-	#target_qbits  = [12,  12]
-	#control_qbits = [-1,  8] #-1 ... no cotrol qubit is incolved in the operation
 	
-	target_qbits  = [6,  2,  12, 1, 15, 8, 12, 4,  6, 16, 10, 11, 15,  8, 12, 13, 8]
-	control_qbits = [-1, -1, 3,  0, 3, -1, 9, 10,  8,  7, -1,  16,  7, -1, 2, 8, 11] #-1 ... no control qubit is incolved in the operation
+	#target_qbits  = [6,  2,  12, 1, 15, 8, 16, 4,  6, 16, 10, 11, 15,  8, 12, 13, 8]
+	#control_qbits = [-1, -1, 3,  0, 3, -1, 9, 10,  8,  7, -1,  16,  7, -1, 2, 8, 11] #-1 ... no control qubit is incolved in the operation
 	
-	#target_qbits  = [6, 5]
-	#control_qbits = [-1, 2] #-1 ... no control qubit is incolved in the operation
+	target_qbits = []
+	control_qbits = []	
+	while len(target_qbits) < gate_count:
+		target_qbit = random.randint(0, qbit_num-1)
+		control_qbit = random.randint(-1, qbit_num-1)		
 
-	#target_qbits  = [6, 6, 6, 6, 6, 6, 6, 6, 10, 11, 15,  8, 12]
-	#control_qbits = [8, 8, 8, 8, 8, 8, 8, 8, -1,  16,  7, -1, 2] #-1 ... no control qubit is incolved in the operation
+		if target_qbit != control_qbit:		
+			target_qbits.append( target_qbit )
+			control_qbits.append( control_qbit )		
 
-	#target_qbits  = [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 12]
-	#control_qbits = [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 0] #-1 ... no control qubit is incolved in the operation
-	
-	#target_qbits  = [6, 6, 6, 6, 6, 6, 6, 10, 11, 15,  8, 12]
-	#control_qbits = [8, 8, 8, 8, 8, 8, 8, -1,  16,  7, -1, 2] #-1 ... no control qubit is incolved in the operation	
 
 	if len(target_qbits) != gate_count:
 		raise Exception("Number of target qubits in the list of target qubits should be equal to the gate count")
@@ -108,6 +105,7 @@ if __name__ == "__main__":
 	State = State_orig.copy()
 	State_transformed_oracle = State_orig.copy()
 	start_time = time.time()
+	
 	circuit.apply_to( parameters, State_transformed_oracle )
 	time_Cpp = time.time()-start_time
 
@@ -142,15 +140,17 @@ if __name__ == "__main__":
 
 	#State_orig_real_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
 	#State_orig_imag_float32 = np.asarray([k for k in range(256)], dtype=np.uint8)
+	
+
 
 	real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, gate_kernels, mxm_permutation = False)
 	print(' ')
 	print( 'difference between CPU oracle and Groq chip (real part): ', scipy.linalg.norm( real_part - np.real( State_transformed_oracle ) , 2), '(imag part): ', scipy.linalg.norm( imag_part - np.imag( State_transformed_oracle ) , 2) )
 
 	print( 'difference between CPU oracle and Groq chip (overlap integral): ', np.abs( (real_part + imag_part*1j) @ State_transformed_oracle.T.conj() ) )
+	print("time elapsed with C++: ", time_Cpp )	
 
 
-	print("time elapsed with C++: ", time_Cpp )
 
 	print( State_orig_real_float32[0:] )
 	print(' ' )
