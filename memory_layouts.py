@@ -17,8 +17,7 @@ matrix_size   = int(2**small_qbit_num_limit)
 memory_slices = 1 << (qbit_num-small_qbit_num_limit) # TODO:replace all the occurances of memory_slices with memory_addresses
 memory_addresses = 1 << (qbit_num-small_qbit_num_limit)
 
-layout_target_qubit_read_maps_8L = f"H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S1(43)"
-layout_target_qubit_read_maps_8H = f"H1(W), A{memory_addresses//2}({memory_addresses//2}-{memory_addresses-1}), S1(43)"
+layout_target_qubit_read_maps_8L = f"H1(W), A{memory_addresses}(0-{memory_addresses-1}), S1(43)"
 layout_target_qubit_read_maps_LL = f"H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S1(42)"
 
 # memory gather maps for L target qubits
@@ -31,8 +30,7 @@ layout_target_qubit_read_maps_L = f"H1(W), A{memory_addresses}(0-{memory_address
 # each 2-byte column in the 16-byte blocks of the map tensor corresponds to a specific control qbit 	
 layout_control_qubit_address_maps_SL_west = f"H1(W), A{memory_slices}(0-{memory_slices-1}), S1(39)"
 
-layout_target_qubit_read_maps_8L_pair = f"H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S1(37)"
-layout_target_qubit_read_maps_8H_pair = f"H1(W), A{memory_addresses//2}({memory_addresses//2}-{memory_addresses-1}), S1(37)"
+layout_target_qubit_read_maps_8L_pair = f"H1(W), A{memory_addresses}(0-{memory_addresses-1}), S1(37)"
 
 
 # gate counter: for reading out the correct permute map selector (each gate act on a different target qubit)
