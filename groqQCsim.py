@@ -348,12 +348,12 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
 	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
 	output_buffer_indices.append( 0 )
-		
+	
 	entry_point = iop["gate_SS"]["compute"]
 	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
 	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
 	output_buffer_indices.append( 0 )	
-		
+	
 	entry_point = iop["gate_SL"]["compute"]	
 	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
 	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
@@ -529,18 +529,18 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			output_buffer_indices[index_of_gate_program] += 1
 
 			
-		elif target_qbit == 8 and target_qbit < 17 and control_qbit > 8: 
+		elif target_qbit == 8 and control_qbit < 17 and control_qbit > 8: 
 
-			# pogram perfroming the Gate_L8 operation
+			# pogram perfroming the Gate_8L operation
 			index_of_gate_program = 14
 			entry_point = iop["gate_8L"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
 
-		elif target_qbit == 8 and target_qbit > 16 and control_qbit < 21: 
+		elif target_qbit == 8 and control_qbit > 16 and control_qbit < 21: 
 
-			# pogram perfroming the Gate_L8 operation
+			# pogram perfroming the Gate_8H operation
 			index_of_gate_program = 15
 			entry_point = iop["gate_8H"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]

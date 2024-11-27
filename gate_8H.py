@@ -39,7 +39,7 @@ class Gate(Gate_8_base):
 
 
 
-	def two_complex_dot_product_8L(self, s_r_0, s_i_0, s_r_1, s_i_1, g_r_0, g_i_0, g_r_1, g_i_1):
+	def two_complex_dot_product_8H(self, s_r_0, s_i_0, s_r_1, s_i_1, g_r_0, g_i_0, g_r_1, g_i_1):
 		"""
 		Function used to perform the VXM round trip to get the transformed state
 		
@@ -95,7 +95,7 @@ class Gate(Gate_8_base):
 		return r_st, i_st, r_delay_st_p0, i_delay_st_p0 #directions=[Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD, Direction.WESTWARD]
 
 
-	def select_target_qbit_read_map_west_8L(self):
+	def select_target_qbit_read_map_west_8H(self):
 		"""
 		Function used to read out the correct target qubit map to gather the target qubits L from the memory
 		The target qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
@@ -160,7 +160,7 @@ class Gate(Gate_8_base):
 
 		return read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st
 
-	def select_target_qbit_write_map_east_8L(self):
+	def select_target_qbit_write_map_east_8H(self):
 		"""
 		Function used to read out the correct target qubit map for scattering the target qubits L into the memory
 		The target qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
@@ -330,7 +330,7 @@ class Gate(Gate_8_base):
 		return write_qubit_memory_tensor_st_a, write_qubit_memory_tensor_st_b
 
 
-	def read_out_state_2_transform_8L( self, read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st):
+	def read_out_state_2_transform_8H( self, read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st):
 	
 		"""
 		Function used to read out the state vector to be transfromed according to the predefined memory maps
@@ -493,7 +493,7 @@ class Gate(Gate_8_base):
 	
 
 
-	def write_tranformed_states_2_mem_8L( self, Psi_transformed_real_st, Psi_transformed_imag_st, Psi_transformed_real_copy_st, Psi_transformed_imag_copy_st, target_qubit_L_write_map_st_a, target_qubit_L_write_map_st_b):
+	def write_tranformed_states_2_mem_8H( self, Psi_transformed_real_st, Psi_transformed_imag_st, Psi_transformed_real_copy_st, Psi_transformed_imag_copy_st, target_qubit_L_write_map_st_a, target_qubit_L_write_map_st_b):
 	
 		"""
 		Function used to scatter the transformed state vector into the memory
@@ -551,9 +551,9 @@ class Gate(Gate_8_base):
 					
 				
 
-	def gate_8L_program(self):
+	def gate_8H_program(self):
 		"""
-		Function implementing the L gate operation on the Groq chip
+		Function implementing the 8H gate operation on the Groq chip
 		"""
         
 		#############################################################################################################x		
@@ -585,11 +585,11 @@ class Gate(Gate_8_base):
 
 			with g.ResourceScope(name=f"apply_gate_scope", is_buffered=True, predecessors=[], time=0) as apply_gate_scope :
 				
-				read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st = self.select_target_qbit_read_map_west_8L()
+				read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st = self.select_target_qbit_read_map_west_8H()
 
 				# readout quantum state to be stransformed
 				Psi_real_state_0_st, Psi_imag_state_0_st, Psi_real_state_1_st, Psi_imag_state_1_st  = \
-							 self.read_out_state_2_transform_8L( read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st)
+							 self.read_out_state_2_transform_8H( read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st)
 
 				
 				# readout gate elements	
@@ -599,7 +599,7 @@ class Gate(Gate_8_base):
 							self.read_out_gate_elements_8( element_num )
                             
 				Psi_transformed_real_copy_st, Psi_transformed_imag_copy_st, Psi_transformed_real_st, Psi_transformed_imag_st = \
-										self.two_complex_dot_product_8L( Psi_real_state_0_st,
+										self.two_complex_dot_product_8H( Psi_real_state_0_st,
 														Psi_imag_state_0_st, 
 														Psi_real_state_1_st, 
 														Psi_imag_state_1_st, 
@@ -613,9 +613,9 @@ class Gate(Gate_8_base):
 				
 				# export the calculated state into memory and set program output
 
-				target_qubit_L_write_map_st_a, target_qubit_L_write_map_st_b = self.select_target_qbit_write_map_east_8L()
+				target_qubit_L_write_map_st_a, target_qubit_L_write_map_st_b = self.select_target_qbit_write_map_east_8H()
 
-				self.write_tranformed_states_2_mem_8L( Psi_transformed_real_st, 
+				self.write_tranformed_states_2_mem_8H( Psi_transformed_real_st, 
 									Psi_transformed_imag_st, 
 									Psi_transformed_real_copy_st, 
 									Psi_transformed_imag_copy_st, 
