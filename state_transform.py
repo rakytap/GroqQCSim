@@ -27,7 +27,7 @@ if __name__ == "__main__":
 	
 	target_qbits = []
 	control_qbits = []	
-	while len(target_qbits) < gate_count:
+	while len(target_qbits) < gate_count-2:
 		target_qbit = random.randint(0, qbit_num-1)
 		
 		tmp = random.randint(0,1)
@@ -92,6 +92,8 @@ if __name__ == "__main__":
 		
 		
 		
+	print('Target qubits: ', target_qbits)
+	print('Control qubits: ', control_qbits)
 
 	# get the number of free parameters in the circuit
 	parameter_num = circuit.get_Parameter_Num()

@@ -78,6 +78,9 @@ def compile(mxm_permutation = True) -> List[str]:
 	
 	# program to perform gate_8L operation
 	program.gate_8L_program()	
+
+	# program to perform gate_8H operation
+	program.gate_8H_program()	
 	
 	iops = pgm_pkg.assemble()
 
@@ -176,7 +179,8 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device.load(iop[12], unsafe_keep_entry_points=True) #8S			
 	device.load(iop[13], unsafe_keep_entry_points=True) #L8	
 	device.load(iop[14], unsafe_keep_entry_points=True) #8L	
-	
+	device.load(iop[15], unsafe_keep_entry_points=True) #8H	
+
 	print("time elapsed with IOP uploading: ", time.time() - start_time )
 			
 	'''
@@ -249,8 +253,8 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			# SL and 8L gates
 			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - small_qbit_num_limit - 1)
 			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - small_qbit_num_limit - 1) + 1
-		elif control_qbit > 16 and control_qbit < 21 and target_qbit < 8:
-			# SH gate
+		elif control_qbit > 16 and control_qbit < 21 and target_qbit <= 8:
+			# SH and 8H gates
 			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - 17)
 			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - 17) + 1
 		elif control_qbit > 8 and control_qbit <= 16 and target_qbit > 8 and target_qbit < 21:
@@ -399,7 +403,13 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
 	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
 	output_buffer_indices.append( 0 )
+
+	entry_point = iop["gate_8H"]["compute"]	
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
 	print("time elapsed with creating buffers: ", time.time() - start_time )			
+
 
 	start_time = time.time()
 	
@@ -519,11 +529,20 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			output_buffer_indices[index_of_gate_program] += 1
 
 			
-		elif target_qbit == 8 and target_qbit < 21 and control_qbit > 8: 
+		elif target_qbit == 8 and target_qbit < 17 and control_qbit > 8: 
 
 			# pogram perfroming the Gate_L8 operation
 			index_of_gate_program = 14
 			entry_point = iop["gate_8L"]["compute"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+		elif target_qbit == 8 and target_qbit > 16 and control_qbit < 21: 
+
+			# pogram perfroming the Gate_L8 operation
+			index_of_gate_program = 15
+			entry_point = iop["gate_8H"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
