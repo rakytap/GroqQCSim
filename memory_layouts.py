@@ -4,7 +4,7 @@ qbit_num = 17
 gate_kernel_element_labels = ["00", "01", "10", "11"]
 
 # gate count stored in a single packed vector 
-gate_count = 20
+gate_count = 80
 
 # the number og qubits for which the gate operations need the permutor (need to reorganize the elements in a vector)
 small_qbit_num_limit = 8
@@ -32,12 +32,11 @@ layout_target_qubit_read_maps_8L_pair = f"H1(W), A{memory_addresses//2}(0-{memor
 
 
 # gate counter: for reading out the correct permute map selector (each gate act on a different target qubit)
-layout_gate_counter_perm_map_selector = f"H1(W), A{1}(320), S1(36)"
+layout_gate_counter_perm_map_selector = f"H1(W), A{1}(3200), S1(36)"
 
 # control qubit dependent distributor map for SL gate
-layout_distributor_maps_west         = f"H1(W), A{gate_count}(1-{1+gate_count-1}), S1(36)"  #TODO HAVE A disptributor map also on the east
-layout_target_qubit_distributor_maps = f"H1(W), A{gate_count}({gate_count+1}-{2*gate_count}), S1(36)"  #TODO HAVE A disptributor map also on the east
-layout_control_qubit_distributor_maps = f"H1(W), A{gate_count}({2*gate_count+1}-{3*gate_count}), S1(36)"  #TODO HAVE A disptributor map also on the east
+layout_distributor_maps_west         = f"H1(W), A{gate_count}(0-{gate_count-1}), S1(36)"  #TODO HAVE A disptributor map also on the east
+layout_target_qubit_distributor_maps = f"H1(W), A{gate_count}(256-{256+gate_count-1}), S1(36)"  #TODO HAVE A disptributor map also on the east
 
 # permute maps used to reorder the state vector elements according to the given target qubit (permute map is also stored on the easter hemisphere)
 layout_permute_maps_west = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(35)"
@@ -57,9 +56,10 @@ layout_mxm_permutation_matrices_west = f"H1(W), A{small_qbit_num_limit*20}(4096-
 
 
 # layout to gather map selecting the permutation map corresponding to the target qubit  -- the MT should be replaced by on chip determined gather map, currently it is uploaded from CPU
-layout_constant_1_address_offset         = f"H1(W), A{1}(0), S1(18)"
-layout_state_permute_map_selector        = f"H1(W), A{gate_count}(0-{gate_count-1}), S1(17)"
-layout_mxm_permute_map_selector          = f"H1(W), A{gate_count}({gate_count}-{2*gate_count-1}), S1(17)" #either state permute map selector or mxm_permute_map selctor is used on the chip, but not booth
+layout_constant_1_address_offset_lower_bits  = f"H1(W), A{1}(0), S1(18)"
+layout_constant_1_address_offset_higher_bits = f"H1(W), A{1}(1), S1(18)"
+layout_state_permute_map_selector            = f"H1(W), A{gate_count}(0-{gate_count-1}), S1(17)"
+layout_mxm_permute_map_selector              = f"H1(W), A{gate_count}({gate_count}-{2*gate_count-1}), S1(17)" #either state permute map selector or mxm_permute_map selctor is used on the chip, but not booth
 
 # if MXM is used to permute the state vector the single memory address need to be extended to address 20 memory addresses where the MXM permutation matrices are stored
 layout_expanded_mxm_permute_map_selector = "H1(W), S1(17)"
@@ -110,10 +110,10 @@ layout_control_state_1_selector = f"H1(E), A{gate_count}({gate_count}-{2*gate_co
 layout_state_0_selector	        = f"H1(E), A{gate_count}(0-{gate_count-1}), S1(21)"
 layout_control_state_0_selector = f"H1(E), A{gate_count}({gate_count}-{2*gate_count-1}), S1(21)"
 
-layout_state_1_broadcasted		= f"H1(E), A{gate_count}(0-{gate_count-1}), S4(22-26)" # slice 24 is reserved
-layout_control_state_1_broadcasted	= f"H1(E), A{gate_count}({gate_count}-{2*gate_count-1}), S4(22-26)" # slice 24 is reserved
-layout_state_0_broadcasted		= f"H1(E), A{gate_count}(0-{gate_count-1}), S4(27-31)" # slice 28 is reserved
-layout_control_state_0_broadcasted	= f"H1(E), A{gate_count}({gate_count}-{2*gate_count-1}), S4(27-31)" # slice 28 is reserved
+layout_state_1_broadcasted		   = f"H1(E), A{gate_count}(0-{gate_count-1}), S4(22-26)" # slice 24 is reserved
+layout_control_state_1_broadcasted = f"H1(E), A{gate_count}(256-{256+gate_count-1}), S4(22-26)" # slice 24 is reserved
+layout_state_0_broadcasted	       = f"H1(E), A{gate_count}(0-{gate_count-1}), S4(27-31)" # slice 28 is reserved
+layout_control_state_0_broadcasted = f"H1(E), A{gate_count}(256-{256+gate_count-1}), S4(27-31)" # slice 28 is reserved
 
 # to save controlled operations on target qbit 8, we need two concurrent streams for memory scatter (see layout_target_qubit_write_maps_8L_a)
 #layout_target_qubit_write_maps_8L_b = f"H1(E), A{memory_addresses//2}({memory_addresses//2}-{memory_addresses-1}), S1(31)"
@@ -122,8 +122,8 @@ layout_target_qubit_write_maps_8L_b = f"H1(E), A{(memory_slices//2) >> 1}(0-{((m
 #layout_target_qubit_write_maps_8L_c = f"H1(E), A{(memory_slices//2) >> 1}(0-{((memory_slices//2) >> 1)-1}), B2, S1(17)"
 
 # memory layout for the tensors full of ones and zeros
-layout_zeros = f"H1(E), A1(320), S4(32-35)"
-layout_ones = f"H1(E), A1(321), S4(32-35)"
+layout_zeros = f"H1(E), A1(8001), S4(32-35)"
+layout_ones = f"H1(E), A1(8002), S4(32-35)"
 
 
 
@@ -135,8 +135,8 @@ layout_gate_element_selector_00 = "H1(E), A1(0), S1(36)"
 
 
 # initial gate kernels that are uploaded to the chip
-layout_gate_kernels_real_packed ="H1(E), A1(320), S4(32-35)"
-layout_gate_kernels_imag_packed	="H1(E), A1(321), S4(32-35)"
+layout_gate_kernels_real_packed ="H1(E), A1(8003), S4(32-35)"
+layout_gate_kernels_imag_packed	="H1(E), A1(8004), S4(32-35)"
 
 
 

@@ -13,7 +13,10 @@ qbit_num = groqQCsim.qbit_num
 gate_count = groqQCsim.gate_count
 
 if __name__ == "__main__":
-
+	'''
+	target_qbits  = [6] * gate_count
+	control_qbits = [0] * gate_count
+	'''
 	#target_qbits  = [12,  12, 0,  10, 8, 6,   8,  4, 15, 3, 13, 16, 8, 5, 8, 12, 7]
 	#control_qbits = [-1,  8, 15,  4,  2, 10, -1, -1, 10, 5, 7,  8, -1, 0, 7, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
 
@@ -25,13 +28,20 @@ if __name__ == "__main__":
 	control_qbits = []	
 	while len(target_qbits) < gate_count:
 		target_qbit = random.randint(0, qbit_num-1)
-		control_qbit = random.randint(-1, qbit_num-1)		
+		
+		tmp = random.randint(0,1)
+		if tmp == 0:
+			control_qbit = -1
+		else:
+			control_qbit = random.randint(0, qbit_num-1)	
+		
+			
 
 		if target_qbit != control_qbit:		
 			target_qbits.append( target_qbit )
 			control_qbits.append( control_qbit )		
-
-
+         
+	
 	if len(target_qbits) != gate_count:
 		raise Exception("Number of target qubits in the list of target qubits should be equal to the gate count")
 
@@ -60,7 +70,7 @@ if __name__ == "__main__":
 			error("The control qubit and target qubit should be different")
 
 		elif target_qbit >= 0 and target_qbit < 21 and control_qbit == -1:
-
+			print("adding U3 gate")
 			circuit.add_U3( target_qbit )
 		
 			circuit_1 = Circuit( 1 )
@@ -69,7 +79,7 @@ if __name__ == "__main__":
 		
 		elif target_qbit >= 0 and target_qbit < 21 and control_qbit >= 0 and control_qbit < 21 :	
 	
-
+			print("adding controlled gate")
 			circuit.add_adaptive( target_qbit, control_qbit )
 	
 			circuit_1 = Circuit( 1 )
@@ -88,9 +98,7 @@ if __name__ == "__main__":
 
 	#create an array of random parameters
 	parameters = np.random.rand( parameter_num )*2*np.pi
-	#parameters = np.array( [1.4538327,  1.4728143,  4.73309153, 2.87384372] )
-	#parameters = np.array( [4.88227757, 2.24584162] )
-	print('parameters: ', parameters )
+	#print('parameters: ', parameters )
 	
 	'''
 	if parameters.size > 3:

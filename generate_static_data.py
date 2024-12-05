@@ -8,7 +8,11 @@ class Generate_static_data(IO):
 
 	def __init__(self, pgm_pkg, mxm_permutation=True):
 	
-		super().__init__(pgm_pkg, mxm_permutation = mxm_permutation )		
+		super().__init__(pgm_pkg, mxm_permutation = mxm_permutation )	
+		self.gate_kernels_broadcasted_real_dict = {}
+		self.gate_kernels_broadcasted_imag_dict = {}
+		self.gate_kernels_broadcasted_real_copy_dict = {}
+		self.gate_kernels_broadcasted_imag_copy_dict = {}				
 
 
 
@@ -665,11 +669,17 @@ class Generate_static_data(IO):
 			
 			
 			
-			# constant tensor to update the address counters by one
-			constant_1_address_offset_np           = np.zeros( (320,), dtype=np.uint8 )
-			constant_1_address_offset_np[0:320:16] = 1
-			self.constant_1_address_offset_mt = g.from_data( np.asarray(constant_1_address_offset_np, dtype=np.uint8), layout=layout_constant_1_address_offset )
+			# constant tensor to update the address counters by one on lower bits
+			constant_1_address_offset_lower_bits_np           = np.zeros( (320,), dtype=np.uint8 )
+			constant_1_address_offset_lower_bits_np[0:320:16] = 1
+			self.constant_1_address_offset_lower_bits_mt = g.from_data( np.asarray(constant_1_address_offset_lower_bits_np, dtype=np.uint8), layout=layout_constant_1_address_offset_lower_bits )
+			'''
+			constant_1_address_offset_higher_bits_np           = np.zeros( (320,), dtype=np.uint8 )
+			constant_1_address_offset_higher_bits_np[1:320:16] = 1
+			self.constant_1_address_offset_higher_bits_mt = g.from_data( np.asarray(constant_1_address_offset_higher_bits_np, dtype=np.uint8), layout=layout_constant_1_address_offset_higher_bits )
 			
+			g.add_mem_constraints([self.constant_1_address_offset_lower_bits_mt], [self.constant_1_address_offset_higher_bits_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+			'''
 			#self.gate_kernels_real_packed_mt.is_static 	 = True
 			#self.gate_kernels_imag_packed_mt.is_static 	 = True
 			state_1_selector_mt.is_static			     = True
@@ -677,7 +687,8 @@ class Generate_static_data(IO):
 			control_state_1_selector_mt.is_static        = True
 			control_state_0_selector_mt.is_static        = True
 			self.state_permute_map_selector_mt.is_static = True
-			self.constant_1_address_offset_mt.is_static  = True
+			self.constant_1_address_offset_lower_bits_mt.is_static   = True
+			#self.constant_1_address_offset_higher_bits_mt.is_static  = True			
 
 
 			if ( self.mxm_permutation ):
@@ -769,36 +780,42 @@ class Generate_static_data(IO):
 			
 			# expand the permutation maps to query for the whole 320x320 permute matrix, not just for the first row
 			gate_counter_perm_map_selector_np           = np.zeros( (320,), dtype=np.uint8 )
+			gate_counter_perm_map_selector_np[0:320:16] = 0			
 			self.gate_counter_perm_map_selector_mt      = g.from_data( np.asarray(gate_counter_perm_map_selector_np, 
-											dtype=np.uint8),
-										 	layout=layout_gate_counter_perm_map_selector )
+											                           dtype=np.uint8),
+										 	                           layout=layout_gate_counter_perm_map_selector )
 
 			self.gate_counter_gate_filtering_selector_mt = g.from_data( np.asarray(gate_counter_perm_map_selector_np, 
-											dtype=np.uint8),
-										 	layout=layout_gate_counter_gate_filtering_selector )
+										                             	dtype=np.uint8),
+										 	                            layout=layout_gate_counter_gate_filtering_selector )
 										 	
 			gate_counter_S_control_qbit_selector_np           = np.zeros( (320,), dtype=np.uint8 )
-			gate_counter_S_control_qbit_selector_np[0:320:16] = gate_count
+			gate_counter_S_control_qbit_selector_np[0:320:16] = 0
+			gate_counter_S_control_qbit_selector_np[1:320:16] = 1						
 			self.gate_counter_S_control_qbit_selector_mt = g.from_data( np.asarray(gate_counter_S_control_qbit_selector_np, 
-											dtype=np.uint8),
-										 	layout=layout_gate_counter_S_control_qbit_selector )
+											                            dtype=np.uint8),
+										                             	layout=layout_gate_counter_S_control_qbit_selector )
 
 			# TODO: move these memory layouts to memory_layouts and update the ods file
 			gate_element_selector_00_np                   = np.zeros( (320,), dtype=np.uint8 )
-			gate_element_selector_00_np[0:320:16]         = 0 + small_qbit_num_limit*20
+			gate_element_selector_00_np[0:320:16]         = 0
+			gate_element_selector_00_np[1:320:16]         = 1
 			self.gate_counter_gate_element_selector_00_mt = g.from_data( gate_element_selector_00_np, layout=layout_gate_element_selector_00 )
 
 			gate_element_selector_11_np                   = np.zeros( (320,), dtype=np.uint8 )
-			gate_element_selector_11_np[0:320:16]         = 3*gate_count + small_qbit_num_limit*20
+			gate_element_selector_11_np[0:320:16]         = 0
+			gate_element_selector_11_np[1:320:16]         = 4
 			self.gate_counter_gate_element_selector_11_mt = g.from_data( gate_element_selector_11_np, layout=layout_gate_element_selector_11 )
 					
 					
 			gate_element_selector_01_np                   = np.zeros( (320,), dtype=np.uint8 )
-			gate_element_selector_01_np[0:320:16]         = gate_count + small_qbit_num_limit*20
+			gate_element_selector_01_np[0:320:16]         = 0
+			gate_element_selector_01_np[1:320:16]         = 2
 			self.gate_counter_gate_element_selector_01_mt = g.from_data( gate_element_selector_01_np, layout=layout_gate_element_selector_01 )
 
 			gate_element_selector_10_np                   = np.zeros( (320,), dtype=np.uint8 )
-			gate_element_selector_10_np[0:320:16]         = 2*gate_count + small_qbit_num_limit*20
+			gate_element_selector_10_np[0:320:16]         = 0
+			gate_element_selector_10_np[1:320:16]         = 3
 			self.gate_counter_gate_element_selector_10_mt = g.from_data( gate_element_selector_10_np, layout=layout_gate_element_selector_10 )	
 					
 			g.add_mem_constraints([self.gate_counter_gate_element_selector_00_mt], [self.gate_counter_gate_element_selector_01_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
@@ -1054,14 +1071,16 @@ class Generate_static_data(IO):
 			
 				# distributor maps to select the correct memory maps to read data for SL and SH operations.
 				gate_counter_distributor_maps_west_np            = np.zeros( (320,), dtype=np.uint8 )
-				gate_counter_distributor_maps_west_np[0:320:16]  = 1
+				gate_counter_distributor_maps_west_np[0:320:16]  = 0
 				self.gate_counter_distributor_maps_west_mt       = g.from_data( gate_counter_distributor_maps_west_np, layout=layout_gate_counter_distributor_maps_west )	
 				self.gate_counter_distributor_maps_west_mt.is_static = True
 			
 			
 				# distributor maps to select the correct memory maps to write data on L and H target qubits.
 				gate_counter_target_qubit_L_distributor_maps_write_np            = np.zeros( (320,), dtype=np.uint8 )
-				gate_counter_target_qubit_L_distributor_maps_write_np [0:320:16]  = gate_count+1
+				gate_counter_target_qubit_L_distributor_maps_write_np [0:320:16]  = 0				
+				gate_counter_target_qubit_L_distributor_maps_write_np [1:320:16]  = 1				
+				
 				self.gate_counter_target_qubit_L_distributor_maps_write_mt  = g.from_data( gate_counter_target_qubit_L_distributor_maps_write_np,
 											 layout=layout_gate_counter_target_qubit_L_distributor_maps )
 				self.gate_counter_target_qubit_L_distributor_maps_write_mt.is_static = True
@@ -1108,8 +1127,8 @@ class Generate_static_data(IO):
 					layout_real = layout_gate_kernels_real
 					layout_imag = layout_gate_kernels_imag
 
-					gate_kernels_imag_mt = gate_kernels_imag_packed_st.write(name=f"gate_kernel_imag_{gate_idx}", layout=layout_imag + f", A1({gate_count*4 + gate_idx})")
-					gate_kernels_real_mt = gate_kernels_real_packed_st.write(name=f"gate_kernel_real_{gate_idx}", layout=layout_real + f", A1({gate_count*4 + gate_idx})")
+					gate_kernels_imag_mt = gate_kernels_imag_packed_st.write(name=f"gate_kernel_imag_{gate_idx}", layout=layout_imag + f", A1({gate_count*4 + gate_idx + 5000})")
+					gate_kernels_real_mt = gate_kernels_real_packed_st.write(name=f"gate_kernel_real_{gate_idx}", layout=layout_real + f", A1({gate_count*4 + gate_idx + 5000})")
 
 					# add rule for mutual memory exclusion for the stored real and imaginary parts of the gate kernels
 					if ( gate_idx > 0 ):
@@ -1213,8 +1232,9 @@ class Generate_static_data(IO):
 						layout_imag = layout_gate_kernels_imag
 						layout_real_copy = layout_gate_kernels_real_copy
 						layout_imag_copy = layout_gate_kernels_imag_copy
+						
+						address_offset = (idx+1)*256 # MXM permute matrices are also stored at the begining of these slices		
 
-						address_offset = idx*int(gate_count) + small_qbit_num_limit*20 # MXM permute matrices are also trored on these slices
 
 						layout_real = layout_real + f", A1({address_offset + gate_idx})"
 						layout_imag = layout_imag + f", A1({address_offset + gate_idx})"

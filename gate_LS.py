@@ -49,7 +49,7 @@ class Gate(Gate_L_base):
 	
 		
 		gate_counter_S_control_qbit_selector_shared = g.shared_memory_tensor(self.gate_counter_S_control_qbit_selector_mt,   \
-   										name="gate_counter_S_control_qbit_selector_shared") 
+   										                                      name="gate_counter_S_control_qbit_selector_shared") 
 		gate_counter_S_control_qbit_selector_st     = gate_counter_S_control_qbit_selector_shared.read( streams=g.SG1[0] )
 
 		# split state_1_broadcasted_shared and state_0_broadcasted_shared into slices to use mem_gather on the tensor

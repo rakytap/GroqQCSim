@@ -41,7 +41,7 @@ class Gate_counters(Generate_static_data):
 		#### increase the gate counter for permute map selector ####
 		alu_rq_12 = g.tensor.create_alu_request( alus=[12] )
 				
-		constant_1_address_offset_st     = self.constant_1_address_offset_mt.read(streams=[g.SG1_E[0]])				
+		constant_1_address_offset_st     = self.constant_1_address_offset_lower_bits_mt.read(streams=[g.SG1_E[0]])				
 
 		gate_counter_perm_map_selector_shared = g.shared_memory_tensor(self.gate_counter_perm_map_selector_mt, name="gate_counter_perm_map_selector_shared" )
 		gate_counter_perm_map_selector_st  = gate_counter_perm_map_selector_shared.read(streams=[g.SG1_E[4]])
@@ -84,7 +84,7 @@ class Gate_counters(Generate_static_data):
 		alu_rq_13 = g.tensor.create_alu_request( alus=[13] )	
 		alu_rq_14 = g.tensor.create_alu_request( alus=[14] )	
 
-		constant_1_address_offset_st_copy     = self.constant_1_address_offset_mt.read(streams=[g.SG1_E[0]])				
+		constant_1_address_offset_st_copy     = self.constant_1_address_offset_lower_bits_mt.read(streams=[g.SG1_E[0]])				
 
 		gate_counter_gate_element_selector_00_shared = g.shared_memory_tensor( \
 							self.gate_counter_gate_element_selector_00_mt, \
@@ -112,7 +112,7 @@ class Gate_counters(Generate_static_data):
 				
 		# offset the memory address by 1
 		gate_counter_gate_element_selector_00_st = g.add(constant_1_address_offset_st, gate_counter_gate_element_selector_00_st, alus=alu_rq_0, output_streams=g.SG4_E[3])
-		gate_counter_gate_element_selector_11_st = g.add(constant_1_address_offset_st, gate_counter_gate_element_selector_11_st, alus=alu_rq_1, output_streams=g.SG4_E[2])
+		gate_counter_gate_element_selector_11_st = g.add(constant_1_address_offset_st, gate_counter_gate_element_selector_11_st, alus=alu_rq_1, output_streams=g.SG4_E[2], overflow_mode=g.OverflowMode.MODULAR)
 		gate_counter_gate_element_selector_01_st = g.add(constant_1_address_offset_st_copy, gate_counter_gate_element_selector_01_st, alus=alu_rq_14, output_streams=g.SG4_E[7])
 		gate_counter_gate_element_selector_10_st = g.add(constant_1_address_offset_st_copy, gate_counter_gate_element_selector_10_st, alus=alu_rq_13, output_streams=g.SG4_E[0])
 				
@@ -148,7 +148,7 @@ class Gate_counters(Generate_static_data):
 
 		alu_rq_7 = g.tensor.create_alu_request( alus=[7] )
 				
-		constant_1_address_offset_st     = self.constant_1_address_offset_mt.read(streams=[g.SG1_E[8]])	
+		constant_1_address_offset_st     = self.constant_1_address_offset_lower_bits_mt.read(streams=[g.SG1_E[8]])	
 
 		gate_counter_S_control_qbit_selector_shared = g.shared_memory_tensor(self.gate_counter_S_control_qbit_selector_mt,   \
    										name="gate_counter_S_control_qbit_selector_shared") 
@@ -196,7 +196,7 @@ class Gate_counters(Generate_static_data):
 		
 		alu_rq_5 = g.tensor.create_alu_request( alus=[5] )
 				
-		constant_1_address_offset_st     = self.constant_1_address_offset_mt.read(streams=[g.SG1_E[8]])	
+		constant_1_address_offset_st     = self.constant_1_address_offset_lower_bits_mt.read(streams=[g.SG1_E[8]])	
 
 		gate_counter_distributor_maps_st     = self.gate_counter_target_qubit_L_distributor_maps_write_mt.read( streams=g.SG1[16] )
 

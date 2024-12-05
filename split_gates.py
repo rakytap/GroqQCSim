@@ -55,8 +55,8 @@ class Split_gates(Generate_static_data):
 				layout_real = layout_gate_kernels_real
 				layout_imag = layout_gate_kernels_imag
 
-				gate_kernels_imag_mt = gate_kernels_imag_packed_st.write(name=f"gate_kernel_imag_{gate_idx}", layout=layout_imag + f", A1({gate_count*4 + gate_idx})")
-				gate_kernels_real_mt = gate_kernels_real_packed_st.write(name=f"gate_kernel_real_{gate_idx}", layout=layout_real + f", A1({gate_count*4 + gate_idx})")
+				gate_kernels_imag_mt = gate_kernels_imag_packed_st.write(name=f"gate_kernel_imag_{gate_idx}", layout=layout_imag + f", A1({gate_count*4 + gate_idx +5000})")
+				gate_kernels_real_mt = gate_kernels_real_packed_st.write(name=f"gate_kernel_real_{gate_idx}", layout=layout_real + f", A1({gate_count*4 + gate_idx +5000})")
 
 				# add rule for mutual memory exclusion for the stored real and imaginary parts of the gate kernels
 				if ( gate_idx > 0 ):
@@ -172,7 +172,9 @@ class Split_gates(Generate_static_data):
 					layout_imag_copy = layout_gate_kernels_imag_copy
 
 					address_offset = idx*int(gate_count) + small_qbit_num_limit*20 # MXM permute matrices are also trored on these slices
-
+					if( idx==3 ) :
+							address_offset = idx*int(gate_count) + small_qbit_num_limit*20 + 1 # MXM permute matrices are also stored on these slices
+							
 					layout_real = layout_real + f", A1({address_offset + gate_idx})"
 					layout_imag = layout_imag + f", A1({address_offset + gate_idx})"
 
