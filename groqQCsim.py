@@ -39,6 +39,7 @@ def compile(mxm_permutation = True) -> List[str]:
 	program = Gate_IOP(pgm_pkg, mxm_permutation = mxm_permutation)
 	# Defines a program to upload the inputs
 	program.upload_program()
+	
 	program.upload_state_program()	
 	program.download_state_program()	
 	
@@ -160,6 +161,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device = runtime.devices[0]
 	device.open()
 	device.load(iop[0], unsafe_keep_entry_points=True) # upload
+	
 	device.load(iop[1], unsafe_keep_entry_points=True) # upload state vector
 	device.load(iop[2], unsafe_keep_entry_points=True) # download state vector
 	device.load(iop[3], unsafe_keep_entry_points=True) #S	
@@ -174,6 +176,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device.load(iop[12], unsafe_keep_entry_points=True) #8S			
 	device.load(iop[13], unsafe_keep_entry_points=True) #L8	
 	device.load(iop[14], unsafe_keep_entry_points=True) #8L	
+	
 	print("time elapsed with IOP uploading: ", time.time() - start_time )
 			
 	'''
@@ -282,8 +285,8 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			
 			
 	# generate packed gate kernel data
-	gate_kernels_real_packed = np.zeros( (320,), dtype=np.float32 )
-	gate_kernels_imag_packed = np.zeros( (320,), dtype=np.float32 )
+	gate_kernels_real_packed = np.zeros( (3, 320,), dtype=np.float32 )
+	gate_kernels_imag_packed = np.zeros( (3, 320,), dtype=np.float32 )
 
 	gate_kernels_real_shape = gate_kernels_real.shape
 	gate_kernels_imag_shape = gate_kernels_imag.shape
@@ -310,7 +313,10 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	entry_point = iop["upload"]["mono"]
 	pgm_1_output = invoke(device, iop, 0, entry_point, {"mxm_permutation_selector": mxm_permutation_selector, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector, "control_qubit_distributor_maps": distributor_map_np, "target_qubit_distributor_maps": target_qubit_distributor_map_np})
 	print("time elapsed with uploading gate data: ", time.time() - start_time )
-	
+	#print( pgm_1_output["gate_kernel_packed_0"].shape )
+	#print( pgm_1_output["gate_kernel_packed_0"][:,:,0:12] )
+	#print( pgm_1_output["gate_kernel_packed_1"][:,:,0:12] )
+	#return None, None
 	
 	start_time = time.time()	
 	entry_point = iop["uplod_state_vector"]["mono"]	
@@ -415,7 +421,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 		elif target_qbit >= 0 and target_qbit < 8 and control_qbit == -1: 
 			# pogram perfroming the Gate_S operation
 			index_of_gate_program = 3
-			entry_point = iop["gate_S"]["mono"]
+			entry_point = iop["gate_S"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -424,7 +430,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_SS operation
 			index_of_gate_program = 4
-			entry_point = iop["gate_SS"]["mono"]
+			entry_point = iop["gate_SS"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -433,7 +439,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_SL operation
 			index_of_gate_program = 5
-			entry_point = iop["gate_SL"]["mono"]
+			entry_point = iop["gate_SL"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -442,7 +448,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_S8 operation
 			index_of_gate_program = 6
-			entry_point = iop["gate_S8"]["mono"]
+			entry_point = iop["gate_S8"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -451,7 +457,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_SH operation
 			index_of_gate_program = 7
-			entry_point = iop["gate_SH"]["mono"]
+			entry_point = iop["gate_SH"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -461,7 +467,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_L operation
 			index_of_gate_program = 8
-			entry_point = iop["gate_L"]["mono"]
+			entry_point = iop["gate_L"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -471,7 +477,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_LL operation
 			index_of_gate_program = 9
-			entry_point = iop["gate_LL"]["mono"]
+			entry_point = iop["gate_LL"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -488,7 +494,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 		elif target_qbit == 8 and control_qbit == -1: 
 			# pogram perfroming the Gate_8 operation
 			index_of_gate_program = 11
-			entry_point = iop["gate_8"]["mono"]
+			entry_point = iop["gate_8"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -498,7 +504,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_8S operation
 			index_of_gate_program = 12
-			entry_point = iop["gate_8S"]["mono"]
+			entry_point = iop["gate_8S"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -507,7 +513,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_L8 operation
 			index_of_gate_program = 13
-			entry_point = iop["gate_L8"]["mono"]
+			entry_point = iop["gate_L8"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -517,7 +523,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_L8 operation
 			index_of_gate_program = 14
-			entry_point = iop["gate_8L"]["mono"]
+			entry_point = iop["gate_8L"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -526,9 +532,8 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			error("QCsim::run: Unimplemented case wit target qubit and control qubit.")
 			
-		#gate_output = invoke_gate(device, iop, index_of_gate_program, entry_point, input_buffer, output_buffer)	
-		gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
-		print(	gate_output )	
+		gate_output = invoke_gate(device, iop, index_of_gate_program, entry_point, input_buffer, output_buffer)	
+		#gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
 	
 	print("time elapsed on groq with gate operations: ", time.time() - start_time )
 

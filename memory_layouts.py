@@ -4,7 +4,8 @@ qbit_num = 17
 gate_kernel_element_labels = ["00", "01", "10", "11"]
 
 # gate count stored in a single packed vector 
-gate_count = 80
+gate_count = 240
+gate_splits = (gate_count-1+80) // 80  # on each 320-element vector 80 gate kernels are stored in the input
 
 # the number og qubits for which the gate operations need the permutor (need to reorganize the elements in a vector)
 small_qbit_num_limit = 8
@@ -93,6 +94,8 @@ layout_gate_kernels_imag	="H1(E), S4(12-15)"
 
 
 
+
+
 # memory layout to store the vectors describing states |0> and |1> for different target qubits within a single 320 element vector
 # addresses from 0 to small_qbit_num_limit-1       			are occupied by vectors describing states |0> and |1> for different target qubits (states |1> are labeled by bits 1)
 # addresses from small_qbit_num_limit to 2*small_qbit_num_limit-1 	are occupied by vectors describing states |0> and |1> for different target qubits (states |0> are labeled by bits 1)
@@ -125,18 +128,24 @@ layout_target_qubit_write_maps_8L_b = f"H1(E), A{(memory_slices//2) >> 1}(0-{((m
 layout_zeros = f"H1(E), A1(8001), S4(32-35)"
 layout_ones = f"H1(E), A1(8002), S4(32-35)"
 
+# temporary buffer space to store separated 2x2 gate kernels. The first 4 elements in each vector stand for the 2x2 kernel
+address_offset = 4096
+layout_gate_kernels_real_buffer = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(27-31)"
+#layout_gate_kernels_imag_buffer = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(4-7)"
+layout_gate_kernels_imag_buffer = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(32-35)"
 
 
 # gate counter: for reading out broadcasted elements from the gate kernel
-layout_gate_element_selector_10 = "H1(E), A1(0), S1(33)"
-layout_gate_element_selector_01 = "H1(E), A1(0), S1(34)"
-layout_gate_element_selector_11 = "H1(E), A1(0), S1(35)"
-layout_gate_element_selector_00 = "H1(E), A1(0), S1(36)"
+layout_gate_element_selector_10 = f"H1(E), A1({2*small_qbit_num_limit}), S1(33)"
+layout_gate_element_selector_01 = f"H1(E), A1({2*small_qbit_num_limit}), S1(34)"
+layout_gate_element_selector_11 = f"H1(E), A1({2*small_qbit_num_limit}), S1(35)"
+layout_gate_element_selector_00 = f"H1(E), A1({2*small_qbit_num_limit}), S1(36)"
+
 
 
 # initial gate kernels that are uploaded to the chip
-layout_gate_kernels_real_packed ="H1(E), A1(8003), S4(32-35)"
-layout_gate_kernels_imag_packed	="H1(E), A1(8004), S4(32-35)"
+layout_gate_kernels_real_packed ="H1(E), A3(7003-7005), S4(0-3)"
+layout_gate_kernels_imag_packed	="H1(E), A3(7006-7008), S4(0-3)"
 
 
 

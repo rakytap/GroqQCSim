@@ -123,9 +123,9 @@ if __name__ == "__main__":
 
 	print( 'The single qubit gate kernels are:')
 
-	gate_kernels = np.zeros((80, 2, 2,), dtype=np.complex64)
+	gate_kernels = np.zeros((240, 2, 2,), dtype=np.complex64)
 	parameter_idx = parameters.size
-	for idx in range(80):
+	for idx in range(240):
 		if idx < gate_count:
 			gate_parameter_num = one_qubit_circuits[idx].get_Parameter_Num()
 			parameters_1       = parameters[parameter_idx-gate_parameter_num : parameter_idx]
