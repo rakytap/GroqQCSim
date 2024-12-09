@@ -12,6 +12,7 @@ import random
 qbit_num = groqQCsim.qbit_num
 gate_count = groqQCsim.gate_count
 
+
 if __name__ == "__main__":
 	'''
 	target_qbits  = [6] * gate_count
@@ -123,19 +124,19 @@ if __name__ == "__main__":
 
 	print( 'The single qubit gate kernels are:')
 
-	gate_kernels = np.zeros((240, 2, 2,), dtype=np.complex64)
+	gate_kernels = np.zeros((groqQCsim.gate_splits*80, 2, 2,), dtype=np.complex64)
 	parameter_idx = parameters.size
-	for idx in range(240):
+	for idx in range(groqQCsim.gate_splits*80):
 		if idx < gate_count:
 			gate_parameter_num = one_qubit_circuits[idx].get_Parameter_Num()
 			parameters_1       = parameters[parameter_idx-gate_parameter_num : parameter_idx]
 			parameter_idx      = parameter_idx-gate_parameter_num
 
-			print( parameters_1 )
+			#print( parameters_1 )
 			gate_kernel_single = one_qubit_circuits[idx].get_Matrix( parameters_1 )
 			gate_kernels[idx]  = gate_kernel_single
-			print( gate_kernel_single )
-			print(' ')
+			#print( gate_kernel_single )
+			#print(' ')
 
 	print( "gate kernel shape: ", gate_kernels.shape )
 

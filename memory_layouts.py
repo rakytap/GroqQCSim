@@ -4,7 +4,7 @@ qbit_num = 17
 gate_kernel_element_labels = ["00", "01", "10", "11"]
 
 # gate count stored in a single packed vector 
-gate_count = 240
+gate_count = 256
 gate_splits = (gate_count-1+80) // 80  # on each 320-element vector 80 gate kernels are stored in the input
 gate_memory_offset_factor = ((gate_count-1+256) // 256) + 2
 
@@ -133,9 +133,9 @@ layout_ones = f"H1(E), A1(8002), S4(32-35)"
 
 # temporary buffer space to store separated 2x2 gate kernels. The first 4 elements in each vector stand for the 2x2 kernel
 address_offset = 4096
-layout_gate_kernels_real_buffer = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(27-31)"
+layout_gate_kernels_real_buffer = f"H1(E), A{gate_splits*80}({address_offset}-{address_offset+gate_splits*80-1}), S4(27-31)"
 #layout_gate_kernels_imag_buffer = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(4-7)"
-layout_gate_kernels_imag_buffer = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(32-35)"
+layout_gate_kernels_imag_buffer = f"H1(E), A{gate_splits*80}({address_offset}-{address_offset+gate_splits*80-1}), S4(32-35)"
 
 
 # gate counter: for reading out broadcasted elements from the gate kernel
@@ -147,8 +147,9 @@ layout_gate_element_selector_00 = f"H1(E), A1({2*small_qbit_num_limit}), S1(36)"
 
 
 # initial gate kernels that are uploaded to the chip
-layout_gate_kernels_real_packed ="H1(E), A3(7003-7005), S4(0-3)"
-layout_gate_kernels_imag_packed	="H1(E), A3(7006-7008), S4(0-3)"
+address_offset = 7003
+layout_gate_kernels_real_packed = f"H1(E), A{gate_splits}({address_offset}-{address_offset+gate_splits-1}), S4(0-3)"
+layout_gate_kernels_imag_packed	= f"H1(E), A{gate_splits}({address_offset+gate_splits}-{address_offset+2*gate_splits-1}), S4(0-3)"
 
 
 

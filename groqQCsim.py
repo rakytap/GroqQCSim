@@ -285,8 +285,8 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			
 			
 	# generate packed gate kernel data
-	gate_kernels_real_packed = np.zeros( (3, 320,), dtype=np.float32 )
-	gate_kernels_imag_packed = np.zeros( (3, 320,), dtype=np.float32 )
+	gate_kernels_real_packed = np.zeros( (gate_splits, 320,), dtype=np.float32 )
+	gate_kernels_imag_packed = np.zeros( (gate_splits, 320,), dtype=np.float32 )
 
 	gate_kernels_real_shape = gate_kernels_real.shape
 	gate_kernels_imag_shape = gate_kernels_imag.shape

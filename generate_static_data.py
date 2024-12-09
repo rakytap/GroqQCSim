@@ -637,8 +637,8 @@ class Generate_static_data(IO):
 
 
 			# 80 2x2 gate kernels are packed into real and complex 320 float32 vectors
-			self.gate_kernels_real_packed_mt = g.input_tensor(shape=(3,320,), dtype=g.float32, name="gate_kernels_real_packed", layout=layout_gate_kernels_real_packed)
-			self.gate_kernels_imag_packed_mt = g.input_tensor(shape=(3,320,), dtype=g.float32, name="gate_kernels_imag_packed", layout=layout_gate_kernels_imag_packed)
+			self.gate_kernels_real_packed_mt = g.input_tensor(shape=(gate_splits,320,), dtype=g.float32, name="gate_kernels_real_packed", layout=layout_gate_kernels_real_packed)
+			self.gate_kernels_imag_packed_mt = g.input_tensor(shape=(gate_splits,320,), dtype=g.float32, name="gate_kernels_imag_packed", layout=layout_gate_kernels_imag_packed)
 
 			exclusion_tensors = [state_1_selector_mt, state_0_selector_mt, control_state_1_selector_mt, control_state_0_selector_mt, self.gate_kernels_real_packed_mt, self.gate_kernels_imag_packed_mt]
 			
@@ -1094,7 +1094,7 @@ class Generate_static_data(IO):
 ###############################################################
 			
 			with g.ResourceScope(name="split_gates_scope", is_buffered=True, predecessors=[distribute_state_indices_scope], time=None) as split_gates_scope :
-			
+		
 				transposer_requests = []
 				transposer_requests.append( g.tensor.create_transposer_request( [0], 1) )# request transposer on the west side
 				transposer_requests.append( g.tensor.create_transposer_request( [2], 1) )# request transposer on the east side
@@ -1124,11 +1124,11 @@ class Generate_static_data(IO):
 				
 				# preallocate tensors for intermediate memory tensors
 
-				gate_kernels_real_separated_mt = g.constant_tensor((gate_count, 320), \
+				gate_kernels_real_separated_mt = g.constant_tensor((gate_splits*80, 320), \
 										dtype=g.float32, layout=layout_gate_kernels_real_buffer, \
 										initialized=False)	
 
-				gate_kernels_imag_separated_mt = g.constant_tensor((gate_count, 320), \
+				gate_kernels_imag_separated_mt = g.constant_tensor((gate_splits*80, 320), \
 										dtype=g.float32, layout=layout_gate_kernels_imag_buffer, \
 										initialized=False)	
 
@@ -1137,8 +1137,8 @@ class Generate_static_data(IO):
 				exclusion_tensors.append( gate_kernels_imag_separated_mt )
 
 				
-				gate_kernels_real_separated_mt_list = gate_kernels_real_separated_mt.split( dim=0, num_splits=gate_count )
-				gate_kernels_imag_separated_mt_list = gate_kernels_imag_separated_mt.split( dim=0, num_splits=gate_count )	
+				gate_kernels_real_separated_mt_list = gate_kernels_real_separated_mt.split( dim=0, num_splits=gate_splits*80 )
+				gate_kernels_imag_separated_mt_list = gate_kernels_imag_separated_mt.split( dim=0, num_splits=gate_splits*80 )	
 				
 				# split the tensor between hemispheres WEST and EAST (each (2k+1)-th gate kernel goes to the western hemispheres, while 2k-th gates are assigned to the eastern hemisphere
 				# the gate kernel elements to be used later are the first 4 elements in each vector
@@ -1158,7 +1158,7 @@ class Generate_static_data(IO):
 					buffer_imag_mt = g.concat( gate_kernels_imag_separated_mt_list[gate_idx::gate_idx_max], dim=0)
 					buffer_mt      = g.stack( [buffer_real_mt, buffer_imag_mt], dim=0 )
 					buffer_mt      = buffer_mt.transpose(1,0,2)
-					
+										
 					gate_kernel_packed_mt = gate_kernels_packed_st.write(name=f"gate_kernel_packed_{gate_idx}", 
 												storage_req=buffer_mt.storage_request, 
 												program_output=program_output)	
@@ -1182,6 +1182,10 @@ class Generate_static_data(IO):
 				g.add_mem_constraints(gate_kernels_packed_list, gate_kernels_packed_list, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
 				
 				
+				gate_kernels_real_separated_mt = g.concat( gate_kernels_real_separated_mt_list[0:gate_count], dim=0)
+				gate_kernels_imag_separated_mt = g.concat( gate_kernels_imag_separated_mt_list[0:gate_count], dim=0)				
+				
+				
 
 				# preallocate tensors for the output    
 				gate_kernels_real_mt_dict = {}		
@@ -1201,8 +1205,8 @@ class Generate_static_data(IO):
 					layout_gate_kernels_real[label]      = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(8-11)"
 					layout_gate_kernels_imag[label]      = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(12-15)"
 
-
-
+				
+				
 				gate_kernels_real_copy_mt_dict = {}
 				gate_kernels_imag_copy_mt_dict = {}
 				gate_kernels_real_mt_dict      = {}
@@ -1289,7 +1293,7 @@ class Generate_static_data(IO):
 				loop_time_short_cycle = 31
 				
 				
-
+				
 					
 				for idx in range(len(gate_kernel_element_labels) ): # iterates over the labels of the gate kernel elements
 
@@ -1379,7 +1383,7 @@ class Generate_static_data(IO):
 				self.gate_kernels_broadcasted_imag_mt.is_static = True
 				self.gate_kernels_broadcasted_real_copy_mt.is_static = True
 				self.gate_kernels_broadcasted_imag_copy_mt.is_static = True
-
+				
 					
 			'''
 				gate_kernels_packed_st = gate_kernels_packed_mt.read( streams=g.SG4[0], time=0 )
