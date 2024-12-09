@@ -6,6 +6,7 @@ gate_kernel_element_labels = ["00", "01", "10", "11"]
 # gate count stored in a single packed vector 
 gate_count = 240
 gate_splits = (gate_count-1+80) // 80  # on each 320-element vector 80 gate kernels are stored in the input
+gate_memory_offset_factor = ((gate_count-1+256) // 256) + 2
 
 # the number og qubits for which the gate operations need the permutor (need to reorganize the elements in a vector)
 small_qbit_num_limit = 8
@@ -36,8 +37,9 @@ layout_target_qubit_read_maps_8L_pair = f"H1(W), A{memory_addresses//2}(0-{memor
 layout_gate_counter_perm_map_selector = f"H1(W), A{1}(3200), S1(36)"
 
 # control qubit dependent distributor map for SL gate
+address_offset = 256*(gate_memory_offset_factor)
 layout_distributor_maps_west         = f"H1(W), A{gate_count}(0-{gate_count-1}), S1(36)"  #TODO HAVE A disptributor map also on the east
-layout_target_qubit_distributor_maps = f"H1(W), A{gate_count}(256-{256+gate_count-1}), S1(36)"  #TODO HAVE A disptributor map also on the east
+layout_target_qubit_distributor_maps = f"H1(W), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S1(36)"  #TODO HAVE A disptributor map also on the east
 
 # permute maps used to reorder the state vector elements according to the given target qubit (permute map is also stored on the easter hemisphere)
 layout_permute_maps_west = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(35)"
@@ -113,10 +115,11 @@ layout_control_state_1_selector = f"H1(E), A{gate_count}({gate_count}-{2*gate_co
 layout_state_0_selector	        = f"H1(E), A{gate_count}(0-{gate_count-1}), S1(21)"
 layout_control_state_0_selector = f"H1(E), A{gate_count}({gate_count}-{2*gate_count-1}), S1(21)"
 
+address_offset = 256*(gate_memory_offset_factor)
 layout_state_1_broadcasted		   = f"H1(E), A{gate_count}(0-{gate_count-1}), S4(22-26)" # slice 24 is reserved
-layout_control_state_1_broadcasted = f"H1(E), A{gate_count}(256-{256+gate_count-1}), S4(22-26)" # slice 24 is reserved
+layout_control_state_1_broadcasted = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(22-26)" # slice 24 is reserved
 layout_state_0_broadcasted	       = f"H1(E), A{gate_count}(0-{gate_count-1}), S4(27-31)" # slice 28 is reserved
-layout_control_state_0_broadcasted = f"H1(E), A{gate_count}(256-{256+gate_count-1}), S4(27-31)" # slice 28 is reserved
+layout_control_state_0_broadcasted = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(27-31)" # slice 28 is reserved
 
 # to save controlled operations on target qbit 8, we need two concurrent streams for memory scatter (see layout_target_qubit_write_maps_8L_a)
 #layout_target_qubit_write_maps_8L_b = f"H1(E), A{memory_addresses//2}({memory_addresses//2}-{memory_addresses-1}), S1(31)"

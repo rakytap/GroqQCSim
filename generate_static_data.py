@@ -777,7 +777,7 @@ class Generate_static_data(IO):
 										 	
 			gate_counter_S_control_qbit_selector_np           = np.zeros( (320,), dtype=np.uint8 )
 			gate_counter_S_control_qbit_selector_np[0:320:16] = 0
-			gate_counter_S_control_qbit_selector_np[1:320:16] = 1						
+			gate_counter_S_control_qbit_selector_np[1:320:16] = (gate_memory_offset_factor)	#KKKKKKKKKKKKKKKKK					
 			self.gate_counter_S_control_qbit_selector_mt = g.from_data( np.asarray(gate_counter_S_control_qbit_selector_np, 
 											                            dtype=np.uint8),
 										                             	layout=layout_gate_counter_S_control_qbit_selector,
@@ -789,23 +789,23 @@ class Generate_static_data(IO):
 			# TODO: move these memory layouts to memory_layouts and update the ods file
 			gate_element_selector_00_np                   = np.zeros( (320,), dtype=np.uint8 )
 			gate_element_selector_00_np[0:320:16]         = 0
-			gate_element_selector_00_np[1:320:16]         = 1
+			gate_element_selector_00_np[1:320:16]         = 1  #KKKKKKKKKKKKKKKKK
 			self.gate_counter_gate_element_selector_00_mt = g.from_data( gate_element_selector_00_np, layout=layout_gate_element_selector_00, name="gate_counter_gate_element_selector_00" )
 
 			gate_element_selector_11_np                   = np.zeros( (320,), dtype=np.uint8 )
 			gate_element_selector_11_np[0:320:16]         = 0
-			gate_element_selector_11_np[1:320:16]         = 4
+			gate_element_selector_11_np[1:320:16]         = 1+3*(gate_memory_offset_factor) #KKKKKKKKKKKKKKKKK
 			self.gate_counter_gate_element_selector_11_mt = g.from_data( gate_element_selector_11_np, layout=layout_gate_element_selector_11, name="gate_counter_gate_element_selector_11" )
 					
 					
 			gate_element_selector_01_np                   = np.zeros( (320,), dtype=np.uint8 )
 			gate_element_selector_01_np[0:320:16]         = 0
-			gate_element_selector_01_np[1:320:16]         = 2
+			gate_element_selector_01_np[1:320:16]         = 1+(gate_memory_offset_factor) #KKKKKKKKKKKKKKKKK
 			self.gate_counter_gate_element_selector_01_mt = g.from_data( gate_element_selector_01_np, layout=layout_gate_element_selector_01, name="gate_counter_gate_element_selector_01" )
 
 			gate_element_selector_10_np                   = np.zeros( (320,), dtype=np.uint8 )
 			gate_element_selector_10_np[0:320:16]         = 0
-			gate_element_selector_10_np[1:320:16]         = 3
+			gate_element_selector_10_np[1:320:16]         = 1+2*(gate_memory_offset_factor)  #KKKKKKKKKKKKKKKKK
 			self.gate_counter_gate_element_selector_10_mt = g.from_data( gate_element_selector_10_np, layout=layout_gate_element_selector_10, name="gate_counter_gate_element_selector_10" )	
 
 
@@ -1077,7 +1077,7 @@ class Generate_static_data(IO):
 				# distributor maps to select the correct memory maps to write data on L and H target qubits.
 				gate_counter_target_qubit_L_distributor_maps_write_np            = np.zeros( (320,), dtype=np.uint8 )
 				gate_counter_target_qubit_L_distributor_maps_write_np [0:320:16]  = 0				
-				gate_counter_target_qubit_L_distributor_maps_write_np [1:320:16]  = 1				
+				gate_counter_target_qubit_L_distributor_maps_write_np [1:320:16]  = gate_memory_offset_factor #KKKKKKKKKKKKKKKKK				
 				
 				self.gate_counter_target_qubit_L_distributor_maps_write_mt  = g.from_data( gate_counter_target_qubit_L_distributor_maps_write_np,
 											 layout=layout_gate_counter_target_qubit_L_distributor_maps )
@@ -1194,7 +1194,7 @@ class Generate_static_data(IO):
 				for idx in range( len(gate_kernel_element_labels) ): # iterates over the labels of the gate kernel elements
 
 					label = gate_kernel_element_labels[idx]
-					address_offset = (idx+1)*256 # MXM permute matrices are also stored at the begining of these slices	
+					address_offset = 256 + idx*256*(gate_memory_offset_factor) # MXM permute matrices are also stored at the begining of these slices	
 
 					layout_gate_kernels_real_copy[label] = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(0-3)"
 					layout_gate_kernels_imag_copy[label] = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(4-7)"
