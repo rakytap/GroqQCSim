@@ -61,6 +61,7 @@ layout_mxm_permutation_matrices_west = f"H1(W), A{small_qbit_num_limit*20}(4096-
 # layout to gather map selecting the permutation map corresponding to the target qubit  -- the MT should be replaced by on chip determined gather map, currently it is uploaded from CPU
 layout_constant_1_address_offset_lower_bits  = f"H1(W), A{1}(0), S1(18)"
 layout_constant_1_address_offset_higher_bits = f"H1(W), A{1}(1), S1(18)"
+layout_gate_counter_address_offset_higher_bits = f"H1(W), A{1}(2), S1(18)"
 layout_state_permute_map_selector            = f"H1(W), A{gate_count}(0-{gate_count-1}), S1(17)"
 layout_mxm_permute_map_selector              = f"H1(W), A{gate_count}({gate_count}-{2*gate_count-1}), S1(17)" #either state permute map selector or mxm_permute_map selctor is used on the chip, but not booth
 

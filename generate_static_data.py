@@ -657,13 +657,17 @@ class Generate_static_data(IO):
 			constant_1_address_offset_lower_bits_np           = np.zeros( (320,), dtype=np.uint8 )
 			constant_1_address_offset_lower_bits_np[0:320:16] = 1
 			self.constant_1_address_offset_lower_bits_mt = g.from_data( np.asarray(constant_1_address_offset_lower_bits_np, dtype=np.uint8), layout=layout_constant_1_address_offset_lower_bits, name="constant_1_address_offset_lower_bits" )
-			'''
+			
 			constant_1_address_offset_higher_bits_np           = np.zeros( (320,), dtype=np.uint8 )
 			constant_1_address_offset_higher_bits_np[1:320:16] = 1
 			self.constant_1_address_offset_higher_bits_mt = g.from_data( np.asarray(constant_1_address_offset_higher_bits_np, dtype=np.uint8), layout=layout_constant_1_address_offset_higher_bits )
+
+			gate_counter_address_offset_higher_bits_np  = np.zeros( (320,), dtype=np.uint8 )
+			self.gate_counter_address_offset_higher_bits_mt = g.from_data( np.asarray(gate_counter_address_offset_higher_bits_np, dtype=np.uint8),
+                                                                                      layout=layout_gate_counter_address_offset_higher_bits )
 			
 			g.add_mem_constraints([self.constant_1_address_offset_lower_bits_mt], [self.constant_1_address_offset_higher_bits_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
-			'''
+			
 			#self.gate_kernels_real_packed_mt.is_static 	 = True
 			#self.gate_kernels_imag_packed_mt.is_static 	 = True
 			state_1_selector_mt.is_static			     = True
@@ -672,7 +676,7 @@ class Generate_static_data(IO):
 			control_state_0_selector_mt.is_static        = True
 			self.state_permute_map_selector_mt.is_static = True
 			self.constant_1_address_offset_lower_bits_mt.is_static   = True
-			#self.constant_1_address_offset_higher_bits_mt.is_static  = True			
+			self.constant_1_address_offset_higher_bits_mt.is_static  = True			
 
 
 			if ( self.mxm_permutation ):

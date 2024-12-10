@@ -486,7 +486,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_LS operation
 			index_of_gate_program = 10
-			entry_point = iop["gate_LS"]["mono"]
+			entry_point = iop["gate_LS"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -534,6 +534,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			
 		gate_output = invoke_gate(device, iop, index_of_gate_program, entry_point, input_buffer, output_buffer)	
 		#gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+		#print( gate_output)
 	
 	print("time elapsed on groq with gate operations: ", time.time() - start_time )
 
