@@ -184,7 +184,7 @@ class Gate_S_base(Gate_counters):
 
 			
 		#address_offset = 4*gate_count
-		address_offset = 20*gate_count		
+		address_offset = 200		
 
 		layout_real_diag     = layout_gate_kernels_real + f", A1({address_offset})"
 		layout_imag_diag     = layout_gate_kernels_imag + f", A1({address_offset})"		

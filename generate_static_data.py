@@ -656,11 +656,15 @@ class Generate_static_data(IO):
 			# constant tensor to update the address counters by one on lower bits
 			constant_1_address_offset_lower_bits_np           = np.zeros( (320,), dtype=np.uint8 )
 			constant_1_address_offset_lower_bits_np[0:320:16] = 1
-			self.constant_1_address_offset_lower_bits_mt = g.from_data( np.asarray(constant_1_address_offset_lower_bits_np, dtype=np.uint8), layout=layout_constant_1_address_offset_lower_bits, name="constant_1_address_offset_lower_bits" )
+			self.constant_1_address_offset_lower_bits_mt = g.from_data( 
+                                                                           np.asarray(constant_1_address_offset_lower_bits_np, dtype=np.uint8), 
+                                                                           layout=layout_constant_1_address_offset_lower_bits, name="constant_1_address_offset_lower_bits" )
 			
 			constant_1_address_offset_higher_bits_np           = np.zeros( (320,), dtype=np.uint8 )
 			constant_1_address_offset_higher_bits_np[1:320:16] = 1
-			self.constant_1_address_offset_higher_bits_mt = g.from_data( np.asarray(constant_1_address_offset_higher_bits_np, dtype=np.uint8), layout=layout_constant_1_address_offset_higher_bits )
+			self.constant_1_address_offset_higher_bits_mt = g.from_data( 
+                                                                           np.asarray(constant_1_address_offset_higher_bits_np, dtype=np.uint8), 
+                                                                           layout=layout_constant_1_address_offset_higher_bits )
 
 			gate_counter_address_offset_higher_bits_np  = np.zeros( (320,), dtype=np.uint8 )
 			self.gate_counter_address_offset_higher_bits_mt = g.from_data( np.asarray(gate_counter_address_offset_higher_bits_np, dtype=np.uint8),
@@ -676,7 +680,8 @@ class Generate_static_data(IO):
 			control_state_0_selector_mt.is_static        = True
 			self.state_permute_map_selector_mt.is_static = True
 			self.constant_1_address_offset_lower_bits_mt.is_static   = True
-			self.constant_1_address_offset_higher_bits_mt.is_static  = True			
+			self.constant_1_address_offset_higher_bits_mt.is_static  = True		
+			self.gate_counter_address_offset_higher_bits_mt.is_static = True	
 
 
 			if ( self.mxm_permutation ):
@@ -1185,7 +1190,9 @@ class Generate_static_data(IO):
 				# add rule for mutual memory exclusion for the stored real and imaginary parts of the gate kernels									
 				g.add_mem_constraints(gate_kernels_packed_list, gate_kernels_packed_list, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
 				
-				
+			with g.ResourceScope(name="split_gates_scope2", is_buffered=True, predecessors=[split_gates_scope], time=None) as split_gates_scope2 :
+			
+							
 				gate_kernels_real_separated_mt = g.concat( gate_kernels_real_separated_mt_list[0:gate_count], dim=0)
 				gate_kernels_imag_separated_mt = g.concat( gate_kernels_imag_separated_mt_list[0:gate_count], dim=0)				
 				
@@ -1208,7 +1215,6 @@ class Generate_static_data(IO):
 					layout_gate_kernels_imag_copy[label] = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(4-7)"
 					layout_gate_kernels_real[label]      = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(8-11)"
 					layout_gate_kernels_imag[label]      = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(12-15)"
-
 				
 				
 				gate_kernels_real_copy_mt_dict = {}
@@ -1231,6 +1237,7 @@ class Generate_static_data(IO):
 
 					gate_kernels_real_copy_mt_dict[label] = tmp_mt#.split(dim=0, num_splits=gate_count )
 					exclusion_tensors_real_copy.append( tmp_mt )
+					exclusion_tensors.append(tmp_mt)
 
 					tmp_mt = g.constant_tensor((gate_count, 320), 
                                                                    dtype=g.float32, layout=layout_gate_kernels_imag_copy[label], 
@@ -1240,6 +1247,7 @@ class Generate_static_data(IO):
 
 					gate_kernels_imag_copy_mt_dict[label] = tmp_mt#.split(dim=0, num_splits=gate_count )
 					exclusion_tensors_imag_copy.append( tmp_mt )
+					exclusion_tensors.append(tmp_mt)					
 	
 
 					tmp_mt = g.constant_tensor((gate_count, 320), 
@@ -1250,6 +1258,7 @@ class Generate_static_data(IO):
 
 					gate_kernels_real_mt_dict[label] = tmp_mt#.split(dim=0, num_splits=gate_count )	
 					exclusion_tensors_real.append( tmp_mt )
+					exclusion_tensors.append(tmp_mt)					
 
 					tmp_mt = g.constant_tensor((gate_count, 320), 
                                                                    dtype=g.float32, layout=layout_gate_kernels_imag[label], 
@@ -1259,11 +1268,17 @@ class Generate_static_data(IO):
 
 					gate_kernels_imag_mt_dict[label] = tmp_mt#.split(dim=0, num_splits=gate_count )	
 					exclusion_tensors_imag.append( tmp_mt )
+					exclusion_tensors.append(tmp_mt)					
 
-				g.add_mem_constraints(exclusion_tensors_real, exclusion_tensors_real, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
-				g.add_mem_constraints(exclusion_tensors_imag, exclusion_tensors_imag, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
-				g.add_mem_constraints(exclusion_tensors_real_copy, exclusion_tensors_real_copy, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
-				g.add_mem_constraints(exclusion_tensors_imag_copy, exclusion_tensors_imag_copy, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+
+				#exclusion_tensors_real_copy.append(self.gate_kernels_real_packed_mt)
+				#exclusion_tensors_real_copy.append(self.gate_kernels_imag_packed_mt)
+				#g.add_mem_constraints(exclusion_tensors_real, exclusion_tensors_real, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+				#g.add_mem_constraints(exclusion_tensors_imag, exclusion_tensors_imag, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+				#g.add_mem_constraints(exclusion_tensors_real_copy, exclusion_tensors_real_copy, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+				#g.add_mem_constraints(exclusion_tensors_imag_copy, exclusion_tensors_imag_copy, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
+
+
 
 
 
@@ -1298,11 +1313,11 @@ class Generate_static_data(IO):
 				
 				
 				
-					
+				
 				for idx in range(len(gate_kernel_element_labels) ): # iterates over the labels of the gate kernel elements
 
 					label = gate_kernel_element_labels[idx]
-
+					
 					gate_kernels_separated_mt = g.stack( [gate_kernels_real_separated_mt, gate_kernels_imag_separated_mt], dim=0 )
 					gate_kernel_st = gate_kernels_separated_mt.read( streams=g.SG4[1], time=None )
 					
@@ -1333,10 +1348,10 @@ class Generate_static_data(IO):
 					gate_kernels_mt      = g.stack( [gate_kernels_real_mt, gate_kernels_imag_mt], dim=0 )
 					gate_kernels_copy_mt = g.stack( [gate_kernels_real_copy_mt, gate_kernels_imag_copy_mt], dim=0 )
 					
-					gate_kernel_broadcasted_st.write( storage_req=gate_kernels_mt.storage_request, time= 6000 + idx*1000 )
+					gate_kernel_broadcasted_st.write( storage_req=gate_kernels_mt.storage_request, time= idx*(2*gate_count + 1) )
 					gate_kernel_broadcasted_st.write( storage_req=gate_kernels_copy_mt.storage_request )
 
-				
+					
 				for label in gate_kernel_element_labels:
 
 					gate_kernels_real_mt      = gate_kernels_real_mt_dict[ label ]

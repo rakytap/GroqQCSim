@@ -123,7 +123,7 @@ if __name__ == "__main__":
 	# get the gate kernel
 
 	print( 'The single qubit gate kernels are:')
-
+	start_time = time.time()
 	gate_kernels = np.zeros((groqQCsim.gate_splits*80, 2, 2,), dtype=np.complex64)
 	parameter_idx = parameters.size
 	for idx in range(groqQCsim.gate_splits*80):
@@ -137,6 +137,7 @@ if __name__ == "__main__":
 			gate_kernels[idx]  = gate_kernel_single
 			#print( gate_kernel_single )
 			#print(' ')
+	time_kernel_extract = time.time()-start_time
 
 	print( "gate kernel shape: ", gate_kernels.shape )
 
@@ -157,6 +158,7 @@ if __name__ == "__main__":
 	print( 'difference between CPU oracle and Groq chip (real part): ', scipy.linalg.norm( real_part - np.real( State_transformed_oracle ) , 2), '(imag part): ', scipy.linalg.norm( imag_part - np.imag( State_transformed_oracle ) , 2) )
 
 	print( 'difference between CPU oracle and Groq chip (overlap integral): ', np.abs( (real_part + imag_part*1j) @ State_transformed_oracle.T.conj() ) )
+	print("time elapsed with extracting gate kernels: ", time_kernel_extract )	
 	print("time elapsed with C++: ", time_Cpp )	
 
 

@@ -4,9 +4,9 @@ qbit_num = 17
 gate_kernel_element_labels = ["00", "01", "10", "11"]
 
 # gate count stored in a single packed vector 
-gate_count = 256
+gate_count = 760
 gate_splits = (gate_count-1+80) // 80  # on each 320-element vector 80 gate kernels are stored in the input
-gate_memory_offset_factor = ((gate_count-1+256) // 256) + 2
+gate_memory_offset_factor = ((gate_count-1+256) // 256)
 
 # the number og qubits for which the gate operations need the permutor (need to reorganize the elements in a vector)
 small_qbit_num_limit = 8
@@ -14,7 +14,7 @@ small_qbit_num_limit = 8
 
 # determine the size of the part of the state vector handled in the inner split of the LPU tensors
 matrix_size   = int(2**small_qbit_num_limit)
-memory_slices = 1 << (qbit_num-small_qbit_num_limit) # TODO:replace all the occurances to memory_addresses
+memory_slices = 1 << (qbit_num-small_qbit_num_limit) # TODO:replace all the occurances of memory_slices with memory_addresses
 memory_addresses = 1 << (qbit_num-small_qbit_num_limit)
 
 layout_target_qubit_read_maps_8L = f"H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S1(43)"
@@ -61,7 +61,7 @@ layout_mxm_permutation_matrices_west = f"H1(W), A{small_qbit_num_limit*20}(4096-
 # layout to gather map selecting the permutation map corresponding to the target qubit  -- the MT should be replaced by on chip determined gather map, currently it is uploaded from CPU
 layout_constant_1_address_offset_lower_bits  = f"H1(W), A{1}(0), S1(18)"
 layout_constant_1_address_offset_higher_bits = f"H1(W), A{1}(1), S1(18)"
-layout_gate_counter_address_offset_higher_bits = f"H1(W), A{1}(2), S1(18)"
+layout_gate_counter_address_offset_higher_bits = f"H1(W), A{1}(2), S1(19)"
 layout_state_permute_map_selector            = f"H1(W), A{gate_count}(0-{gate_count-1}), S1(17)"
 layout_mxm_permute_map_selector              = f"H1(W), A{gate_count}({gate_count}-{2*gate_count-1}), S1(17)" #either state permute map selector or mxm_permute_map selctor is used on the chip, but not booth
 
