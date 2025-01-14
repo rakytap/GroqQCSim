@@ -1,10 +1,10 @@
-from split_gates import Split_gates
+from gate_counters import Gate_counters
 from memory_layouts import *
 import groq.api as g
 
 import numpy as np
 
-class Gate(Split_gates):
+class Gate(Gate_counters):
 	"""
 	A class used to implement the gate operation on qubits S with control qubits H.
 	H qubits are 18,19,20,21
@@ -435,7 +435,8 @@ class Gate(Split_gates):
 		
 
 			
-			address_offset = 4*gate_count
+			#address_offset = 4*gate_count
+			address_offset = 200
 
 			layout_real_diag     = layout_gate_kernels_real + f", A1({address_offset})"
 			layout_imag_diag     = layout_gate_kernels_imag + f", A1({address_offset})"		

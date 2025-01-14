@@ -49,7 +49,7 @@ class Gate(Gate_L_base):
 	
 		
 		gate_counter_S_control_qbit_selector_shared = g.shared_memory_tensor(self.gate_counter_S_control_qbit_selector_mt,   \
-   										name="gate_counter_S_control_qbit_selector_shared") 
+   										                                      name="gate_counter_S_control_qbit_selector_shared") 
 		gate_counter_S_control_qbit_selector_st     = gate_counter_S_control_qbit_selector_shared.read( streams=g.SG1[0] )
 
 		# split state_1_broadcasted_shared and state_0_broadcasted_shared into slices to use mem_gather on the tensor
@@ -323,14 +323,14 @@ class Gate(Gate_L_base):
 				complex_zero_mt = g.stack( [self.zeros_mt, self.zeros_mt], dim = 0 ) 
 				
 				gate_00_real_filtered_mt, gate_00_imag_filtered_mt, gate_00_real_filtered_copy_mt, gate_00_imag_filtered_copy_mt = \
-									self.filter_gate_element( self.gate_counter_gate_element_selector_00_mt, complex_one_mt, 4*gate_count, 0, '00' )
+									self.filter_gate_element( self.gate_counter_gate_element_selector_00_mt, complex_one_mt, 200, 0, '00' )
 									
 				g.add_mem_constraints([self.gate_kernels_broadcasted_real_mt], [gate_00_real_filtered_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 				g.add_mem_constraints([self.gate_kernels_broadcasted_imag_mt], [gate_00_imag_filtered_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)	
 				
 				
 				gate_11_real_filtered_mt, gate_11_imag_filtered_mt, gate_11_real_filtered_copy_mt, gate_11_imag_filtered_copy_mt = \
-									self.filter_gate_element( self.gate_counter_gate_element_selector_11_mt, complex_one_mt, 4*gate_count+3, 6, '11' )	
+									self.filter_gate_element( self.gate_counter_gate_element_selector_11_mt, complex_one_mt, 200+3, 6, '11' )	
 									
 	
 	
@@ -342,7 +342,7 @@ class Gate(Gate_L_base):
 													
 									
 				gate_10_real_filtered_mt, gate_10_imag_filtered_mt, gate_10_real_filtered_copy_mt, gate_10_imag_filtered_copy_mt = \
-									self.filter_gate_element( self.gate_counter_gate_element_selector_10_mt, complex_zero_mt, 4*gate_count+1, 12, '10' )	
+									self.filter_gate_element( self.gate_counter_gate_element_selector_10_mt, complex_zero_mt, 200+1, 12, '10' )	
 									
 	
 	
@@ -353,7 +353,7 @@ class Gate(Gate_L_base):
 				
 				
 				gate_01_real_filtered_mt, gate_01_imag_filtered_mt, gate_01_real_filtered_copy_mt, gate_01_imag_filtered_copy_mt = \
-									self.filter_gate_element( self.gate_counter_gate_element_selector_01_mt, complex_zero_mt, 4*gate_count+2, 18, '10' )	
+									self.filter_gate_element( self.gate_counter_gate_element_selector_01_mt, complex_zero_mt, 200+2, 18, '10' )	
 									
 	
 	

@@ -183,7 +183,8 @@ class Gate_S_base(Gate_counters):
 
 
 			
-		address_offset = 4*gate_count
+		#address_offset = 4*gate_count
+		address_offset = 200		
 
 		layout_real_diag     = layout_gate_kernels_real + f", A1({address_offset})"
 		layout_imag_diag     = layout_gate_kernels_imag + f", A1({address_offset})"		
@@ -198,7 +199,8 @@ class Gate_S_base(Gate_counters):
 
 		return State_input_real_shared, State_input_imag_shared, State_input_real_copy_shared, State_input_imag_copy_shared, \
                        state_1_broadcasted_shared, state_0_broadcasted_shared, \
-                       gate_kernels_broadcasted_real_shared_dict, gate_kernels_broadcasted_imag_shared_dict, gate_kernels_broadcasted_real_shared_copy_dict, gate_kernels_broadcasted_imag_shared_copy_dict, \
+                       gate_kernels_broadcasted_real_shared_dict, gate_kernels_broadcasted_imag_shared_dict, \
+                       gate_kernels_broadcasted_real_shared_copy_dict, gate_kernels_broadcasted_imag_shared_copy_dict, \
                        storage_req_real_diag, storage_req_imag_diag, storage_req_real_off_diag, storage_req_imag_off_diag 
 
 

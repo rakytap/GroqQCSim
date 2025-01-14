@@ -261,8 +261,6 @@ class Gate(Gate_8_base):
 		write_qubit_memory_tensor_st_a = g.concat( [write_qubit_memory_tensor_st_a_first_part, write_qubit_memory_tensor_st_a_second_part], dim=0 )
 		write_qubit_memory_tensor_st_b = g.concat( [write_qubit_memory_tensor_st_b_first_part, write_qubit_memory_tensor_st_b_second_part], dim=0 )
 
-		print( 'ooooooooooooooooooo ', write_qubit_memory_tensor_st_a.shape )
-		print( 'ooooooooooooooooooo ', write_qubit_memory_tensor_st_b.shape )
 
 		#write_qubit_memory_tensor_st_a.write(name = 'hhhh', layout='H1(E), -1, S1', program_output=True )
 		#write_qubit_memory_tensor_st_b.write(name = 'hhhh2', layout='H1(E), -1, S1', program_output=True )

@@ -96,7 +96,8 @@ class Gate(Gate_S_base):
 				gate_kernels_broadcasted_imag_shared_copy_dict[key] = gate_kernels_broadcasted_imag_shared_copy				
 
 			
-			address_offset = 4*gate_count
+			#address_offset = 4*gate_count
+			address_offset = 200				
 
 			layout_real_diag = layout_gate_kernels_real + f", A1({address_offset})"
 			layout_imag_diag = layout_gate_kernels_imag + f", A1({address_offset})"		
