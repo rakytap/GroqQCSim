@@ -1206,12 +1206,24 @@ class Generate_static_data(IO):
 				layout_gate_kernels_imag_copy	= {}
 				layout_gate_kernels_real	= {}
 				layout_gate_kernels_imag	= {}
-				src, sic, sr, si = [
-					g.constant_tensor((gate_count*len(gate_kernel_element_labels), 320), 
-														dtype=g.float32, layout=f"H1(E), B2(0,1), A{gate_count*len(gate_kernel_element_labels)//2}(256-{256+gate_count*len(gate_kernel_element_labels)//2-1}), S4({i*4}-{(i+1)*4-1})", 
-														name = "gate_kernels_"+str(i),
-														initialized=False)
-					for i in range(4)]
+				if 256+gate_count*len(gate_kernel_element_labels) >= 4096:
+					src, sic, sr, si = [
+						g.concat([g.constant_tensor((3840, 320), 
+															dtype=g.float32, layout=f"H1(E), B1(0), A3840(256-4095), S4({i*4}-{(i+1)*4-1})", 
+															name = "gate_kernels_"+str(i),
+															initialized=False),
+											g.constant_tensor((gate_count*len(gate_kernel_element_labels)-3840, 320), 
+															dtype=g.float32, layout=f"H1(E), B1(1), A{gate_count*len(gate_kernel_element_labels)-3840}(0-{gate_count*len(gate_kernel_element_labels)-3840-1}), S4({i*4}-{(i+1)*4-1})", 
+															name = "gate_kernels_"+str(i),
+															initialized=False)], dim=0)
+						for i in range(4)]
+				else:
+					src, sic, sr, si = [
+						g.constant_tensor((gate_count*len(gate_kernel_element_labels), 320), 
+															dtype=g.float32, layout=f"H1(E), A{gate_count*len(gate_kernel_element_labels)}(256-{256+gate_count*len(gate_kernel_element_labels)-1}), S4({i*4}-{(i+1)*4-1})", 
+															name = "gate_kernels_"+str(i),
+															initialized=False)
+						for i in range(4)]
 				
 				gate_kernels_real_copy_mt_dict = {}
 				gate_kernels_imag_copy_mt_dict = {}
