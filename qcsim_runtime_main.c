@@ -160,7 +160,7 @@ extern "C" size_t get_accelerator_free_num_sv() {
 
 extern "C" int initialize_groq_sv( int accelerator_num_in )
 {
-  releive_groq();
+  releive_groq_sv();
 
   Status status = groq_init(&state.driver);
   if (status) {
@@ -603,7 +603,7 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
     unsigned char* input;
     status = groq_get_data_handle(state.inputBuffers[device_num][0], 0, &input);
     if (status) printf("ERROR: get data handle %d\n", status);
-    unsigned int max_gates = num_qubits; //this should be IOP metadata or filename, or a formula like this
+    unsigned int max_gates = 768; //this should be IOP metadata or filename, or a formula like this
     int packedSize = 2*2*max_gates;
     if (packedSize % 320) packedSize += 320 - packedSize % 320;
     float* gatereal = (float*)calloc(sizeof(float), packedSize),
@@ -790,7 +790,7 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
 
 #ifdef TEST
 extern "C" int main() { //U3 and CRY
-    initialize_groq(get_accelerator_free_num());
+    initialize_groq_sv(get_accelerator_free_num_sv());
     //initialize_groq(1);
     int num_qubits = 17;
     int device_idx = 0;
@@ -865,6 +865,6 @@ extern "C" int main() { //U3 and CRY
     //free(target_qubits);
     //free(control_qubits);
     free(data);
-    releive_groq();       
+    releive_groq_sv();       
 }
 #endif

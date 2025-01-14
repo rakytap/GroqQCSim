@@ -1202,10 +1202,6 @@ class Generate_static_data(IO):
 				gate_kernels_real_mt_dict = {}		
 				gate_kernels_imag_mt_dict = {}
 	
-				layout_gate_kernels_real_copy 	= {}
-				layout_gate_kernels_imag_copy	= {}
-				layout_gate_kernels_real	= {}
-				layout_gate_kernels_imag	= {}
 				if 256+gate_count*len(gate_kernel_element_labels) >= 4096:
 					src, sic, sr, si = [
 						g.concat([g.constant_tensor((3840, 320), 
