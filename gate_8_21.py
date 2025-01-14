@@ -42,7 +42,6 @@ class Gate_8_21(Split_gates):
 
     with self.pgm_pkg.create_program_context(name) as pgm3:
 
-
       # Creates a shared tensor to reuse the memory allocation made by program pgm1
       State_input_real_shared = g.shared_memory_tensor(self.State_input_real_mt, name="State_input_real_shared")
       State_input_imag_shared = g.shared_memory_tensor(self.State_input_imag_mt, name="State_input_imag_shared")

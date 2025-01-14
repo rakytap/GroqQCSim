@@ -48,6 +48,9 @@ if __name__ == "__main__":
 	   
 	State_orig_real = np.random.rand( matrix_size )
 	State_orig_imag = np.random.rand( matrix_size )
+	State_orig_real = np.zeros(matrix_size, dtype=np.float_)
+	State_orig_real[0] = 1.0
+	State_orig_imag = np.zeros(matrix_size, dtype=np.float_)
 	State_orig = State_orig_real + 1j*State_orig_imag
 	State_orig = State_orig/np.linalg.norm(State_orig)
 
@@ -90,6 +93,7 @@ if __name__ == "__main__":
 	print('Number of parameters in the circuit: ', parameter_num, flush=True)
 
 	#create an array of random parameters
+	np.random.seed(0)
 	parameters = np.random.rand( parameter_num )*2*np.pi
 	#parameters = np.array( [1.4538327,  1.4728143,  4.73309153, 2.87384372] )
 	#parameters = np.array( [4.88227757, 2.24584162] )
