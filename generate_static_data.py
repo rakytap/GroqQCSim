@@ -1206,16 +1206,12 @@ class Generate_static_data(IO):
 				layout_gate_kernels_imag_copy	= {}
 				layout_gate_kernels_real	= {}
 				layout_gate_kernels_imag	= {}
-				for idx in range( len(gate_kernel_element_labels) ): # iterates over the labels of the gate kernel elements
-
-					label = gate_kernel_element_labels[idx]
-					address_offset = 256 + idx*256*(gate_memory_offset_factor) # MXM permute matrices are also stored at the begining of these slices	
-
-					layout_gate_kernels_real_copy[label] = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(0-3)"
-					layout_gate_kernels_imag_copy[label] = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(4-7)"
-					layout_gate_kernels_real[label]      = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(8-11)"
-					layout_gate_kernels_imag[label]      = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(12-15)"
-				
+				src, sic, sr, si = [
+					g.constant_tensor((gate_count*len(gate_kernel_element_labels), 320), 
+														dtype=g.float32, layout=f"H1(E), B2(0,1), A{gate_count*len(gate_kernel_element_labels)//2}(256-{256+gate_count*len(gate_kernel_element_labels)//2-1}), S4({i*4}-{(i+1)*4-1})", 
+														name = "gate_kernels_"+str(i),
+														initialized=False)
+					for i in range(4)]
 				
 				gate_kernels_real_copy_mt_dict = {}
 				gate_kernels_imag_copy_mt_dict = {}
@@ -1229,20 +1225,14 @@ class Generate_static_data(IO):
 
 					label = gate_kernel_element_labels[idx]
 	
-					tmp_mt = g.constant_tensor((gate_count, 320), 
-                                                                   dtype=g.float32, layout=layout_gate_kernels_real_copy[label], 
-                                                                   name = "gate_kernels_real_copy_"+label,
-                                                                   initialized=False)
+					tmp_mt = src.split(num_splits=len(gate_kernel_element_labels))[idx]
 					tmp_mt.is_static = True
 
 					gate_kernels_real_copy_mt_dict[label] = tmp_mt#.split(dim=0, num_splits=gate_count )
 					exclusion_tensors_real_copy.append( tmp_mt )
 					exclusion_tensors.append(tmp_mt)
 
-					tmp_mt = g.constant_tensor((gate_count, 320), 
-                                                                   dtype=g.float32, layout=layout_gate_kernels_imag_copy[label], 
-                                                                   name = "gate_kernels_imag_copy_"+label,
-                                                                   initialized=False)
+					tmp_mt = sic.split(num_splits=len(gate_kernel_element_labels))[idx]
 					tmp_mt.is_static = True
 
 					gate_kernels_imag_copy_mt_dict[label] = tmp_mt#.split(dim=0, num_splits=gate_count )
@@ -1250,20 +1240,14 @@ class Generate_static_data(IO):
 					exclusion_tensors.append(tmp_mt)					
 	
 
-					tmp_mt = g.constant_tensor((gate_count, 320), 
-                                                                   dtype=g.float32, layout=layout_gate_kernels_real[label], 
-                                                                   name = "gate_kernels_real_"+label,
-                                                                   initialized=False)
+					tmp_mt = sr.split(num_splits=len(gate_kernel_element_labels))[idx]
 					tmp_mt.is_static = True
 
 					gate_kernels_real_mt_dict[label] = tmp_mt#.split(dim=0, num_splits=gate_count )	
 					exclusion_tensors_real.append( tmp_mt )
 					exclusion_tensors.append(tmp_mt)					
 
-					tmp_mt = g.constant_tensor((gate_count, 320), 
-                                                                   dtype=g.float32, layout=layout_gate_kernels_imag[label], 
-                                                                   name = "gate_kernels_imag_"+label,
-                                                                   initialized=False)
+					tmp_mt = si.split(num_splits=len(gate_kernel_element_labels))[idx] 
 					tmp_mt.is_static = True
 
 					gate_kernels_imag_mt_dict[label] = tmp_mt#.split(dim=0, num_splits=gate_count )	
