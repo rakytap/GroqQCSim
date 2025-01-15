@@ -7,7 +7,11 @@
 #ifdef TEST
 #include <time.h>
 #endif
+#include <dirent.h>
 #include <sys/stat.h>
+#include <dlfcn.h>
+#include <libgen.h>
+#include <unistd.h>
 
 typedef struct {
   float real;
@@ -31,11 +35,7 @@ const char* svGateStrs[] = { "gate_kernels_real_packed", "gate_kernels_imag_pack
 #define NUM_INPUTS (sizeof(svInputStrs) / sizeof(const char*))
 #define NUM_OUTPUTS (sizeof(svOutputStrs) / sizeof(const char*))
     
-
-#define IOP_QUBIT_NUM_BASE 17
-const char* iopQubits[] = { "build_iop/QCsim_multi_program.0.iop", NULL }; 
-
-#define QUEUE_LIMIT 1
+#define QUEUE_LIMIT 128
 //#define QUEUE_LIMIT 1
 #define MAX_DEVICE 8
 typedef struct {
@@ -50,6 +50,7 @@ typedef struct {
     TensorLayout inpLayouts[MAX_DEVICE][NUM_INPUTS];
     TensorLayout outpLayouts[MAX_DEVICE][NUM_OUTPUTS];
     unsigned int num_qubits[MAX_DEVICE]; //0 until IOP is loaded
+    unsigned int max_gates[MAX_DEVICE]; //this should be IOP metadata or filename, or a formula like this
 } groq_sv_state;
 
 groq_sv_state state = {}; //only one global variable, easy to move to the init/relieve interfaces
@@ -273,9 +274,39 @@ int lookup_str_idx(const char* str, const char* strs[], int num_strs)
 int load_iop(size_t num_qubits, int device_idx)
 {
     if (num_qubits == state.num_qubits[device_idx]) return 0;
-    if (num_qubits != 17 || device_idx > MAX_DEVICE) return 1; 
+
+    static bool path_fixed = false;
+    if (!path_fixed) { 
+        Dl_info dl_info;
+        dladdr((void*)&initialize_groq_sv, &dl_info);
+        char* fixpath = strdup(dl_info.dli_fname);
+        fixpath = dirname(fixpath);
+        strcat(fixpath, "/.."); //filename removed must be at least 3 characters
+        if (chdir(fixpath) != 0) { printf("Could not change working directory to %s\n", fixpath); }
+        free(fixpath);
+        path_fixed = true;
+    }
+    char fname[PATH_MAX];
+    unsigned int cur_qubits, max_gates, n;
+    DIR* d;
+    struct dirent* dir;
+    d = opendir("build_iop/");
+    if (d) {
+        while((dir = readdir(d)) != NULL) {
+            if (dir->d_type == DT_REG) {
+                if (sscanf(dir->d_name, "QCsim_multi_program.%u.%u.iop%n", &cur_qubits, &max_gates, &n) == 2 &&
+                    n == strlen(dir->d_name) && num_qubits == cur_qubits) {
+                    strcpy(fname, "build_iop/");
+                    strcat(fname, dir->d_name);
+                    break;
+                } else cur_qubits = 0;
+            }
+        }
+        closedir(d);
+    }
+
+    if (cur_qubits == 0 || device_idx > MAX_DEVICE) return 1;    
     struct stat st;
-    const char* fname = iopQubits[num_qubits - IOP_QUBIT_NUM_BASE];
     stat(fname, &st);
     unsigned int prog_size = st.st_size;                        
     FILE* fp = fopen(fname, "rb");
@@ -474,6 +505,7 @@ int load_iop(size_t num_qubits, int device_idx)
       }
 
   state.num_qubits[device_idx] = num_qubits;
+  state.max_gates[device_idx] = max_gates;
   printf("Initialized Groq for %lu qbits on device %d\n", num_qubits, device_idx);
   return 0;
 }
@@ -602,8 +634,8 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
     int num_qubits = state.num_qubits[device_num];
     unsigned char* input;
     status = groq_get_data_handle(state.inputBuffers[device_num][0], 0, &input);
-    if (status) printf("ERROR: get data handle %d\n", status);
-    unsigned int max_gates = 768; //this should be IOP metadata or filename, or a formula like this
+    if (status) printf("ERROR: get data handle %d\n", status);    
+    unsigned int max_gates = state.max_gates[device_num];
     int packedSize = 2*2*max_gates;
     if (packedSize % 320) packedSize += 320 - packedSize % 320;
     float* gatereal = (float*)calloc(sizeof(float), packedSize),
@@ -616,80 +648,136 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
         *control_1_sel = (unsigned char*)calloc(sizeof(unsigned char), max_gates*320),
         *target_qubit_dmap = (unsigned char*)calloc(sizeof(unsigned char), max_gates*320),
         *control_qubit_dmap = (unsigned char*)calloc(sizeof(unsigned char), max_gates*320);
-    for (int i = 0; i < num_gates; i++) {
-        for (int j = 0; j < 4; j++) {
-            gatereal[i*4+j] = gates[i*4+j].real;
-            gateimag[i*4+j] = gates[i*4+j].imag;
+    Completion* completionQueue = (Completion*)malloc(QUEUE_LIMIT*sizeof(Completion));
+    Node* queueFree = NULL, *queueOccupied = NULL;
+    for (int i = 0; i < QUEUE_LIMIT; i++) insertNode(&queueFree, createNode(i));
+    int* bufferIndices = (int*)calloc(sizeof(int), NUM_PROGS-3);
+    for (unsigned int cur_gate = 0; cur_gate < (unsigned int)num_gates; cur_gate += max_gates) {
+        unsigned int tot_gates = num_gates - cur_gate < max_gates ? num_gates - cur_gate : max_gates;
+        for (unsigned int i = 0; i < tot_gates; i++) {
+            for (int j = 0; j < 4; j++) {
+                gatereal[i*4+j] = gates[(cur_gate+i)*4+j].real;
+                gateimag[i*4+j] = gates[(cur_gate+i)*4+j].imag;
+            }
+            for (int j = 0; j < 320; j+=16) {
+                if (target_qubits[cur_gate+i] < 8) {
+                    state_0_sel[i*320+j] = target_qubits[cur_gate+i];
+                    state_1_sel[i*320+j] = target_qubits[cur_gate+i];
+                    perm_sel[i*320+j] = target_qubits[cur_gate+i];
+                }
+                if (control_qubits[cur_gate+i] < 8 && control_qubits[cur_gate+i] >= 0) {
+                    control_0_sel[i*320+j] = control_qubits[cur_gate+i];
+                    control_1_sel[i*320+j] = control_qubits[cur_gate+i];
+                }
+                if (target_qubits[cur_gate+i] > 8 && target_qubits[cur_gate+i] <= 16) {
+                    target_qubit_dmap[i*320+j] = 2*(target_qubits[cur_gate+i] - 8 - 1);
+                    target_qubit_dmap[i*320+j+1] = 2*(target_qubits[cur_gate+i] - 8 - 1) + 1;
+                } else if (target_qubits[cur_gate+i] > 16) {
+                    target_qubit_dmap[i*320+j] = 2*(target_qubits[cur_gate+i] - 17);
+                    target_qubit_dmap[i*320+j+1] = 2*(target_qubits[cur_gate+i] - 17) + 1;
+                }
+                if (control_qubits[cur_gate+i] > 8 && control_qubits[cur_gate+i] <= 16 && target_qubits[cur_gate+i] <= 8) {
+                    control_qubit_dmap[i*320+j] = 2*(control_qubits[cur_gate+i] - 8 - 1);
+                    control_qubit_dmap[i*320+j+1] = 2*(control_qubits[cur_gate+i] - 8 - 1) + 1;
+                } else if (control_qubits[cur_gate+i] > 16 && target_qubits[cur_gate+i] < 8) {
+                    control_qubit_dmap[i*320+j] = 2*(control_qubits[cur_gate+i] - 17);
+                    control_qubit_dmap[i*320+j+1] = 2*(control_qubits[cur_gate+i] - 17) + 1;
+                } else if (control_qubits[cur_gate+i] > 8 && control_qubits[cur_gate+i] <= 16 && target_qubits[cur_gate+i] > 8) {
+                    control_qubit_dmap[i*320+j] = 2*(control_qubits[cur_gate+i] - (control_qubits[cur_gate+i] >= target_qubits[cur_gate+i]) - 8 - 1);
+                    control_qubit_dmap[i*320+j+1] = 2*(control_qubits[cur_gate+i] - (control_qubits[cur_gate+i] >= target_qubits[cur_gate+i]) - 8 - 1) + 1;
+                }           
+            }
         }
-        for (int j = 0; j < 320; j+=16) {
-            if (target_qubits[i] < 8) {
-                state_0_sel[i*320+j] = target_qubits[i];
-                state_1_sel[i*320+j] = target_qubits[i];
-                perm_sel[i*320+j] = target_qubits[i];
-            }
-            if (control_qubits[i] < 8 && control_qubits[i] >= 0) {
-                control_0_sel[i*320+j] = control_qubits[i];
-                control_1_sel[i*320+j] = control_qubits[i];
-            }
-            if (target_qubits[i] > 8 && target_qubits[i] <= 16) {
-                target_qubit_dmap[i*320+j] = 2*(target_qubits[i] - 8 - 1);
-                target_qubit_dmap[i*320+j+1] = 2*(target_qubits[i] - 8 - 1) + 1;
-            } else if (target_qubits[i] > 16) {
-                target_qubit_dmap[i*320+j] = 2*(target_qubits[i] - 17);
-                target_qubit_dmap[i*320+j+1] = 2*(target_qubits[i] - 17) + 1;
-            }
-            if (control_qubits[i] > 8 && control_qubits[i] <= 16 && target_qubits[i] <= 8) {
-                control_qubit_dmap[i*320+j] = 2*(control_qubits[i] - 8 - 1);
-                control_qubit_dmap[i*320+j+1] = 2*(control_qubits[i] - 8 - 1) + 1;
-            } else if (control_qubits[i] > 16 && target_qubits[i] < 8) {
-                control_qubit_dmap[i*320+j] = 2*(control_qubits[i] - 17);
-                control_qubit_dmap[i*320+j+1] = 2*(control_qubits[i] - 17) + 1;
-            } else if (control_qubits[i] > 8 && control_qubits[i] <= 16 && target_qubits[i] > 8) {
-                control_qubit_dmap[i*320+j] = 2*(control_qubits[i] - (control_qubits[i] >= target_qubits[i]) - 8 - 1);
-                control_qubit_dmap[i*320+j+1] = 2*(control_qubits[i] - (control_qubits[i] >= target_qubits[i]) - 8 - 1) + 1;
-            }           
+        //run the gate upload program
+        status = groq_tensor_layout_from_host(state.gateLayouts[device_num][0], (unsigned char*)gatereal, sizeof(float)*packedSize, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
+        if (status) {
+            printf("ERROR: tensor layout from host %d\n", status);
         }
-    }
-	//run the gate upload program
-    status = groq_tensor_layout_from_host(state.gateLayouts[device_num][0], (unsigned char*)gatereal, sizeof(float)*packedSize, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
-    if (status) {
-        printf("ERROR: tensor layout from host %d\n", status);
-    }
-    status = groq_tensor_layout_from_host(state.gateLayouts[device_num][1], (unsigned char*)gateimag, sizeof(float)*packedSize, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
-    if (status) {
-        printf("ERROR: tensor layout from host %d\n", status);
-    }
-    status = groq_tensor_layout_from_host(state.gateLayouts[device_num][2], (unsigned char*)state_0_sel, sizeof(unsigned char)*max_gates*320, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
-    if (status) {
-        printf("ERROR: tensor layout from host %d\n", status);
-    }
-    status = groq_tensor_layout_from_host(state.gateLayouts[device_num][3], (unsigned char*)state_1_sel, sizeof(unsigned char)*max_gates*320, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
-    if (status) {
-        printf("ERROR: tensor layout from host %d\n", status);
-    }
-    status = groq_tensor_layout_from_host(state.gateLayouts[device_num][4], (unsigned char*)control_0_sel, sizeof(unsigned char)*max_gates*320, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
-    if (status) {
-        printf("ERROR: tensor layout from host %d\n", status);
-    }
-    status = groq_tensor_layout_from_host(state.gateLayouts[device_num][5], (unsigned char*)control_1_sel, sizeof(unsigned char)*max_gates*320, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
-    if (status) {
-        printf("ERROR: tensor layout from host %d\n", status);
-    }
-    status = groq_tensor_layout_from_host(state.gateLayouts[device_num][6], (unsigned char*)target_qubit_dmap, sizeof(unsigned char)*max_gates*320, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
-    if (status) {
-        printf("ERROR: tensor layout from host %d\n", status);
-    }
-    status = groq_tensor_layout_from_host(state.gateLayouts[device_num][7], (unsigned char*)control_qubit_dmap, sizeof(unsigned char)*max_gates*320, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
-    if (status) {
-        printf("ERROR: tensor layout from host %d\n", status);
-    }
-    status = groq_tensor_layout_from_host(state.gateLayouts[device_num][8], (unsigned char*)perm_sel, sizeof(unsigned char)*max_gates*320, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
-    if (status) {
-        printf("ERROR: tensor layout from host %d\n", status);
-    }
-    status = groq_tensor_layout_from_host(state.gateLayouts[device_num][9], (unsigned char*)mxm_perm_sel, sizeof(unsigned char)*max_gates*320, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
-    if (status) {
-        printf("ERROR: tensor layout from host %d\n", status);
+        status = groq_tensor_layout_from_host(state.gateLayouts[device_num][1], (unsigned char*)gateimag, sizeof(float)*packedSize, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
+        if (status) {
+            printf("ERROR: tensor layout from host %d\n", status);
+        }
+        status = groq_tensor_layout_from_host(state.gateLayouts[device_num][2], (unsigned char*)state_0_sel, sizeof(unsigned char)*max_gates*320, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
+        if (status) {
+            printf("ERROR: tensor layout from host %d\n", status);
+        }
+        status = groq_tensor_layout_from_host(state.gateLayouts[device_num][3], (unsigned char*)state_1_sel, sizeof(unsigned char)*max_gates*320, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
+        if (status) {
+            printf("ERROR: tensor layout from host %d\n", status);
+        }
+        status = groq_tensor_layout_from_host(state.gateLayouts[device_num][4], (unsigned char*)control_0_sel, sizeof(unsigned char)*max_gates*320, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
+        if (status) {
+            printf("ERROR: tensor layout from host %d\n", status);
+        }
+        status = groq_tensor_layout_from_host(state.gateLayouts[device_num][5], (unsigned char*)control_1_sel, sizeof(unsigned char)*max_gates*320, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
+        if (status) {
+            printf("ERROR: tensor layout from host %d\n", status);
+        }
+        status = groq_tensor_layout_from_host(state.gateLayouts[device_num][6], (unsigned char*)target_qubit_dmap, sizeof(unsigned char)*max_gates*320, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
+        if (status) {
+            printf("ERROR: tensor layout from host %d\n", status);
+        }
+        status = groq_tensor_layout_from_host(state.gateLayouts[device_num][7], (unsigned char*)control_qubit_dmap, sizeof(unsigned char)*max_gates*320, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
+        if (status) {
+            printf("ERROR: tensor layout from host %d\n", status);
+        }
+        status = groq_tensor_layout_from_host(state.gateLayouts[device_num][8], (unsigned char*)perm_sel, sizeof(unsigned char)*max_gates*320, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
+        if (status) {
+            printf("ERROR: tensor layout from host %d\n", status);
+        }
+        status = groq_tensor_layout_from_host(state.gateLayouts[device_num][9], (unsigned char*)mxm_perm_sel, sizeof(unsigned char)*max_gates*320, input, 8*sizeof(unsigned char)*max_gates*320+sizeof(float)*packedSize*2);
+        if (status) {
+            printf("ERROR: tensor layout from host %d\n", status);
+        }
+        status = groq_invoke(state.device[device_num], state.inputBuffers[device_num][0], 0, state.outputBuffers[device_num][0], 0, &completion);
+        if (status) {
+            printf("ERROR: gate upload invoke failed %d\n", status);
+            return 1;
+        }
+        while (!(completionCode = groq_poll_completion(completion)));
+        if (completionCode != GROQ_COMPLETION_SUCCESS) {
+            printf("ERROR: gate upload completion code %d\n", completionCode);
+        }
+        struct timespec starttime;
+        timespec_get(&starttime, TIME_UTC);
+
+        //add debug time messages for precise time information
+        //run compute number of gates times - with invoke queuing
+        for (int i = 0; i < num_gates; i++) {
+            int c = (control_qubits[i] != -1) + (control_qubits[i] >= 8) + (control_qubits[i] > 8) + (control_qubits[i] >= 16);
+            int t = (target_qubits[i] >= 8) + (target_qubits[i] > 8) + (target_qubits[i] >= 16);
+            int p = qubitProgs[c][t];
+            int queueIdx = queueFree->data;        
+            transferNode(&queueFree, &queueOccupied, queueFree);
+            int bufIdx = bufferIndices[p-3]++ % QUEUE_LIMIT;
+            status = groq_invoke(state.device[device_num], state.inputBuffers[device_num][p], bufIdx, state.outputBuffers[device_num][p], bufIdx, &completionQueue[queueIdx]);
+            if (status) {
+                printf("ERROR: compute invoke failed %d\n", status);
+                return 1;
+            }
+            Node* ptr = queueOccupied;
+            while (queueFree == NULL) {
+                completionCode = groq_poll_completion(completionQueue[ptr->data]);
+                ptr = ptr->next;
+                if (completionCode) {
+                    transferNode(&queueOccupied, &queueFree, ptr);
+                    if (completionCode != GROQ_COMPLETION_SUCCESS) {
+                        printf("ERROR: compute completion code %d\n", completionCode);
+                    }
+                }
+            }
+        }
+        while (queueOccupied != NULL) {
+            //printf("%d\n", queueOccupied->data); 
+            while (!(completionCode = groq_poll_completion(completionQueue[queueOccupied->data])));
+            transferNode(&queueOccupied, &queueFree, queueOccupied);
+            if (completionCode != GROQ_COMPLETION_SUCCESS) {
+                printf("ERROR: compute completion code %d\n", completionCode);
+            }
+        }
+        struct timespec t;
+        timespec_get(&t, TIME_UTC);
+        printf("Total Gate Set Invocation Compute Processing Time: %.9f\n", (t.tv_sec - starttime.tv_sec) + (t.tv_nsec - starttime.tv_nsec) / 1e9);
     }
     free(gatereal);
     free(gateimag);
@@ -699,62 +787,9 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
     free(control_1_sel);
     free(target_qubit_dmap);
     free(control_qubit_dmap);
-    status = groq_invoke(state.device[device_num], state.inputBuffers[device_num][0], 0, state.outputBuffers[device_num][0], 0, &completion);
-    if (status) {
-        printf("ERROR: gate upload invoke failed %d\n", status);
-        return 1;
-    }
-    while (!(completionCode = groq_poll_completion(completion)));
-    if (completionCode != GROQ_COMPLETION_SUCCESS) {
-        printf("ERROR: gate upload completion code %d\n", completionCode);
-    }
-    struct timespec starttime;
-    timespec_get(&starttime, TIME_UTC);
-
-	//add debug time messages for precise time information
-	//run compute number of gates times - with invoke queuing
-    Completion* completionQueue = (Completion*)malloc(QUEUE_LIMIT*sizeof(Completion));
-    Node* queueFree = NULL, *queueOccupied = NULL;
-    for (int i = 0; i < QUEUE_LIMIT; i++) insertNode(&queueFree, createNode(i));
-    int* bufferIndices = (int*)calloc(sizeof(int), NUM_PROGS-3);
-    for (int i = 0; i < num_gates; i++) {
-        int c = (control_qubits[i] != -1) + (control_qubits[i] >= 8) + (control_qubits[i] > 8) + (control_qubits[i] >= 16);
-        int t = (target_qubits[i] >= 8) + (target_qubits[i] > 8) + (target_qubits[i] >= 16);
-        int p = qubitProgs[c][t];
-        int queueIdx = queueFree->data;        
-        transferNode(&queueFree, &queueOccupied, queueFree);
-        int bufIdx = bufferIndices[p-3]++ % QUEUE_LIMIT;
-        status = groq_invoke(state.device[device_num], state.inputBuffers[device_num][p], bufIdx, state.outputBuffers[device_num][p], bufIdx, &completionQueue[queueIdx]);
-        if (status) {
-            printf("ERROR: compute invoke failed %d\n", status);
-            return 1;
-        }
-        Node* ptr = queueOccupied;
-        while (queueFree == NULL) {
-            completionCode = groq_poll_completion(completionQueue[ptr->data]);
-            ptr = ptr->next;
-            if (completionCode) {
-                transferNode(&queueOccupied, &queueFree, ptr);
-                if (completionCode != GROQ_COMPLETION_SUCCESS) {
-                    printf("ERROR: compute completion code %d\n", completionCode);
-                }
-            }
-        }
-    }
-    while (queueOccupied != NULL) {
-        //printf("%d\n", queueOccupied->data); 
-        while (!(completionCode = groq_poll_completion(completionQueue[queueOccupied->data])));
-        transferNode(&queueOccupied, &queueFree, queueOccupied);
-        if (completionCode != GROQ_COMPLETION_SUCCESS) {
-            printf("ERROR: compute completion code %d\n", completionCode);
-        }
-    }
     freeList(queueFree);
     free(bufferIndices);
     free(completionQueue);
-    struct timespec t;
-    timespec_get(&t, TIME_UTC);
-    printf("Total Gate Set Invocation Compute Processing Time: %.9f\n", (t.tv_sec - starttime.tv_sec) + (t.tv_nsec - starttime.tv_nsec) / 1e9);
 
 	//run the output program
     status = groq_invoke(state.device[device_num], state.inputBuffers[device_num][2], 0, state.outputBuffers[device_num][2], 0, &completion);
