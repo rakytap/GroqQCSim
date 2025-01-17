@@ -512,7 +512,7 @@ int load_iop(size_t num_qubits, int device_idx)
 
 extern "C" int load_sv(Complex32* data, size_t num_qubits, int device_num)
 {
-	//loap IOP (if not previous correct size loaded) on demand loading
+	//load IOP (if not previous correct size loaded) on demand loading
     if (load_iop(num_qubits, device_num)) { return 1; }
 	//upload SV program
     Completion completion;
