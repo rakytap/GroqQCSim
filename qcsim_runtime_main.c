@@ -35,7 +35,7 @@ const char* svGateStrs[] = { "gate_kernels_real_packed", "gate_kernels_imag_pack
 #define NUM_INPUTS (sizeof(svInputStrs) / sizeof(const char*))
 #define NUM_OUTPUTS (sizeof(svOutputStrs) / sizeof(const char*))
     
-#define QUEUE_LIMIT 128
+#define QUEUE_LIMIT 1
 //#define QUEUE_LIMIT 1
 #define MAX_DEVICE 8
 typedef struct {
@@ -743,9 +743,9 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
 
         //add debug time messages for precise time information
         //run compute number of gates times - with invoke queuing
-        for (int i = 0; i < num_gates; i++) {
-            int c = (control_qubits[i] != -1) + (control_qubits[i] >= 8) + (control_qubits[i] > 8) + (control_qubits[i] >= 16);
-            int t = (target_qubits[i] >= 8) + (target_qubits[i] > 8) + (target_qubits[i] >= 16);
+        for (unsigned int i = 0; i < tot_gates; i++) {
+            int c = (control_qubits[cur_gate+i] != -1) + (control_qubits[cur_gate+i] >= 8) + (control_qubits[cur_gate+i] > 8) + (control_qubits[cur_gate+i] >= 16);
+            int t = (target_qubits[cur_gate+i] >= 8) + (target_qubits[cur_gate+i] > 8) + (target_qubits[cur_gate+i] >= 16);
             int p = qubitProgs[c][t];
             int queueIdx = queueFree->data;        
             transferNode(&queueFree, &queueOccupied, queueFree);
