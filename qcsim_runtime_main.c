@@ -654,6 +654,7 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
     int* bufferIndices = (int*)calloc(sizeof(int), NUM_PROGS-3);
     for (unsigned int cur_gate = 0; cur_gate < (unsigned int)num_gates; cur_gate += max_gates) {
         unsigned int tot_gates = num_gates - cur_gate < max_gates ? num_gates - cur_gate : max_gates;
+        printf("cur_gate=%u tot_gates=%u num_gates=%d max_gates=%u\n", cur_gate, tot_gates, num_gates, max_gates);
         for (unsigned int i = 0; i < tot_gates; i++) {
             for (int j = 0; j < 4; j++) {
                 gatereal[i*4+j] = gates[(cur_gate+i)*4+j].real;
@@ -747,7 +748,8 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
             int c = (control_qubits[cur_gate+i] != -1) + (control_qubits[cur_gate+i] >= 8) + (control_qubits[cur_gate+i] > 8) + (control_qubits[cur_gate+i] >= 16);
             int t = (target_qubits[cur_gate+i] >= 8) + (target_qubits[cur_gate+i] > 8) + (target_qubits[cur_gate+i] >= 16);
             int p = qubitProgs[c][t];
-            int queueIdx = queueFree->data;        
+            printf("target_qbit=%d control_qbit=%d program_idx=%d\n", target_qubits[cur_gate+i], control_qubits[cur_gate+i], p);
+            int queueIdx = queueFree->data;
             transferNode(&queueFree, &queueOccupied, queueFree);
             int bufIdx = bufferIndices[p-3]++ % QUEUE_LIMIT;
             status = groq_invoke(state.device[device_num], state.inputBuffers[device_num][p], bufIdx, state.outputBuffers[device_num][p], bufIdx, &completionQueue[queueIdx]);
@@ -763,6 +765,7 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
                     transferNode(&queueOccupied, &queueFree, ptr);
                     if (completionCode != GROQ_COMPLETION_SUCCESS) {
                         printf("ERROR: compute completion code %d\n", completionCode);
+                        return 1;
                     }
                 }
             }
@@ -773,6 +776,7 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
             transferNode(&queueOccupied, &queueFree, queueOccupied);
             if (completionCode != GROQ_COMPLETION_SUCCESS) {
                 printf("ERROR: compute completion code %d\n", completionCode);
+                return 1;
             }
         }
         struct timespec t;
