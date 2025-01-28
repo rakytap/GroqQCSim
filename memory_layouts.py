@@ -18,7 +18,7 @@ memory_slices = 1 << (qbit_num-small_qbit_num_limit) # TODO:replace all the occu
 memory_addresses = 1 << (qbit_num-small_qbit_num_limit)
 
 layout_target_qubit_read_maps_8L = f"H1(W), A{memory_addresses}(0-{memory_addresses-1}), S1(43)"
-layout_target_qubit_read_maps_LL = f"H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S1(42)"
+layout_target_qubit_read_maps_LL = f"H1(W), A{memory_addresses}(0-{memory_addresses-1}), S1(42)"
 
 # memory gather maps for L target qubits
 layout_target_qubit_read_pair_maps_L = f"H1(W), A{memory_addresses}(0-{memory_addresses-1}), S1(41)"
@@ -100,7 +100,7 @@ layout_gate_kernels_real_packed = f"H1(E), A{gate_splits}({address_offset}-{addr
 layout_gate_kernels_imag_packed	= f"H1(E), A{gate_splits}({address_offset+gate_splits}-{address_offset+2*gate_splits-1}), S4(0-3)"
 
 
-layout_target_qubit_write_maps_LL = f"H1(E), A{memory_addresses//2}(0-{memory_addresses//2-1}), S1(18)"
+layout_target_qubit_write_maps_LL = f"H1(E), A{memory_addresses}(0-{memory_addresses-1}), S1(18)"
 
 
 # used to separate elements 00,01,10,11 of the gate kernels
@@ -186,8 +186,8 @@ layout_target_qubit_write_maps_L = f"H1(E), A{memory_addresses}(0-{memory_addres
 
 
 # to save controlled operations on target qbit 8, we need two concurrent streams for memory scatter (see layout_target_qubit_write_maps_8L_b)
-layout_target_qubit_write_maps_8L_a = f"H1(E), A{memory_addresses//2}(0-{memory_addresses//2-1}), S1(43)"
-layout_target_qubit_write_maps_8L_b = f"H1(E), A{(memory_slices//2) >> 1}(0-{((memory_slices//2) >> 1)-1}), B2, S1(42)"
+layout_target_qubit_write_maps_8L_a = f"H1(E), A{memory_addresses}(0-{memory_addresses-1}), S1(43)"
+layout_target_qubit_write_maps_8L_b = f"H1(E), A{(memory_slices) >> 1}(0-{((memory_slices) >> 1)-1}), B2, S1(42)"
 
-layout_target_qubit_write_maps_8H_a = f"H1(E), A{memory_addresses//2}({memory_addresses//2}-{memory_addresses-1}), S1(43)"
-layout_target_qubit_write_maps_8H_b = f"H1(E), A{(memory_addresses//2) >> 1}({((memory_addresses//2) >> 1)}-{(memory_addresses//2)-1}), B2, S1(42)"
+layout_target_qubit_write_maps_8H_a = f"H1(E), A{memory_addresses}({memory_addresses}-{memory_addresses-1}), S1(43)"
+layout_target_qubit_write_maps_8H_b = f"H1(E), A{(memory_addresses) >> 1}({((memory_addresses) >> 1)}-{(memory_addresses)-1}), B2, S1(42)"

@@ -269,23 +269,32 @@ class Generate_static_data(IO):
 		# memory map containing all of the memory maps
 		# maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
 		# maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_slices+1,...,memory_slices)		
-		mem_read_map = np.zeros( (memory_addresses//2, 320,), dtype=np.uint8 )		
+		mem_read_map = np.zeros( (memory_addresses, 320,), dtype=np.uint8 )		
 					
-		half_slice = 1 << 12
+		half_memory_slices = memory_slices >> 1
+		control_qbit_min = 9
+		control_qbit_max = qbit_num
 
-		
 
-		for control_qbit in range(9, 17):
+		for control_qbit in range(control_qbit_min, control_qbit_max):
+			if control_qbit == qbit_num - 1:
+				continue # TODO
 
-			if control_qbit == 16:
-				continue  #TODO!!!!!!!!!!!!!!!!!!!!!!!!
+			if control_qbit <= 16:
+				horizontal_offset_in_memory_map = (control_qbit-control_qbit_min)*2 
+			if control_qbit > 16:
+				horizontal_offset_in_memory_map = (control_qbit-17)*2 
+
+			if control_qbit <= 16:
+				vertical_offset_in_memory_map = 0
+			else:
+				vertical_offset_in_memory_map = half_memory_slices
 
 			#print( 'control_qbit: ', control_qbit )
 
 			target_qbit = control_qbit + 1 # as we get the same control qubit memory maps for each target qbit
 			
 		
-			horizontal_offset_in_memory_map = (control_qbit-1-small_qbit_num_limit)*2 
 
 			control_qbit_mask = 1<<(control_qbit-8)
 		
@@ -297,6 +306,7 @@ class Generate_static_data(IO):
 			controlled_qubit_state_1_map_indices = np.argwhere( (target_qbit_index_pairs[:,0] & control_qbit_mask) > 0 )
 			#print( controlled_qubit_state_1_map_indices.size, mem_read_map.shape )
 			#print( controlled_qubit_state_1_map_indices )
+
 			
 			for idx in range( controlled_qubit_state_1_map_indices.size//2 ):
 				
@@ -311,22 +321,16 @@ class Generate_static_data(IO):
 				lower_bits_of_addresses_idx_mem_b  = idx_mem_b & 255
 				higher_bits_of_addresses_idx_mem_b = (idx_mem_b >> 8 ) & 255
 					
-								
+
+				row_idx = 2*idx+vertical_offset_in_memory_map
 				for superlane_idx in range(20):
 					col_idx = horizontal_offset_in_memory_map + 16*superlane_idx
 					
-					mem_read_map[ 4*idx+0, col_idx ]   = lower_bits_of_addresses_idx_mem_a
-					mem_read_map[ 4*idx+0, col_idx+1 ] = higher_bits_of_addresses_idx_mem_a
+					mem_read_map[ row_idx+0, col_idx ]   = lower_bits_of_addresses_idx_mem_a
+					mem_read_map[ row_idx+0, col_idx+1 ] = higher_bits_of_addresses_idx_mem_a
 
-					mem_read_map[ 4*idx+1, col_idx ]   = lower_bits_of_addresses_idx_mem_b
-					mem_read_map[ 4*idx+1, col_idx+1 ] = higher_bits_of_addresses_idx_mem_b
-
-					mem_read_map[ 4*idx+2, col_idx ]   = lower_bits_of_addresses_idx_mem_a
-					mem_read_map[ 4*idx+2, col_idx+1 ] = higher_bits_of_addresses_idx_mem_a
-
-					mem_read_map[ 4*idx+3, col_idx ]   = lower_bits_of_addresses_idx_mem_b
-					mem_read_map[ 4*idx+3, col_idx+1 ] = higher_bits_of_addresses_idx_mem_b
-					
+					mem_read_map[ row_idx+1, col_idx ]   = lower_bits_of_addresses_idx_mem_b
+					mem_read_map[ row_idx+1, col_idx+1 ] = higher_bits_of_addresses_idx_mem_b
 																				
 			
 		#print( mem_read_map[:,0:2] )
@@ -504,23 +508,30 @@ class Generate_static_data(IO):
 		# memory map containing all of the memory maps
 		# maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
 		# maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_slices+1,...,memory_slices)		
-		mem_write_map = np.zeros( (memory_addresses//2, 320,), dtype=np.uint8 )		
+		mem_write_map = np.zeros( (memory_addresses, 320,), dtype=np.uint8 )		
 					
-		half_slice = 1 << 12
+		half_memory_slices = memory_slices >> 1
+		control_qbit_min = 9
+		control_qbit_max = qbit_num
 
-		
 
-		for control_qbit in range(9, 17):
+		for control_qbit in range(control_qbit_min, control_qbit_max):
+			if control_qbit == qbit_num - 1:
+				continue
 
-			if control_qbit == 16:
-				continue  #TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			if control_qbit <= 16:
+				horizontal_offset_in_memory_map = (control_qbit-control_qbit_min)*2 
+			if control_qbit > 16:
+				horizontal_offset_in_memory_map = (control_qbit-17)*2 
+
+			if control_qbit <= 16:
+				vertical_offset_in_memory_map = 0
+			else:
+				vertical_offset_in_memory_map = half_memory_slices
 
 			#print( 'control_qbit: ', control_qbit )
 
 			target_qbit = control_qbit + 1 # as we get the same control qubit memory maps for each target qbit
-			
-		
-			horizontal_offset_in_memory_map = (control_qbit-1-small_qbit_num_limit)*2 
 
 			control_qbit_mask = 1<<(control_qbit-8)
 		
@@ -547,8 +558,7 @@ class Generate_static_data(IO):
 			#print( controlled_qubit_state_1_map_indices )
 			#print( target_qbit_index_pairs_write )
 											
-																				
-			
+
 			for idx in range( controlled_qubit_state_1_map_indices.size ):
 				
 				idx_mem = controlled_qubit_state_1_map_indices[idx]
@@ -559,11 +569,12 @@ class Generate_static_data(IO):
 				higher_bits_of_addresses_idx_mem = (idx_mem >> 8 ) & 255
 					
 								
+				row_idx = idx+vertical_offset_in_memory_map
 				for superlane_idx in range(20):
 					col_idx = horizontal_offset_in_memory_map + 16*superlane_idx
 					
-					mem_write_map[ idx, col_idx ]   = lower_bits_of_addresses_idx_mem
-					mem_write_map[ idx, col_idx+1 ] = higher_bits_of_addresses_idx_mem
+					mem_write_map[ row_idx, col_idx ]   = lower_bits_of_addresses_idx_mem
+					mem_write_map[ row_idx, col_idx+1 ] = higher_bits_of_addresses_idx_mem
 					
 																		
 			

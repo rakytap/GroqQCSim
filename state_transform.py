@@ -27,14 +27,14 @@ if __name__ == "__main__":
 	
 	target_qbits = []
 	control_qbits = []	
-	while len(target_qbits) < gate_count-2:
-		target_qbit = random.randint(0, qbit_num-1)
+	while len(target_qbits) < gate_count:
+		target_qbit = random.randint(0, 16)
 		
 		tmp = random.randint(0,1)
 		if tmp == 0:
 			control_qbit = -1
 		else:
-			control_qbit = random.randint(0, qbit_num-1)	
+			control_qbit = random.randint(0, 16)	
 		
 			
 

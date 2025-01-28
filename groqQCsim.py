@@ -580,8 +580,8 @@ def main( State_orig_real_float32, State_orig_imag_float32, target_qbits, contro
 	if qbit_num is None:
 		raise "qbit_num must be set with method initialize_qbit_num( qbit_num ) with a value greater or equal to 8"
 
-	iop_files = compile( mxm_permutation )
-	#iop_files = ['./build_iop/QCsim_multi_program.0.iop']
+	#iop_files = compile( mxm_permutation )
+	iop_files = ['./build_iop/QCsim_multi_program.0.iop']
 	print(f"Program compiled to IOP file: {iop_files}")
 
 	import time
