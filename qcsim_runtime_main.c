@@ -294,7 +294,7 @@ int load_iop(size_t num_qubits, int device_idx)
     if (d) {
         while((dir = readdir(d)) != NULL) {
             if (dir->d_type == DT_REG) {
-                if (sscanf(dir->d_name, "QCsim_multi_program.%u.%u.iop%n", &cur_qubits, &max_gates, &n) == 2 &&
+                if (sscanf(dir->d_name, "QCsim_multi_program.%u.%u.0.iop%n", &cur_qubits, &max_gates, &n) == 2 &&
                     n == strlen(dir->d_name) && num_qubits == cur_qubits) {
                     strcpy(fname, "build_iop/");
                     strcat(fname, dir->d_name);
