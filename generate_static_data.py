@@ -277,15 +277,12 @@ class Generate_static_data(IO):
 
 
 		for control_qbit in range(control_qbit_min, control_qbit_max-1):
-			if control_qbit == 16:
-				continue 
-
-			if control_qbit <= 16:
+			if control_qbit < 16:
 				horizontal_offset_in_memory_map = (control_qbit-control_qbit_min)*2 
-			if control_qbit > 16:
-				horizontal_offset_in_memory_map = (control_qbit-17)*2 
+			else:
+				horizontal_offset_in_memory_map = (control_qbit-16)*2 
 
-			if control_qbit <= 16:
+			if control_qbit < 16:
 				vertical_offset_in_memory_map = 0
 			else:
 				vertical_offset_in_memory_map = half_memory_slices
@@ -521,16 +518,13 @@ class Generate_static_data(IO):
 		control_qbit_max = qbit_num
 
 
-		for control_qbit in range(control_qbit_min, control_qbit_max):
-			if control_qbit == qbit_num - 1:
-				continue
-
-			if control_qbit <= 16:
+		for control_qbit in range(control_qbit_min, control_qbit_max-1):
+			if control_qbit < 16:
 				horizontal_offset_in_memory_map = (control_qbit-control_qbit_min)*2 
-			if control_qbit > 16:
-				horizontal_offset_in_memory_map = (control_qbit-17)*2 
+			else:
+				horizontal_offset_in_memory_map = (control_qbit-16)*2 
 
-			if control_qbit <= 16:
+			if control_qbit < 16:
 				vertical_offset_in_memory_map = 0
 			else:
 				vertical_offset_in_memory_map = half_memory_slices

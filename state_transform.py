@@ -25,8 +25,8 @@ if __name__ == "__main__":
 	#target_qbits  = [6,  2,  12, 1, 15, 8, 16, 4,  6, 16, 10, 11, 15,  8, 12, 13, 8]
 	#control_qbits = [-1, -1, 3,  0, 3, -1, 9, 10,  8,  7, -1,  16,  7, -1, 2, 8, 11] #-1 ... no control qubit is incolved in the operation
 	
-	target_qbits = [12]
-	control_qbits = [14]	
+	target_qbits = [10]
+	control_qbits = [18]	
 	# while len(target_qbits) < gate_count:
 	# 	target_qbit = random.randint(0, 16)
 	# 
