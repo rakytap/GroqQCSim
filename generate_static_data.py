@@ -276,9 +276,9 @@ class Generate_static_data(IO):
 		control_qbit_max = qbit_num
 
 
-		for control_qbit in range(control_qbit_min, control_qbit_max):
-			if control_qbit == qbit_num - 1:
-				continue # TODO
+		for control_qbit in range(control_qbit_min, control_qbit_max-1):
+			if control_qbit == 16:
+				continue 
 
 			if control_qbit <= 16:
 				horizontal_offset_in_memory_map = (control_qbit-control_qbit_min)*2 
@@ -322,7 +322,7 @@ class Generate_static_data(IO):
 				higher_bits_of_addresses_idx_mem_b = (idx_mem_b >> 8 ) & 255
 					
 
-				row_idx = 2*idx+vertical_offset_in_memory_map
+				row_idx = 4*idx+vertical_offset_in_memory_map
 				for superlane_idx in range(20):
 					col_idx = horizontal_offset_in_memory_map + 16*superlane_idx
 					
@@ -331,6 +331,12 @@ class Generate_static_data(IO):
 
 					mem_read_map[ row_idx+1, col_idx ]   = lower_bits_of_addresses_idx_mem_b
 					mem_read_map[ row_idx+1, col_idx+1 ] = higher_bits_of_addresses_idx_mem_b
+
+					mem_read_map[ row_idx+2, col_idx ]   = lower_bits_of_addresses_idx_mem_a
+					mem_read_map[ row_idx+2, col_idx+1 ] = higher_bits_of_addresses_idx_mem_a
+
+					mem_read_map[ row_idx+3, col_idx ]   = lower_bits_of_addresses_idx_mem_b
+					mem_read_map[ row_idx+3, col_idx+1 ] = higher_bits_of_addresses_idx_mem_b
 																				
 			
 		#print( mem_read_map[:,0:2] )

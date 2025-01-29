@@ -266,6 +266,15 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			
 			distributor_map_np[gate_idx, 0:320:16] = 2*(offset - small_qbit_num_limit - 1)
 			distributor_map_np[gate_idx, 1:320:16] = 2*(offset - small_qbit_num_limit - 1) + 1
+		elif control_qbit > 16 and control_qbit < 21 and target_qbit > 8 and target_qbit < 21:
+			# LH gate
+			if control_qbit < target_qbit:
+				offset = control_qbit
+			else: 
+				offset = control_qbit - 1
+			
+			distributor_map_np[gate_idx, 0:320:16] = 2*(offset - 17)
+			distributor_map_np[gate_idx, 1:320:16] = 2*(offset - 17) + 1
 		else:
 			# when the control qubits is not L or H, no valid distributor map is required
 			pass
@@ -552,6 +561,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			error("QCsim::run: Unimplemented case wit target qubit and control qubit.")
 			
 		gate_output = invoke_gate(device, iop, index_of_gate_program, entry_point, input_buffer, output_buffer)	
+		time.sleep(.01)
 		#gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
 		#print( gate_output)
 	
@@ -580,6 +590,7 @@ def main( State_orig_real_float32, State_orig_imag_float32, target_qbits, contro
 	if qbit_num is None:
 		raise "qbit_num must be set with method initialize_qbit_num( qbit_num ) with a value greater or equal to 8"
 
+	
 	#iop_files = compile( mxm_permutation )
 	iop_files = ['./build_iop/QCsim_multi_program.0.iop']
 	print(f"Program compiled to IOP file: {iop_files}")
