@@ -9,18 +9,19 @@ import groqQCsim
 import time
 import random
 
+
 qbit_num = groqQCsim.qbit_num
 gate_count = groqQCsim.gate_count
 
 
 if __name__ == "__main__":
+	
+	#target_qbits  = [1] * gate_count
+	#control_qbits = [-1] * gate_count
 	'''
-	target_qbits  = [6] * gate_count
-	control_qbits = [0] * gate_count
+	target_qbits  = [12,  12, 0,  10, 8, 6,   8,  4, 15, 3, 13, 16, 8, 5, 8, 12, 7]
+	control_qbits = [-1,  8, 15,  4,  2, 10, -1, -1, 10, 5, 7,  8, -1, 0, 7, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
 	'''
-	#target_qbits  = [12,  12, 0,  10, 8, 6,   8,  4, 15, 3, 13, 16, 8, 5, 8, 12, 7]
-	#control_qbits = [-1,  8, 15,  4,  2, 10, -1, -1, 10, 5, 7,  8, -1, 0, 7, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
-
 	
 	#target_qbits  = [6,  2,  12, 1, 15, 8, 16, 4,  6, 16, 10, 11, 15,  8, 12, 13, 8]
 	#control_qbits = [-1, -1, 3,  0, 3, -1, 9, 10,  8,  7, -1,  16,  7, -1, 2, 8, 11] #-1 ... no control qubit is incolved in the operation
@@ -56,9 +57,9 @@ if __name__ == "__main__":
 	   
 	State_orig_real = np.random.rand( matrix_size )
 	State_orig_imag = np.random.rand( matrix_size )
-	State_orig_real = np.zeros(matrix_size, dtype=np.float_)
-	State_orig_real[0] = 1.0
-	State_orig_imag = np.zeros(matrix_size, dtype=np.float_)
+	#State_orig_real = np.zeros(matrix_size, dtype=np.float_)
+	#State_orig_real[0] = 1.0
+	#State_orig_imag = np.zeros(matrix_size, dtype=np.float_)
 	State_orig = State_orig_real + 1j*State_orig_imag
 	State_orig = State_orig/np.linalg.norm(State_orig)
 
@@ -84,7 +85,7 @@ if __name__ == "__main__":
 		elif target_qbit >= 0 and target_qbit < 21 and control_qbit >= 0 and control_qbit < 21 :	
 	
 			print("adding controlled gate")
-			circuit.add_adaptive( target_qbit, control_qbit )
+			circuit.add_CRY( target_qbit, control_qbit )
 	
 			circuit_1 = Circuit( 1 )
 			circuit_1.add_RY( 0  )		
@@ -124,23 +125,31 @@ if __name__ == "__main__":
 
 
 	#####################################################
-	# get the gate kernel
+	# get the gate kernels
+    
+	gates = circuit.get_Gates()
+    
+	# constructing quantum circuit
+	#for gate in gates:
+
 
 	print( 'The single qubit gate kernels are:')
 	start_time = time.time()
 	gate_kernels = np.zeros((groqQCsim.gate_splits*80, 2, 2,), dtype=np.complex64)
-	parameter_idx = parameters.size
 	for idx in range(groqQCsim.gate_splits*80):
 		if idx < gate_count:
-			gate_parameter_num = one_qubit_circuits[idx].get_Parameter_Num()
-			parameters_1       = parameters[parameter_idx-gate_parameter_num : parameter_idx]
-			parameter_idx      = parameter_idx-gate_parameter_num
 
-			#print( parameters_1 )
+			gate = gates[idx]
+			parameter_idx = gate.get_Parameter_Start_Index()
+
+
+			gate_parameter_num = one_qubit_circuits[idx].get_Parameter_Num()
+
+			parameters_1       = parameters[parameter_idx: parameter_idx+gate_parameter_num]
+
 			gate_kernel_single = one_qubit_circuits[idx].get_Matrix( parameters_1 )
 			gate_kernels[idx]  = gate_kernel_single
-			#print( gate_kernel_single )
-			#print(' ')
+
 	time_kernel_extract = time.time()-start_time
 
 	print( "gate kernel shape: ", gate_kernels.shape )
