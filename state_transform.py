@@ -16,7 +16,7 @@ gate_count = groqQCsim.gate_count
 
 if __name__ == "__main__":
 	
-	#target_qbits  = [1] * gate_count
+	#target_qbits  = [3] * gate_count
 	#control_qbits = [-1] * gate_count
 	'''
 	target_qbits  = [12,  12, 0,  10, 8, 6,   8,  4, 15, 3, 13, 16, 8, 5, 8, 12, 7]
@@ -42,7 +42,7 @@ if __name__ == "__main__":
 		if target_qbit != control_qbit:		
 			target_qbits.append( target_qbit )
 			control_qbits.append( control_qbit )		
-         
+        
 	
 	if len(target_qbits) != gate_count:
 		raise Exception("Number of target qubits in the list of target qubits should be equal to the gate count")
@@ -66,6 +66,7 @@ if __name__ == "__main__":
 
 	one_qubit_circuits = []
 	circuit = Circuit(qbit_num)
+	circuit2 = Circuit(qbit_num) ########
 	for gate_idx in range( len(target_qbits) ):
 
 		target_qbit  = target_qbits[gate_idx]
@@ -81,6 +82,9 @@ if __name__ == "__main__":
 			circuit_1 = Circuit( 1 )
 			circuit_1.add_U3( 0 )
 			one_qubit_circuits.append( circuit_1 )
+
+			if gate_idx == 0:
+				circuit2.add_U3( target_qbit )
 		
 		elif target_qbit >= 0 and target_qbit < 21 and control_qbit >= 0 and control_qbit < 21 :	
 	
@@ -121,6 +125,7 @@ if __name__ == "__main__":
 	start_time = time.time()
 	
 	circuit.apply_to( parameters, State_transformed_oracle )
+	#circuit.apply_to( parameters, State_transformed_oracle )
 	time_Cpp = time.time()-start_time
 
 

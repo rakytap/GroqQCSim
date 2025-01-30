@@ -748,7 +748,7 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
             int c = (control_qubits[cur_gate+i] != -1) + (control_qubits[cur_gate+i] >= 8) + (control_qubits[cur_gate+i] > 8) + (control_qubits[cur_gate+i] >= 16);
             int t = (target_qubits[cur_gate+i] >= 8) + (target_qubits[cur_gate+i] > 8) + (target_qubits[cur_gate+i] >= 16);
             int p = qubitProgs[c][t];
-            printf("target_qbit=%d control_qbit=%d program_idx=%d\n", target_qubits[cur_gate+i], control_qubits[cur_gate+i], p);
+            //printf("target_qbit=%d control_qbit=%d program_idx=%d\n", target_qubits[cur_gate+i], control_qubits[cur_gate+i], p);
             int queueIdx = queueFree->data;
             transferNode(&queueFree, &queueOccupied, queueFree);
             int bufIdx = bufferIndices[p-3]++ % QUEUE_LIMIT;
