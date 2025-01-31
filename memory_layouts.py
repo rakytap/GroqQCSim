@@ -1,12 +1,13 @@
-qbit_num = 17
+qbit_num = 16
 
 # label to indicate the 00, 01, 10, 11 elements of the gate kernel
 gate_kernel_element_labels = ["00", "01", "10", "11"]
 
 # gate count stored in a single packed vector 
-gate_count = 2*256+1#2*256 + 10#256*3
+gate_count = 256*3
 gate_splits = (gate_count-1+80) // 80  # on each 320-element vector 80 gate kernels are stored in the input
 gate_memory_offset_factor = ((gate_count-1+256) // 256)
+second_gate_count = 22
 
 # the number og qubits for which the gate operations need the permutor (need to reorganize the elements in a vector)
 small_qbit_num_limit = 8

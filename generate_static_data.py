@@ -265,9 +265,9 @@ class Generate_static_data(IO):
 
 		
 
-		for control_qbit in range(9, 17):
+		for control_qbit in range(9, qbit_num):
 
-			if control_qbit == 16:
+			if control_qbit == qbit_num-1:
 				continue  #TODO!!!!!!!!!!!!!!!!!!!!!!!!
 
 			#print( 'control_qbit: ', control_qbit )
@@ -489,9 +489,9 @@ class Generate_static_data(IO):
 
 		
 
-		for control_qbit in range(9, 17):
+		for control_qbit in range(9, qbit_num):
 
-			if control_qbit == 16:
+			if control_qbit == qbit_num-1:
 				continue  #TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 			#print( 'control_qbit: ', control_qbit )
@@ -563,7 +563,7 @@ class Generate_static_data(IO):
 		
 		half_slice = 1 << 12
 		
-		for target_qbit in range(9, 17):
+		for target_qbit in range(9, qbit_num):
 		
 			horizontal_offset_in_memory_map = (target_qbit-1-small_qbit_num_limit)*2 
 		
@@ -626,6 +626,34 @@ class Generate_static_data(IO):
 		name = "upload"
 		with self.pgm_pkg.create_program_context(name) as pgm1:
 
+			# storage to store reset data for gate counters:
+			gate_counter_reset_data_np = np.zeros( (6, 320,), dtype=np.uint8 )
+			gate_counter_reset_data_np[0, 0:320:16] = 0 #gate_counter_perm_map_selector, gate_counter_gate_filtering_selector, gate_counter_distributor_maps_west
+
+			gate_counter_reset_data_np[1, 0:320:16] = 0 #gate_counter_S_control_qbit_selector, gate_counter_target_qubit_L_distributor_maps_write
+			gate_counter_reset_data_np[1, 1:320:16] = gate_memory_offset_factor #gate_counter_S_control_qbit_selector
+
+			gate_counter_reset_data_np[2, 0:320:16] = 0 #gate_element_selector_00
+			gate_counter_reset_data_np[2, 1:320:16] = 1 #gate_element_selector_00
+
+			gate_counter_reset_data_np[3, 0:320:16] = 0 #gate_element_selector_11
+			gate_counter_reset_data_np[3, 1:320:16] = 1+3*(gate_memory_offset_factor) #gate_element_selector_11
+
+			gate_counter_reset_data_np[4, 0:320:16] = 0 #gate_element_selector_01
+			gate_counter_reset_data_np[4, 1:320:16] = 1+(gate_memory_offset_factor) #gate_element_selector_01
+
+			gate_counter_reset_data_np[5, 0:320:16] = 0 #gate_element_selector_10
+			gate_counter_reset_data_np[5, 1:320:16] = 1+2*(gate_memory_offset_factor) #gate_element_selector_10
+
+			self.gate_counter_reset_data_mt = g.from_data( np.asarray(gate_counter_reset_data_np, 
+										dtype=np.uint8),
+										layout=layout_gate_counter_reset_data,
+										name="gate_counter_reset_data" )
+
+			self.gate_counter_reset_data_mt_list = g.split( self.gate_counter_reset_data_mt, num_splits=6, dim=0 )
+			self.gate_counter_reset_data_mt.is_static = True
+
+
 					
 			# dynamic map selectors to vectors where the target_qbit (or control_qbit) takes on state 1 or 0
 			# *state_1* is True where the target_qbit (or control_qbit) takes on state 1
@@ -665,10 +693,19 @@ class Generate_static_data(IO):
 			self.constant_1_address_offset_higher_bits_mt = g.from_data( 
                                                                            np.asarray(constant_1_address_offset_higher_bits_np, dtype=np.uint8), 
                                                                            layout=layout_constant_1_address_offset_higher_bits )
-
+			'''
 			gate_counter_address_offset_higher_bits_np  = np.zeros( (320,), dtype=np.uint8 )
 			self.gate_counter_address_offset_higher_bits_mt = g.from_data( np.asarray(gate_counter_address_offset_higher_bits_np, dtype=np.uint8),
                                                                                       layout=layout_gate_counter_address_offset_higher_bits )
+			'''
+			self.gate_counter_address_offset_higher_bits_mt      = g.constant_tensor( (320,), 
+										g.uint8, 
+										layout=layout_gate_counter_address_offset_higher_bits, 
+										name=f"gate_counter_address_offset_higher_bits", 
+										initialized=False)
+			self.gate_counter_reset_data_mt_list[0].read(streams=[g.SG1[31]]).write( storage_req=self.gate_counter_address_offset_higher_bits_mt.storage_request, time=0)
+
+
 			
 			g.add_mem_constraints([self.constant_1_address_offset_lower_bits_mt], [self.constant_1_address_offset_higher_bits_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 			
@@ -684,65 +721,7 @@ class Generate_static_data(IO):
 			self.gate_counter_address_offset_higher_bits_mt.is_static = True	
 
 			
-			# storage to store reset data for gate counters:
-			'''
-			gate_counter_perm_map_selector_np           = np.zeros( (320,), dtype=np.uint8 )
-			gate_counter_perm_map_selector_np[0:320:16] = 0		
-
-			gate_counter_S_control_qbit_selector_np           = np.zeros( (320,), dtype=np.uint8 )
-			gate_counter_S_control_qbit_selector_np[0:320:16] = 0
-			gate_counter_S_control_qbit_selector_np[1:320:16] = (gate_memory_offset_factor)	#KKKKKKKKKKKKKKKKK	
-
-			gate_element_selector_00_np                   = np.zeros( (320,), dtype=np.uint8 )
-			gate_element_selector_00_np[0:320:16]         = 0
-			gate_element_selector_00_np[1:320:16]         = 1  #KKKKKKKKKKKKKKKKK
-
-			gate_element_selector_11_np                   = np.zeros( (320,), dtype=np.uint8 )
-			gate_element_selector_11_np[0:320:16]         = 0
-			gate_element_selector_11_np[1:320:16]         = 1+3*(gate_memory_offset_factor) #KKKKKKKKKKKKKKKKK
-
-			gate_element_selector_01_np                   = np.zeros( (320,), dtype=np.uint8 )
-			gate_element_selector_01_np[0:320:16]         = 0
-			gate_element_selector_01_np[1:320:16]         = 1+(gate_memory_offset_factor) #KKKKKKKKKKKKKKKKK
-
-			gate_element_selector_10_np                   = np.zeros( (320,), dtype=np.uint8 )
-			gate_element_selector_10_np[0:320:16]         = 0
-			gate_element_selector_10_np[1:320:16]         = 1+2*(gate_memory_offset_factor)  #KKKKKKKKKKKKKKKKK
-
-			gate_counter_distributor_maps_west_np            = np.zeros( (320,), dtype=np.uint8 )
-			gate_counter_distributor_maps_west_np[0:320:16]  = 0
-
-			gate_counter_target_qubit_L_distributor_maps_write_np            = np.zeros( (320,), dtype=np.uint8 )
-			gate_counter_target_qubit_L_distributor_maps_write_np [0:320:16]  = 0				
-			gate_counter_target_qubit_L_distributor_maps_write_np [1:320:16]  = gate_memory_offset_factor #KKKKKKKKKKKKKKKKK	
-			'''
-
-			gate_counter_reset_data_np = np.zeros( (6, 320,), dtype=np.uint8 )
-			gate_counter_reset_data_np[0, 0:320:16] = 0 #gate_counter_perm_map_selector, gate_counter_gate_filtering_selector, gate_counter_distributor_maps_west
-
-			gate_counter_reset_data_np[1, 0:320:16] = 0 #gate_counter_S_control_qbit_selector, gate_counter_target_qubit_L_distributor_maps_write
-			gate_counter_reset_data_np[1, 1:320:16] = gate_memory_offset_factor #gate_counter_S_control_qbit_selector
-
-			gate_counter_reset_data_np[2, 0:320:16] = 0 #gate_element_selector_00
-			gate_counter_reset_data_np[2, 1:320:16] = 1 #gate_element_selector_00
-
-			gate_counter_reset_data_np[3, 0:320:16] = 0 #gate_element_selector_11
-			gate_counter_reset_data_np[3, 1:320:16] = 1+3*(gate_memory_offset_factor) #gate_element_selector_11
-
-			gate_counter_reset_data_np[4, 0:320:16] = 0 #gate_element_selector_01
-			gate_counter_reset_data_np[4, 1:320:16] = 1+(gate_memory_offset_factor) #gate_element_selector_01
-
-			gate_counter_reset_data_np[5, 0:320:16] = 0 #gate_element_selector_10
-			gate_counter_reset_data_np[5, 1:320:16] = 1+2*(gate_memory_offset_factor) #gate_element_selector_10
-
-			self.gate_counter_reset_data_mt = g.from_data( np.asarray(gate_counter_reset_data_np, 
-										dtype=np.uint8),
-							                         	layout=layout_gate_counter_reset_data,
-                                                                                         name="gate_counter_reset_data" )
-
-			self.gate_counter_reset_data_mt_list = g.split( self.gate_counter_reset_data_mt, num_splits=6, dim=0 )
-			self.gate_counter_reset_data_mt.is_static = True
-
+			
 			if ( self.mxm_permutation ):
 				# if MXM is used to generate the permuted state vector
 				
@@ -1444,8 +1423,8 @@ class Generate_static_data(IO):
 				gate_kernels_broadcasted_real_list = []
 				gate_kernels_broadcasted_imag_copy_list = []
 				gate_kernels_broadcasted_real_copy_list = []
-				loop_time_long_cycle = 51 # comming from the iterations of the previous cycles (the loops are overlapping in execution)
-				loop_time_short_cycle = 31
+				#loop_time_long_cycle = 51 # comming from the iterations of the previous cycles (the loops are overlapping in execution)
+				#loop_time_short_cycle = 31
 				
 				
 				

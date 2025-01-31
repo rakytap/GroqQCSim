@@ -35,7 +35,7 @@ const char* svGateStrs[] = { "gate_kernels_real_packed", "gate_kernels_imag_pack
 #define NUM_INPUTS (sizeof(svInputStrs) / sizeof(const char*))
 #define NUM_OUTPUTS (sizeof(svOutputStrs) / sizeof(const char*))
     
-#define QUEUE_LIMIT 1
+#define QUEUE_LIMIT 2
 //#define QUEUE_LIMIT 1
 #define MAX_DEVICE 8
 typedef struct {
@@ -626,7 +626,7 @@ void freeList(struct Node* node) {
 }
 
 //result size == num_qubits from load_sv
-extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qubits, int* control_qubits, Complex32* result, int device_num)
+extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qubits, int* control_qubits, float* realdata, float* imagdata, int device_num)
 {
     Completion completion;
     Status status;
@@ -654,7 +654,7 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
     int* bufferIndices = (int*)calloc(sizeof(int), NUM_PROGS-3);
     for (unsigned int cur_gate = 0; cur_gate < (unsigned int)num_gates; cur_gate += max_gates) {
         unsigned int tot_gates = num_gates - cur_gate < max_gates ? num_gates - cur_gate : max_gates;
-        printf("cur_gate=%u tot_gates=%u num_gates=%d max_gates=%u\n", cur_gate, tot_gates, num_gates, max_gates);
+        //printf("cur_gate=%u tot_gates=%u num_gates=%d max_gates=%u\n", cur_gate, tot_gates, num_gates, max_gates);
         for (unsigned int i = 0; i < tot_gates; i++) {
             for (int j = 0; j < 4; j++) {
                 gatereal[i*4+j] = gates[(cur_gate+i)*4+j].real;
@@ -739,8 +739,8 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
         if (completionCode != GROQ_COMPLETION_SUCCESS) {
             printf("ERROR: gate upload completion code %d\n", completionCode);
         }
-        struct timespec starttime;
-        timespec_get(&starttime, TIME_UTC);
+        //struct timespec starttime;
+        //timespec_get(&starttime, TIME_UTC);
 
         //add debug time messages for precise time information
         //run compute number of gates times - with invoke queuing
@@ -779,9 +779,9 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
                 return 1;
             }
         }
-        struct timespec t;
-        timespec_get(&t, TIME_UTC);
-        printf("Total Gate Set Invocation Compute Processing Time: %.9f\n", (t.tv_sec - starttime.tv_sec) + (t.tv_nsec - starttime.tv_nsec) / 1e9);
+        //struct timespec t;
+        //timespec_get(&t, TIME_UTC);
+        //printf("Total Gate Set Invocation Compute Processing Time: %.9f\n", (t.tv_sec - starttime.tv_sec) + (t.tv_nsec - starttime.tv_nsec) / 1e9);
     }
     free(gatereal);
     free(gateimag);
@@ -808,8 +808,8 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
     unsigned char* output;
     status = groq_get_data_handle(state.outputBuffers[device_num][2], 0, &output);
     if (status) printf("ERROR: get data handle %d\n", status);
-    float* realdata = (float*)malloc(sizeof(float)*(1<<num_qubits));
-    float* imagdata = (float*)malloc(sizeof(float)*(1<<num_qubits));
+    //float* realdata = (float*)malloc(sizeof(float)*(1<<num_qubits));
+    //float* imagdata = (float*)malloc(sizeof(float)*(1<<num_qubits));
     status = groq_tensor_layout_to_host(state.outpLayouts[device_num][0], output, sizeof(Complex32)*320*(1<<(num_qubits-8)), (unsigned char*)realdata, sizeof(float)*(1<<num_qubits));
     if (status) {
         printf("ERROR: tensor layout from host %d\n", status);
@@ -818,12 +818,14 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
     if (status) {
         printf("ERROR: tensor layout from host %d\n", status);
     }
+/*
     for (size_t i = 0; i < (size_t)(1<<num_qubits); i++) {
         result[i].real = realdata[i];
         result[i].imag = imagdata[i];
     }
-    free(realdata);
-    free(imagdata);
+*/
+    //free(realdata);
+    //free(imagdata);
     return 0;
 }
 

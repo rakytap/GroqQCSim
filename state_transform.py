@@ -15,9 +15,10 @@ gate_count = groqQCsim.gate_count
 
 
 if __name__ == "__main__":
+
 	
-	#target_qbits  = [3] * gate_count
-	#control_qbits = [-1] * gate_count
+	#target_qbits  = [8] * gate_count
+	#control_qbits = [3] * gate_count
 	'''
 	target_qbits  = [12,  12, 0,  10, 8, 6,   8,  4, 15, 3, 13, 16, 8, 5, 8, 12, 7]
 	control_qbits = [-1,  8, 15,  4,  2, 10, -1, -1, 10, 5, 7,  8, -1, 0, 7, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
@@ -54,7 +55,7 @@ if __name__ == "__main__":
 
 	# determine the soze of the unitary to be decomposed
 	matrix_size = 1 << qbit_num
-	   
+	
 	State_orig_real = np.random.rand( matrix_size )
 	State_orig_imag = np.random.rand( matrix_size )
 	#State_orig_real = np.zeros(matrix_size, dtype=np.float_)
@@ -83,7 +84,7 @@ if __name__ == "__main__":
 			circuit_1.add_U3( 0 )
 			one_qubit_circuits.append( circuit_1 )
 
-			if gate_idx == 0:
+			if gate_idx < groqQCsim.second_gate_count:
 				circuit2.add_U3( target_qbit )
 		
 		elif target_qbit >= 0 and target_qbit < 21 and control_qbit >= 0 and control_qbit < 21 :	
@@ -94,6 +95,9 @@ if __name__ == "__main__":
 			circuit_1 = Circuit( 1 )
 			circuit_1.add_RY( 0  )		
 			one_qubit_circuits.append( circuit_1 )
+
+			if gate_idx < groqQCsim.second_gate_count:
+				circuit2.add_CRY( target_qbit, control_qbit )
 		
 		else:
 			error("Unimplemented case wit target qubit and control qubit.")
@@ -108,7 +112,7 @@ if __name__ == "__main__":
 	#create an array of random parameters
 	np.random.seed(0)
 	parameters = np.random.rand( parameter_num )*2*np.pi
-	#print('parameters: ', parameters )
+	print('parameters: ', parameters )
 	
 	'''
 	if parameters.size > 3:
@@ -125,7 +129,7 @@ if __name__ == "__main__":
 	start_time = time.time()
 	
 	circuit.apply_to( parameters, State_transformed_oracle )
-	#circuit.apply_to( parameters, State_transformed_oracle )
+	circuit2.apply_to( parameters, State_transformed_oracle )
 	time_Cpp = time.time()-start_time
 
 
@@ -158,7 +162,6 @@ if __name__ == "__main__":
 	time_kernel_extract = time.time()-start_time
 
 	print( "gate kernel shape: ", gate_kernels.shape )
-
 
 	#####################################################
 	# running Groq 
