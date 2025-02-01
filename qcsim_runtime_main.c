@@ -35,7 +35,7 @@ const char* svGateStrs[] = { "gate_kernels_real_packed", "gate_kernels_imag_pack
 #define NUM_INPUTS (sizeof(svInputStrs) / sizeof(const char*))
 #define NUM_OUTPUTS (sizeof(svOutputStrs) / sizeof(const char*))
     
-#define QUEUE_LIMIT 2
+#define QUEUE_LIMIT 1
 //#define QUEUE_LIMIT 1
 #define MAX_DEVICE 8
 typedef struct {
@@ -201,7 +201,7 @@ extern "C" int initialize_groq_sv( int accelerator_num_in )
       }
 
       if(!groq_device_is_locked(state.device[state.num_devices])) {
-        printf("ERROR: device is not locked\n");
+        printf("ERROR: device %d is not locked\n", state.num_devices);
         return 1;
       }
 

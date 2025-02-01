@@ -4,7 +4,7 @@ qbit_num = 16
 gate_kernel_element_labels = ["00", "01", "10", "11"]
 
 # gate count stored in a single packed vector 
-gate_count = 256*3
+gate_count = 256*6 -1
 gate_splits = (gate_count-1+80) // 80  # on each 320-element vector 80 gate kernels are stored in the input
 gate_memory_offset_factor = ((gate_count-1+256) // 256)
 second_gate_count = 22

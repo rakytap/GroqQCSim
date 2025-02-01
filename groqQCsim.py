@@ -158,7 +158,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	
 	start_time = time.time()
 	iop = runtime.IOProgram(iop_file)
-	device = runtime.devices[0]
+	device = runtime.devices[1]
 	device.open()
 	device.load(iop[0], unsafe_keep_entry_points=True) # upload
 	
@@ -348,7 +348,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
 	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
 	output_buffer_indices.append( 0 )
-		
+	
 	entry_point = iop["gate_SS"]["compute"]
 	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
 	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )

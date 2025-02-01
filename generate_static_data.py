@@ -1315,22 +1315,7 @@ class Generate_static_data(IO):
 				gate_kernels_imag_separated_mt = g.concat( gate_kernels_imag_separated_mt_list[0:gate_count], dim=0)				
 				
 				
-
-				# preallocate tensors for the output    
-				gate_kernels_real_mt_dict = {}		
-				gate_kernels_imag_mt_dict = {}
-	
-				layout_gate_kernels_real_copy 	= {}
-				layout_gate_kernels_imag_copy	= {}
-				layout_gate_kernels_real	= {}
-				layout_gate_kernels_imag	= {}
-				for idx in range( len(gate_kernel_element_labels) ): # iterates over the labels of the gate kernel elements
-					label = gate_kernel_element_labels[idx]
-					address_offset = 256 + idx*256*(gate_memory_offset_factor) # MXM permute matrices are also stored at the begining of these slices	
-					layout_gate_kernels_real_copy[label] = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(0-3)"
-					layout_gate_kernels_imag_copy[label] = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(4-7)"
-					layout_gate_kernels_real[label]      = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(8-11)"
-					layout_gate_kernels_imag[label]      = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S4(12-15)"
+				
 				
 				gate_kernels_real_copy_mt_dict = {}
 				gate_kernels_imag_copy_mt_dict = {}
@@ -1340,61 +1325,144 @@ class Generate_static_data(IO):
 				exclusion_tensors_imag = []
 				exclusion_tensors_real_copy = []
 				exclusion_tensors_imag_copy = []
+
+				# preallocate tensors for the output    
 				for idx in range( len(gate_kernel_element_labels) ): # iterates over the labels of the gate kernel elements
+				
+					label          = gate_kernel_element_labels[idx]
+					address_offset = 256 + idx*256*(gate_memory_offset_factor) # MXM permute matrices are also stored at the begining of these slices	
+					
+					if (address_offset+gate_count-1 < 4096) or ( address_offset >= 4096 ) :
+						# the start and end points of the range are in the same bank				
+						
+						layout = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1})"
+						
+						real_copy = g.constant_tensor((gate_count, 320), 
+															dtype=g.float32, layout=layout + ", S4(0-3)", 
+															name = "gate_kernels_real_copy_"+label,
+															initialized=False)
+															
+						imag_copy = g.constant_tensor((gate_count, 320), 
+															dtype=g.float32, layout=layout + ", S4(4-7)", 
+															name = "gate_kernels_imag_copy_"+label,
+															initialized=False)
+															
+						real      = g.constant_tensor((gate_count, 320), 
+															dtype=g.float32, layout=layout + ", S4(8-11)", 
+															name = "gate_kernels_real_"+label,
+															initialized=False)
+															
+						imag      = g.constant_tensor((gate_count, 320), 
+															dtype=g.float32, layout=layout + ", S4(12-15)", 
+															name ="gate_kernels_imag_"+label,
+															initialized=False)	
+					else:    
+						# the start and end points of the range are in different banks
+						
+						layout_part1 = f"H1(E), B1(0), A{4096-address_offset}({address_offset}-4095)"
+						layout_part2 = f"H1(E), B1(1), A{gate_count+address_offset-4096}(0-{gate_count+address_offset-4096-1})"						
+						
+						real_copy_part1 = g.constant_tensor((4096-address_offset, 320), 
+															dtype=g.float32, layout=layout_part1 + ", S4(0-3)", 
+															name = "gate_kernels_real_copy_"+label,
+															initialized=False)
+															
+						real_copy_part2 = g.constant_tensor((gate_count+address_offset-4096, 320), 
+															dtype=g.float32, layout=layout_part2 + ", S4(0-3)", 
+															name = "gate_kernels_real_copy_"+label,
+															initialized=False)					
+															
+						real_copy = g.concat( [real_copy_part1, real_copy_part2], dim=0)	
+						
+						
+						
+						imag_copy_part1 = g.constant_tensor((4096-address_offset, 320), 
+															dtype=g.float32, layout=layout_part1 + ", S4(4-7)", 
+															name = "gate_kernels_imag_copy_"+label,
+															initialized=False)
+															
+						imag_copy_part2 = g.constant_tensor((gate_count+address_offset-4096, 320), 
+															dtype=g.float32, layout=layout_part2 + ", S4(4-7)", 
+															name = "gate_kernels_imag_copy_"+label,
+															initialized=False)					
+															
+						imag_copy = g.concat( [imag_copy_part1, imag_copy_part2], dim=0)	
+						
+						
+						
+						real_part1 = g.constant_tensor((4096-address_offset, 320), 
+															dtype=g.float32, layout=layout_part1 + ", S4(8-11)", 
+															name = "gate_kernels_real_"+label,
+															initialized=False)
+															
+						real_part2 = g.constant_tensor((gate_count+address_offset-4096, 320), 
+															dtype=g.float32, layout=layout_part2 + ", S4(8-11)", 
+															name = "gate_kernels_real_"+label,
+															initialized=False)					
+															
+						real = g.concat( [real_part1, real_part2], dim=0)	
+						
+						
+						
+						imag_part1 = g.constant_tensor((4096-address_offset, 320), 
+															dtype=g.float32, layout=layout_part1 + ", S4(12-15)", 
+															name = "gate_kernels_imag_"+label,
+															initialized=False)
+															
+						imag_part2 = g.constant_tensor((gate_count+address_offset-4096, 320), 
+															dtype=g.float32, layout=layout_part2 + ", S4(12-15)", 
+															name = "gate_kernels_imag_"+label,
+															initialized=False)					
+															
+						imag = g.concat( [imag_part1, imag_part2], dim=0)																		
+															
+						
+						
+						
+					real_copy.is_static = True
+					imag_copy.is_static = True
+					real.is_static = True
+					imag.is_static = True															
+						
+					gate_kernels_real_copy_mt_dict[label] = real_copy
+					exclusion_tensors_real_copy.append( real_copy )
+					exclusion_tensors.append(real_copy)
+					
+					gate_kernels_imag_copy_mt_dict[label] = imag_copy
+					exclusion_tensors_imag_copy.append( imag_copy )
+					exclusion_tensors.append(imag_copy)
 
-					label = gate_kernel_element_labels[idx]
+					gate_kernels_real_mt_dict[label] = real
+					exclusion_tensors_real.append( real )
+					exclusion_tensors.append(real)	
+					
+					gate_kernels_imag_mt_dict[label] = imag
+					exclusion_tensors_imag.append( imag )
+					exclusion_tensors.append(imag)	
 	
-					tmp_mt = g.constant_tensor((gate_count, 320), 
-                                                                   dtype=g.float32, layout=layout_gate_kernels_real_copy[label], 
-                                                                   name = "gate_kernels_real_copy_"+label,
-                                                                   initialized=False)
-					tmp_mt.is_static = True
-
-					gate_kernels_real_copy_mt_dict[label] = tmp_mt#.split(dim=0, num_splits=gate_count )
-					exclusion_tensors_real_copy.append( tmp_mt )
-					exclusion_tensors.append(tmp_mt)
-
-					tmp_mt = g.constant_tensor((gate_count, 320), 
-                                                                   dtype=g.float32, layout=layout_gate_kernels_imag_copy[label], 
-                                                                   name = "gate_kernels_imag_copy_"+label,
-                                                                   initialized=False)
-					tmp_mt.is_static = True
-
-					gate_kernels_imag_copy_mt_dict[label] = tmp_mt#.split(dim=0, num_splits=gate_count )
-					exclusion_tensors_imag_copy.append( tmp_mt )
-					exclusion_tensors.append(tmp_mt)					
-	
-
-					tmp_mt = g.constant_tensor((gate_count, 320), 
-                                                                   dtype=g.float32, layout=layout_gate_kernels_real[label], 
-                                                                   name = "gate_kernels_real_"+label,
-                                                                   initialized=False)
-					tmp_mt.is_static = True
-
-					gate_kernels_real_mt_dict[label] = tmp_mt#.split(dim=0, num_splits=gate_count )	
-					exclusion_tensors_real.append( tmp_mt )
-					exclusion_tensors.append(tmp_mt)					
-
-					tmp_mt = g.constant_tensor((gate_count, 320), 
-                                                                   dtype=g.float32, layout=layout_gate_kernels_imag[label], 
-                                                                   name = "gate_kernels_imag_"+label,
-                                                                   initialized=False) 
-					tmp_mt.is_static = True
-
-					gate_kernels_imag_mt_dict[label] = tmp_mt#.split(dim=0, num_splits=gate_count )	
-					exclusion_tensors_imag.append( tmp_mt )
-					exclusion_tensors.append(tmp_mt)							
+				'''			
+				if 256+gate_count*len(gate_kernel_element_labels) >= 4096:
+					src, sic, sr, si = [ g.concat([g.constant_tensor((3840, 320), 
+															dtype=g.float32, layout=f"H1(E), B1(0), A3840(256-4095), S4({i*4}-{(i+1)*4-1})", 
+															name = "gate_kernels_"+str(i),
+															initialized=False),
+													g.constant_tensor((gate_count*len(gate_kernel_element_labels)-3840, 320), 
+															dtype=g.float32, layout=f"H1(E), B1(1), A{gate_count*len(gate_kernel_element_labels)-3840}(0-{gate_count*len(gate_kernel_element_labels)-3840-1}), S4({i*4}-{(i+1)*4-1})", 
+															name = "gate_kernels_"+str(i),
+															initialized=False)], dim=0)
+						for i in range(4)]
+						
+				else:
+					src, sic, sr, si = [
+						g.constant_tensor((gate_count*len(gate_kernel_element_labels), 320), 
+															dtype=g.float32, layout=f"H1(E), A{gate_count*len(gate_kernel_element_labels)}(256-{256+gate_count*len(gate_kernel_element_labels)-1}), S4({i*4}-{(i+1)*4-1})", 
+															name = "gate_kernels_"+str(i),
+															initialized=False)
+						for i in range(4)]
+				
 
 
-				#exclusion_tensors_real_copy.append(self.gate_kernels_real_packed_mt)
-				#exclusion_tensors_real_copy.append(self.gate_kernels_imag_packed_mt)
-				#g.add_mem_constraints(exclusion_tensors_real, exclusion_tensors_real, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
-				#g.add_mem_constraints(exclusion_tensors_imag, exclusion_tensors_imag, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
-				#g.add_mem_constraints(exclusion_tensors_real_copy, exclusion_tensors_real_copy, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
-				#g.add_mem_constraints(exclusion_tensors_imag_copy, exclusion_tensors_imag_copy, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
-
-
-
+				'''
 
 
 				# generate gate kernels to be applied on state |0> and resulting to alternating states |0> and |1> according to the periodicity of the current target qubit

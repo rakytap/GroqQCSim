@@ -17,8 +17,8 @@ gate_count = groqQCsim.gate_count
 if __name__ == "__main__":
 
 	
-	#target_qbits  = [8] * gate_count
-	#control_qbits = [3] * gate_count
+	#target_qbits  = [3] * gate_count
+	#control_qbits = [-1] * gate_count
 	'''
 	target_qbits  = [12,  12, 0,  10, 8, 6,   8,  4, 15, 3, 13, 16, 8, 5, 8, 12, 7]
 	control_qbits = [-1,  8, 15,  4,  2, 10, -1, -1, 10, 5, 7,  8, -1, 0, 7, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
