@@ -1,10 +1,10 @@
-qbit_num = 16
+qbit_num = 17
 
 # label to indicate the 00, 01, 10, 11 elements of the gate kernel
 gate_kernel_element_labels = ["00", "01", "10", "11"]
 
 # gate count stored in a single packed vector 
-gate_count = 256*6 -1
+gate_count = 256*7 
 gate_splits = (gate_count-1+80) // 80  # on each 320-element vector 80 gate kernels are stored in the input
 gate_memory_offset_factor = ((gate_count-1+256) // 256)
 second_gate_count = 22
@@ -97,7 +97,7 @@ layout_gate_kernels_imag	="H1(E), S4(12-15)"
 
 
 # initial gate kernels that are uploaded to the chip -- it is not persistent
-address_offset = 7003
+address_offset = 0
 layout_gate_kernels_real_packed = f"H1(E), A{gate_splits}({address_offset}-{address_offset+gate_splits-1}), S4(0-3)"
 layout_gate_kernels_imag_packed	= f"H1(E), A{gate_splits}({address_offset+gate_splits}-{address_offset+2*gate_splits-1}), S4(0-3)"
 

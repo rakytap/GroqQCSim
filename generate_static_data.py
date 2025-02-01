@@ -1330,12 +1330,12 @@ class Generate_static_data(IO):
 				for idx in range( len(gate_kernel_element_labels) ): # iterates over the labels of the gate kernel elements
 				
 					label          = gate_kernel_element_labels[idx]
-					address_offset = 256 + idx*256*(gate_memory_offset_factor) # MXM permute matrices are also stored at the begining of these slices	
+					address_offset = 256 + idx*256*(gate_memory_offset_factor) # MXM permute matrices are also stored at the begining of these slices
 					
-					if (address_offset+gate_count-1 < 4096) or ( address_offset >= 4096 ) :
+					if (address_offset+gate_count-1 < 4096):
 						# the start and end points of the range are in the same bank				
 						
-						layout = f"H1(E), A{gate_count}({address_offset}-{address_offset+gate_count-1})"
+						layout = f"H1(E), B1(0), A{gate_count}({address_offset}-{address_offset+gate_count-1})"
 						
 						real_copy = g.constant_tensor((gate_count, 320), 
 															dtype=g.float32, layout=layout + ", S4(0-3)", 
@@ -1356,20 +1356,45 @@ class Generate_static_data(IO):
 															dtype=g.float32, layout=layout + ", S4(12-15)", 
 															name ="gate_kernels_imag_"+label,
 															initialized=False)	
+
+					elif ( address_offset >= 4096 ) :
+
+						
+						layout = f"H1(E), B1(1), A{gate_count}({address_offset-4096}-{address_offset+gate_count-1-4096})"
+						
+						real_copy = g.constant_tensor((gate_count, 320), 
+															dtype=g.float32, layout=layout + ", S4(0-3)", 
+															name = "gate_kernels_real_copy_"+label,
+															initialized=False)
+															
+						imag_copy = g.constant_tensor((gate_count, 320), 
+															dtype=g.float32, layout=layout + ", S4(4-7)", 
+															name = "gate_kernels_imag_copy_"+label,
+															initialized=False)
+															
+						real      = g.constant_tensor((gate_count, 320), 
+															dtype=g.float32, layout=layout + ", S4(8-11)", 
+															name = "gate_kernels_real_"+label,
+															initialized=False)
+															
+						imag      = g.constant_tensor((gate_count, 320), 
+															dtype=g.float32, layout=layout + ", S4(12-15)", 
+															name ="gate_kernels_imag_"+label,
+															initialized=False)	
+
 					else:    
 						# the start and end points of the range are in different banks
 						
 						layout_part1 = f"H1(E), B1(0), A{4096-address_offset}({address_offset}-4095)"
-						layout_part2 = f"H1(E), B1(1), A{gate_count+address_offset-4096}(0-{gate_count+address_offset-4096-1})"						
-						
+						layout_part2 = f"H1(E), B1(1), A{gate_count+address_offset-4096}(0-{gate_count+address_offset-4096-1})"	
 						real_copy_part1 = g.constant_tensor((4096-address_offset, 320), 
 															dtype=g.float32, layout=layout_part1 + ", S4(0-3)", 
-															name = "gate_kernels_real_copy_"+label,
+															name = "gate_kernels_real_copy_1"+label,
 															initialized=False)
 															
 						real_copy_part2 = g.constant_tensor((gate_count+address_offset-4096, 320), 
 															dtype=g.float32, layout=layout_part2 + ", S4(0-3)", 
-															name = "gate_kernels_real_copy_"+label,
+															name = "gate_kernels_real_copy_2"+label,
 															initialized=False)					
 															
 						real_copy = g.concat( [real_copy_part1, real_copy_part2], dim=0)	
@@ -1378,12 +1403,12 @@ class Generate_static_data(IO):
 						
 						imag_copy_part1 = g.constant_tensor((4096-address_offset, 320), 
 															dtype=g.float32, layout=layout_part1 + ", S4(4-7)", 
-															name = "gate_kernels_imag_copy_"+label,
+															name = "gate_kernels_imag_copy_1"+label,
 															initialized=False)
 															
 						imag_copy_part2 = g.constant_tensor((gate_count+address_offset-4096, 320), 
 															dtype=g.float32, layout=layout_part2 + ", S4(4-7)", 
-															name = "gate_kernels_imag_copy_"+label,
+															name = "gate_kernels_imag_copy_2"+label,
 															initialized=False)					
 															
 						imag_copy = g.concat( [imag_copy_part1, imag_copy_part2], dim=0)	
@@ -1392,12 +1417,12 @@ class Generate_static_data(IO):
 						
 						real_part1 = g.constant_tensor((4096-address_offset, 320), 
 															dtype=g.float32, layout=layout_part1 + ", S4(8-11)", 
-															name = "gate_kernels_real_"+label,
+															name = "gate_kernels_real_1"+label,
 															initialized=False)
 															
 						real_part2 = g.constant_tensor((gate_count+address_offset-4096, 320), 
 															dtype=g.float32, layout=layout_part2 + ", S4(8-11)", 
-															name = "gate_kernels_real_"+label,
+															name = "gate_kernels_real_2"+label,
 															initialized=False)					
 															
 						real = g.concat( [real_part1, real_part2], dim=0)	
@@ -1406,18 +1431,34 @@ class Generate_static_data(IO):
 						
 						imag_part1 = g.constant_tensor((4096-address_offset, 320), 
 															dtype=g.float32, layout=layout_part1 + ", S4(12-15)", 
-															name = "gate_kernels_imag_"+label,
+															name = "gate_kernels_imag_1"+label,
 															initialized=False)
 															
 						imag_part2 = g.constant_tensor((gate_count+address_offset-4096, 320), 
 															dtype=g.float32, layout=layout_part2 + ", S4(12-15)", 
-															name = "gate_kernels_imag_"+label,
+															name = "gate_kernels_imag_2"+label,
 															initialized=False)					
 															
-						imag = g.concat( [imag_part1, imag_part2], dim=0)																		
-															
-						
-						
+						imag = g.concat( [imag_part1, imag_part2], dim=0)
+
+						exclusion_tensors_real_copy.append( real_copy_part1 )
+						exclusion_tensors_real_copy.append( real_copy_part2 )
+						exclusion_tensors.append(real_copy_part1)
+						exclusion_tensors.append(real_copy_part2)
+						exclusion_tensors_imag_copy.append( imag_copy_part1 )
+						exclusion_tensors_imag_copy.append( imag_copy_part2 )
+						exclusion_tensors.append(imag_copy_part1)
+						exclusion_tensors.append(imag_copy_part2)
+						exclusion_tensors_real.append( real_part1 )
+						exclusion_tensors_real.append( real_part2 )
+						exclusion_tensors.append(real_part1)	
+						exclusion_tensors.append(real_part2)
+						exclusion_tensors_imag.append( imag_part1 )
+						exclusion_tensors_imag.append( imag_part2 )
+						exclusion_tensors.append(imag_part1)	
+						exclusion_tensors.append(imag_part2)
+
+
 						
 					real_copy.is_static = True
 					imag_copy.is_static = True
@@ -1428,17 +1469,21 @@ class Generate_static_data(IO):
 					exclusion_tensors_real_copy.append( real_copy )
 					exclusion_tensors.append(real_copy)
 					
+					
 					gate_kernels_imag_copy_mt_dict[label] = imag_copy
-					exclusion_tensors_imag_copy.append( imag_copy )
+					exclusion_tensors_imag_copy.append( imag_copy )					
 					exclusion_tensors.append(imag_copy)
+					
 
 					gate_kernels_real_mt_dict[label] = real
-					exclusion_tensors_real.append( real )
+					exclusion_tensors_real.append( real )					
 					exclusion_tensors.append(real)	
+						
 					
 					gate_kernels_imag_mt_dict[label] = imag
-					exclusion_tensors_imag.append( imag )
+					exclusion_tensors_imag.append( imag )					
 					exclusion_tensors.append(imag)	
+						
 	
 				'''			
 				if 256+gate_count*len(gate_kernel_element_labels) >= 4096:
