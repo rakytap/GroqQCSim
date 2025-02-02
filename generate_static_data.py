@@ -616,8 +616,39 @@ class Generate_static_data(IO):
 		return mem_write_map
 				
 
+	def reset_state_vector_program(self):
+    
+		name = "state_vector_reset"
+		with self.pgm_pkg.create_program_context(name) as pgm1:
 
-	def upload_program(self):
+			
+			reset_mt_list = [ self.zeros_mt ] * memory_addresses
+			reset_mt = g.concat( reset_mt_list, dim=0 )
+			reset_st = reset_mt.read( streams=[g.SG4_W[0]], time=0 )
+		
+			# Creates a shared tensor to reuse the memory allocation made by program pgm1
+			state_real_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_real_mt.storage_request, initialized=False)		
+			state_imag_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_imag_mt.storage_request, initialized=False)
+			state_real_copy_mt_320 = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_real_copy_mt.storage_request, initialized=False)
+			state_imag_copy_mt_320 = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_imag_copy_mt.storage_request, initialized=False)		
+		
+			reset_st.write( name="State_reset_real", storage_req=state_real_mt_320.storage_request)
+			reset_st.write( name="State_reset_imag", storage_req=state_imag_mt_320.storage_request)				
+			reset_st.write( name="State_reset_real_copy", storage_req=state_real_copy_mt_320.storage_request)
+			reset_st.write( name="State_reset_imag_copy", storage_req=state_imag_copy_mt_320.storage_request)		
+			
+			
+			state_vector_first_vector      = g.split( state_real_mt_320, num_splits=memory_addresses, dim=0 )[0]
+			state_vector_copy_first_vector = g.split( state_real_copy_mt_320, num_splits=memory_addresses, dim=0 )[0]	
+					
+			
+			single_one_st = self.single_one_mt.read( streams=[g.SG4_W[0]], time=memory_addresses )
+			single_one_st.write( name="State_reset_real_first_vector", storage_req=state_vector_first_vector.storage_request)
+			single_one_st.write( name="State_reset_real_copy_first_vector", storage_req=state_vector_copy_first_vector.storage_request)			
+			
+			
+
+	def gate_upload_program(self):
 		"""
 		Function implementing the upload program
 		"""
@@ -1000,6 +1031,12 @@ class Generate_static_data(IO):
 			self.ones_mt.is_static = True
 			self.zeros_mt.is_static = True
 			
+			# a float vector [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, ...] used to initialize the state vecor
+			single_one_np = np.zeros( (320,), dtype=np.float32 )
+			single_one_np[0] = 1.0
+			self.single_one_mt = g.from_data( np.asarray(single_one_np, dtype=np.float32), layout=layout_single_one, name="single_one_mt" )
+			self.single_one_mt.is_static = True
+			
 			
 			
 			
@@ -1106,6 +1143,7 @@ class Generate_static_data(IO):
 				exclusion_tensors.append( self.state_1_broadcasted_mt )
 				exclusion_tensors.append( self.zeros_mt )
 				exclusion_tensors.append( self.ones_mt )
+				exclusion_tensors.append( self.single_one_mt )				
 				exclusion_tensors.append( states_1_mt )
 				exclusion_tensors.append( states_0_mt )
 				exclusion_tensors.append( distribute_map_tensor_state1_mt )

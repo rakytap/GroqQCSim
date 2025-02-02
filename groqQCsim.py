@@ -38,7 +38,7 @@ def compile(mxm_permutation = True) -> List[str]:
 
 	program = Gate_IOP(pgm_pkg, mxm_permutation = mxm_permutation)
 	# Defines a program to upload the inputs
-	program.upload_program()
+	program.gate_upload_program()
 	
 	program.upload_state_program()	
 	program.download_state_program()	
@@ -78,6 +78,9 @@ def compile(mxm_permutation = True) -> List[str]:
 	
 	# program to perform gate_8L operation
 	program.gate_8L_program()	
+	
+	# program to reset the state vector to (1,0,0,0,0,0,0,...)
+	program.reset_state_vector_program()	
 	
 	iops = pgm_pkg.assemble()
 

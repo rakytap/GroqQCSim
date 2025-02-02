@@ -1,4 +1,4 @@
-qbit_num = 17
+qbit_num = 16
 
 # label to indicate the 00, 01, 10, 11 elements of the gate kernel
 gate_kernel_element_labels = ["00", "01", "10", "11"]
@@ -144,6 +144,7 @@ layout_gate_kernels_imag_buffer = f"H1(E), A{gate_splits*80}({address_offset}-{a
 # memory layout for the tensors full of ones and zeros
 layout_zeros = f"H1(E), A1(8001), S4(32-35)"
 layout_ones = f"H1(E), A1(8002), S4(32-35)"
+layout_single_one = f"H1(E), A1(8003), S4(32-35)"  # a float vector [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, ...]
 
 
 # gate counter: for reading out broadcasted elements from the gate kernel
