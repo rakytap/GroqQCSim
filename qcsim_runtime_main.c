@@ -137,20 +137,20 @@ extern "C" size_t get_accelerator_free_num_sv() {
         continue;
       }
 
-      status = groq_device_open(state.device[i]);
+      /*status = groq_device_open(state.device[i]);
       if (status){
         printf("ERROR: device %d open error %d\n", i, status);
         continue;
-      }
+      }*/
 
-      if(!groq_device_is_locked(state.device[i])) {
-        printf("ERROR: device is not locked\n");
+      if(groq_device_is_locked(state.device[i])) {
+        printf("ERROR: device is locked\n");
       } else free_devices++;
 
-      status = groq_device_close(state.device[i]);
+      /*status = groq_device_close(state.device[i]);
       if (status) {
           printf("ERROR: close device error %d\n", status);
-      }
+      }*/
   }
   status = groq_deinit(&state.driver);
   if (status) {
@@ -162,7 +162,6 @@ extern "C" size_t get_accelerator_free_num_sv() {
 extern "C" int initialize_groq_sv( int accelerator_num_in )
 {
   releive_groq_sv();
-
   Status status = groq_init(&state.driver);
   if (status) {
     printf("ERROR: groq init error %d\n", status);
@@ -180,7 +179,7 @@ extern "C" int initialize_groq_sv( int accelerator_num_in )
   // Find the size of the file and allocate corresponding buffer
   for (unsigned int i = 0; i < num_devices; ++i) {
       /***** START DEVICE OBJECT TESTING *****/
-      //status = groq_get_next_available_device(driver, &device);
+      //status = groq_get_next_available_device(state.driver, &state.device[state.num_devices]);
       status = groq_get_nth_device(state.driver, i, &state.device[state.num_devices]);
       if (status) {
         printf("ERROR: get nth device error %d, i = %d\n", status, i);
@@ -201,7 +200,7 @@ extern "C" int initialize_groq_sv( int accelerator_num_in )
       }
 
       if(!groq_device_is_locked(state.device[state.num_devices])) {
-        printf("ERROR: device %d is not locked\n", state.num_devices);
+        printf("ERROR: device %d is not locked\n", i);
         return 1;
       }
 
@@ -304,7 +303,6 @@ int load_iop(size_t num_qubits, int device_idx)
         }
         closedir(d);
     }
-
     if (cur_qubits == 0 || device_idx > MAX_DEVICE) return 1;    
     struct stat st;
     stat(fname, &st);
@@ -320,7 +318,7 @@ int load_iop(size_t num_qubits, int device_idx)
         printf("ERROR: IOP init %d\n", status);
         return 1;
     }
-            
+
     unsigned int num_programs = 0;
     status = groq_iop_get_number_of_programs(state.prog[device_idx], &num_programs);
     if (status) {
@@ -832,8 +830,8 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
 #ifdef TEST
 extern "C" int main() { //U3 and CRY
     initialize_groq_sv(get_accelerator_free_num_sv());
-    //initialize_groq(1);
-    int num_qubits = 17;
+    //initialize_groq_sv(1);
+    int num_qubits = 16;
     int device_idx = 0;
     Complex32* data = (Complex32*)calloc(sizeof(Complex32), 1<<num_qubits);
     data[0].real = 1.0;
@@ -897,11 +895,13 @@ extern "C" int main() { //U3 and CRY
  { -0.95333378, 0. }, { 0.30191837, 0. },
  {-0.30191837, -0. }, { -0.95333378, -0. }     
     }; 
-    Complex32* result = (Complex32*)malloc(sizeof(Complex32)*(1<<num_qubits));
-    calcsvKernelGroq(num_gates, gates, target_qubits, control_qubits, result, device_idx);
+    float* resultreal = (float*)malloc(sizeof(float)*(1<<num_qubits));
+    float* resultimag = (float*)malloc(sizeof(float)*(1<<num_qubits));
+    calcsvKernelGroq(num_gates, gates, target_qubits, control_qubits, resultreal, resultimag, device_idx);
     //for (int i = 0; i < 1 << num_qubits; i++)
     //    printf("%f ", result[i].real);        
-    free(result);
+    free(resultreal);
+    free(resultimag);
     //free(gates);
     //free(target_qubits);
     //free(control_qubits);
