@@ -367,10 +367,18 @@ class Generate_static_data(IO):
 		'''			
 					
 		half_slice = 1 << 12
+		target_qbit_max = qbit_num - 1
+		target_qbit_min = 9
+		half_memory_slices = memory_slices >> 1
 		
-		for target_qbit in range(9, 17):
+		for target_qbit in range(target_qbit_min, target_qbit_max):
 		
-			horizontal_offset_in_memory_map = (target_qbit-1-small_qbit_num_limit)*2 
+			if target_qbit <= 16:
+				horizontal_offset_in_memory_map = (target_qbit-1-small_qbit_num_limit)*2 
+				vertical_offset_in_memory_map = 0
+			else:
+				horizontal_offset_in_memory_map = (target_qbit-17)*2
+				vertical_offset_in_memory_map = half_memory_slices
 		
 			index_pairs = [ [x, x^(1<<(target_qbit-8))] for x in range(memory_addresses) if x < x^(1<<(target_qbit-8)) ]
 							
@@ -404,20 +412,21 @@ class Generate_static_data(IO):
 				higher_bits_of_addresses_idx2_pair = (idx2_pair >> 8 ) & 255												
 					
 										
+				row_idx = 2*idx + vertical_offset_in_memory_map
 				for superlane_idx in range(20):
 					col_idx = horizontal_offset_in_memory_map + 16*superlane_idx
 					
-					mem_read_map[ 2*idx+0, col_idx ]   = lower_bits_of_addresses_idx1
-					mem_read_map[ 2*idx+0, col_idx+1 ] = higher_bits_of_addresses_idx1
+					mem_read_map[ row_idx+0, col_idx ]   = lower_bits_of_addresses_idx1
+					mem_read_map[ row_idx+0, col_idx+1 ] = higher_bits_of_addresses_idx1
 					
-					mem_read_map[ 2*idx+1, col_idx ]   = lower_bits_of_addresses_idx2
-					mem_read_map[ 2*idx+1, col_idx+1 ] = higher_bits_of_addresses_idx2
+					mem_read_map[ row_idx+1, col_idx ]   = lower_bits_of_addresses_idx2
+					mem_read_map[ row_idx+1, col_idx+1 ] = higher_bits_of_addresses_idx2
 					
-					mem_read_pair_map[ 2*idx+0, col_idx ]   = lower_bits_of_addresses_idx1_pair
-					mem_read_pair_map[ 2*idx+0, col_idx+1 ] = higher_bits_of_addresses_idx1_pair
+					mem_read_pair_map[ row_idx+0, col_idx ]   = lower_bits_of_addresses_idx1_pair
+					mem_read_pair_map[ row_idx+0, col_idx+1 ] = higher_bits_of_addresses_idx1_pair
 					
-					mem_read_pair_map[ 2*idx+1, col_idx ]   = lower_bits_of_addresses_idx2_pair
-					mem_read_pair_map[ 2*idx+1, col_idx+1 ] = higher_bits_of_addresses_idx2_pair	
+					mem_read_pair_map[ row_idx+1, col_idx ]   = lower_bits_of_addresses_idx2_pair
+					mem_read_pair_map[ row_idx+1, col_idx+1 ] = higher_bits_of_addresses_idx2_pair	
 																				
 
 		return mem_read_map, mem_read_pair_map
@@ -580,7 +589,6 @@ class Generate_static_data(IO):
 			
 		return mem_write_map
 		
-		
 	def generate_target_qubit_L_write_maps(self):
 		"""
 		Function to generate memory maps to scatter state vector elements into the memory for target qubits L
@@ -598,6 +606,74 @@ class Generate_static_data(IO):
 		for target_qbit in range(9, 17):
 		
 			horizontal_offset_in_memory_map = (target_qbit-1-small_qbit_num_limit)*2 
+		
+			index_pairs = [ [x, x^(1<<(target_qbit-8))] for x in range(memory_addresses) if x < x^(1<<(target_qbit-8)) ]
+							
+			for idx in range( len(index_pairs)//2 ):
+				
+				idx1 = index_pairs[2*idx][0]
+				idx2 = index_pairs[2*idx+1][0]
+				idx3 = index_pairs[2*idx][1]
+				idx4 = index_pairs[2*idx+1][1]	
+				
+				# adding memory address offset for bank alternation
+				idx1 = idx1//2 if idx1 % 2 == 0 else idx1//2 + half_slice
+				idx2 = idx2//2 if idx2 % 2 == 0 else idx2//2 + half_slice
+				idx3 = idx3//2 if idx3 % 2 == 0 else idx3//2 + half_slice
+				idx4 = idx4//2 if idx4 % 2 == 0 else idx4//2 + half_slice
+																											
+								
+				# the 2-byte (16-bit) memory offset needs to be splitted into two bytes
+				lower_bits_of_addresses_idx1  = idx1 & 255
+				higher_bits_of_addresses_idx1 = (idx1 >> 8 ) & 255
+				
+				lower_bits_of_addresses_idx2  = idx2 & 255
+				higher_bits_of_addresses_idx2 = (idx2 >> 8 ) & 255
+				
+				lower_bits_of_addresses_idx3  = idx3 & 255
+				higher_bits_of_addresses_idx3 = (idx3 >> 8 ) & 255
+				
+				lower_bits_of_addresses_idx4  = idx4 & 255
+				higher_bits_of_addresses_idx4 = (idx4 >> 8 ) & 255
+					
+										
+				for superlane_idx in range(20):
+					col_idx = horizontal_offset_in_memory_map + 16*superlane_idx
+					
+					mem_write_map[ 4*idx+0, col_idx ]   = lower_bits_of_addresses_idx1
+					mem_write_map[ 4*idx+0, col_idx+1 ] = higher_bits_of_addresses_idx1
+					
+					mem_write_map[ 4*idx+1, col_idx ]   = lower_bits_of_addresses_idx2
+					mem_write_map[ 4*idx+1, col_idx+1 ] = higher_bits_of_addresses_idx2
+					
+					mem_write_map[ 4*idx+2, col_idx ]   = lower_bits_of_addresses_idx3
+					mem_write_map[ 4*idx+2, col_idx+1 ] = higher_bits_of_addresses_idx3
+					
+					mem_write_map[ 4*idx+3, col_idx ]   = lower_bits_of_addresses_idx4
+					mem_write_map[ 4*idx+3, col_idx+1 ] = higher_bits_of_addresses_idx4	
+																				
+
+		return mem_write_map
+		
+	def generate_target_qubit_H_write_maps(self):
+		"""
+		Function to generate memory maps to scatter state vector elements into the memory for target qubits H
+		
+		Return
+		--------
+		returns with the generated numpy version of the memmory maps
+		"""
+	
+		# memory map containing all of the memory maps		
+		mem_write_map = np.zeros( (memory_addresses, 320,), dtype=np.uint8 )
+		
+		half_slice = 1 << 12
+		target_qbit_min = 17
+		target_qbit_max = qbit_num - 1
+		
+		for target_qbit in range(target_qbit_min, target_qbit_max):
+		
+			horizontal_offset_in_memory_map = (target_qbit-17)*2 
 		
 			index_pairs = [ [x, x^(1<<(target_qbit-8))] for x in range(memory_addresses) if x < x^(1<<(target_qbit-8)) ]
 							
@@ -1048,6 +1124,12 @@ class Generate_static_data(IO):
 			
 				self.target_qubit_write_maps_L_mt = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_L)
 				self.target_qubit_write_maps_L_mt.is_static = True
+
+				# generate memeory write maps for target qubits H
+				mem_write_map = self.generate_target_qubit_H_write_maps()
+			
+				self.target_qubit_write_maps_H_mt = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_H)
+				self.target_qubit_write_maps_H_mt.is_static = True
 			
 			
 				# generate memeory read maps for target qubits L

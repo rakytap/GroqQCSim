@@ -181,7 +181,7 @@ layout_control_qubit_address_maps_SL_east_a = f"H1(E), A{memory_slices}(0-{memor
 
 # memory scatter maps for L target qubits
 layout_target_qubit_write_maps_L = f"H1(E), A{memory_addresses}(0-{memory_addresses-1}), S1(40)"
-# (41) saved for H target qubit maps
+layout_target_qubit_write_maps_H = f"H1(E), A{memory_addresses}(0-{memory_addresses-1}), S1(41)"
 
 
 
