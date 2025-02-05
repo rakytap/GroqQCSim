@@ -367,7 +367,7 @@ class Generate_static_data(IO):
 		'''			
 					
 		half_slice = 1 << 12
-		target_qbit_max = qbit_num - 1
+		target_qbit_max = qbit_num 
 		target_qbit_min = 9
 		half_memory_slices = memory_slices >> 1
 		
@@ -669,7 +669,7 @@ class Generate_static_data(IO):
 		
 		half_slice = 1 << 12
 		target_qbit_min = 17
-		target_qbit_max = qbit_num - 1
+		target_qbit_max = qbit_num
 		
 		for target_qbit in range(target_qbit_min, target_qbit_max):
 		
@@ -1127,6 +1127,8 @@ class Generate_static_data(IO):
 
 				# generate memeory write maps for target qubits H
 				mem_write_map = self.generate_target_qubit_H_write_maps()
+				print("map in uplad")
+				print(mem_write_map[:10, :10])
 			
 				self.target_qubit_write_maps_H_mt = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_H)
 				self.target_qubit_write_maps_H_mt.is_static = True

@@ -150,6 +150,7 @@ class Gate_L_base(Gate_counters):
 		"""
 
 
+		print("in write map L")
 		target_qubit_write_maps_L_st = self.target_qubit_write_maps_L_mt.read( streams=g.SG1[16] )
 
 		

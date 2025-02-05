@@ -42,7 +42,7 @@ class Gate_H_base(Gate_counters):
 
 
 
-	def select_target_qbit_read_map_west(self):
+	def select_target_qbit_read_map_H_west(self):
 		"""
 		Function used to read out the correct target qubit map to gather the target qubits L from the memory
 		The target qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
@@ -130,7 +130,7 @@ class Gate_H_base(Gate_counters):
 
 
 
-	def select_target_qbit_write_map_east(self):
+	def select_target_qbit_write_map_H_east(self):
 		"""
 		Function used to read out the correct target qubit map for scattering the target qubits L into the memory
 		The target qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
@@ -150,6 +150,7 @@ class Gate_H_base(Gate_counters):
 		"""
 
 
+		print("in write map H")
 		target_qubit_write_maps_H_st = self.target_qubit_write_maps_H_mt.read( streams=g.SG1[16] )
 
 		
@@ -171,7 +172,8 @@ class Gate_H_base(Gate_counters):
 					                             transposer_req=self.transposer_request_to_qubit_state_write, 
 					                             stream_order=[0])	
 
-		#rr = target_qubit_write_maps_L_st.write(name="uuu", layout='H1(W), -1, S1(43)', program_output=True )
+		target_qubit_write_maps_H_st.write(name="ooo1", layout='H1(W), -1, S1', program_output=True )
+		print("gateH write map")
 
 		return target_qubit_write_maps_H_st	
 

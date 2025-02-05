@@ -25,22 +25,23 @@ if __name__ == "__main__":
 	#target_qbits  = [6,  2,  12, 1, 15, 8, 16, 4,  6, 16, 10, 11, 15,  8, 12, 13, 8]
 	#control_qbits = [-1, -1, 3,  0, 3, -1, 9, 10,  8,  7, -1,  16,  7, -1, 2, 8, 11] #-1 ... no control qubit is incolved in the operation
 	
-	target_qbits = [17]
-	control_qbits = [-1]	
-	# while len(target_qbits) < gate_count:
-	# 	target_qbit = random.randint(0, 16)
-	# 
-	# 	tmp = random.randint(0,1)
-	# 	if tmp == 0:
-	# 		control_qbit = -1
-	# 	else:
-	# 		control_qbit = random.randint(0, 16)	
-	# 
-	# 	
-	#
-	# 	if target_qbit != control_qbit:		
-	# 		target_qbits.append( target_qbit )
-	# 		control_qbits.append( control_qbit )		
+	target_qbits = []
+	control_qbits = []	
+	while len(target_qbits) < gate_count:
+		target_qbit = random.randint(17, 18)
+		
+		tmp = random.randint(0,1)
+		if tmp == 0:
+			control_qbit = -1
+		else:
+			control_qbit = random.randint(0, qbit_num-1)	
+		control_qbit = -1
+		
+			
+
+		if target_qbit != control_qbit:		
+			target_qbits.append( target_qbit )
+			control_qbits.append( control_qbit )		
          
 	
 	if len(target_qbits) != gate_count:
@@ -81,7 +82,7 @@ if __name__ == "__main__":
 		elif target_qbit >= 0 and target_qbit < 21 and control_qbit >= 0 and control_qbit < 21 :	
 	
 			print("adding controlled gate")
-			circuit.add_adaptive( target_qbit, control_qbit )
+			circuit.add_CRY( target_qbit, control_qbit )
 	
 			circuit_1 = Circuit( 1 )
 			circuit_1.add_RY( 0  )		
@@ -92,9 +93,8 @@ if __name__ == "__main__":
 		
 		
 		
-	print('Target qubits: ', target_qbits)
-	print('Control qubits: ', control_qbits)
 
+	print("tq0:",target_qbits[0])
 	# get the number of free parameters in the circuit
 	parameter_num = circuit.get_Parameter_Num()
 	print('Number of parameters in the circuit: ', parameter_num, flush=True)
@@ -123,16 +123,17 @@ if __name__ == "__main__":
 
 	#####################################################
 	# get the gate kernel
+	gates = circuit.get_Gates()
 
 	print( 'The single qubit gate kernels are:')
 	start_time = time.time()
 	gate_kernels = np.zeros((groqQCsim.gate_splits*80, 2, 2,), dtype=np.complex64)
-	parameter_idx = parameters.size
 	for idx in range(groqQCsim.gate_splits*80):
 		if idx < gate_count:
+			gate = gates[idx]
+			parameter_idx = gate.get_Parameter_Start_Index()
 			gate_parameter_num = one_qubit_circuits[idx].get_Parameter_Num()
-			parameters_1       = parameters[parameter_idx-gate_parameter_num : parameter_idx]
-			parameter_idx      = parameter_idx-gate_parameter_num
+			parameters_1       = parameters[parameter_idx: parameter_idx+gate_parameter_num]
 
 			#print( parameters_1 )
 			gate_kernel_single = one_qubit_circuits[idx].get_Matrix( parameters_1 )
