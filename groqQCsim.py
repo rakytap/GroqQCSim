@@ -12,6 +12,8 @@ from typing import List
 import utils
 from memory_layouts import *
 
+ML = None
+
 try:
     import groq.runtime.driver as runtime
 except ImportError:
@@ -36,7 +38,7 @@ def compile(mxm_permutation = True) -> List[str]:
 
 	
 
-	program = Gate_IOP(pgm_pkg, mxm_permutation = mxm_permutation)
+	program = Gate_IOP(pgm_pkg, ML, mxm_permutation = mxm_permutation)
 	# Defines a program to upload the inputs
 	program.gate_upload_program()
 	
@@ -724,11 +726,12 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 
 
-def main( State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, gate_kernels, mxm_permutation = True ):
+def main( qbit_num, gate_count, State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, gate_kernels, mxm_permutation = True ):
 	"""Compiles and runs the example programs."""
 	
-	if qbit_num is None:
-		raise "qbit_num must be set with method initialize_qbit_num( qbit_num ) with a value greater or equal to 8"
+	global ML
+	ML = MemoryLayouts( qbit_num, gate_count )
+
 
 	tocompile = 1
 	if tocompile:

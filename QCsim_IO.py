@@ -24,11 +24,11 @@ class IO:
 		self.zeros_mt = None
 
 		# create reusable memory requests
-		self.state_imag_request = g.tensor.create_storage_request( layout=layout_State_input_imag )
-		self.state_real_request = g.tensor.create_storage_request( layout=layout_State_input_real )
+		self.state_imag_request = g.tensor.create_storage_request( layout=self.ML.layout_State_input_imag )
+		self.state_real_request = g.tensor.create_storage_request( layout=self.ML.layout_State_input_real )
 
-		self.state_imag_copy_request = g.tensor.create_storage_request( layout=layout_State_input_imag_copy )
-		self.state_real_copy_request = g.tensor.create_storage_request( layout=layout_State_input_real_copy )
+		self.state_imag_copy_request = g.tensor.create_storage_request( layout=self.ML.layout_State_input_imag_copy )
+		self.state_real_copy_request = g.tensor.create_storage_request( layout=self.ML.layout_State_input_real_copy )
 
 		# for target qubits less than 8 MXM slices or the permutors can be used to generate the pairs for the state vector elements
 		# set mxm_permutation to True when MXM is used, or set to False when permutor is used
@@ -48,12 +48,12 @@ class IO:
 		with self.pgm_pkg.create_program_context(name) as pgm1:
 
 
-			self.State_input_real_mt = g.input_tensor(shape=(memory_slices, matrix_size,), 
+			self.State_input_real_mt = g.input_tensor(shape=(self.ML.memory_addresses, matrix_size,), 
 							dtype=g.float32, 
 							name="State_input_real", 
 							storage_req=self.state_real_request)
 							
-			self.State_input_imag_mt = g.input_tensor(shape=(memory_slices, matrix_size,), 
+			self.State_input_imag_mt = g.input_tensor(shape=(self.ML.memory_addresses, matrix_size,), 
 							dtype=g.float32, 
 							name="State_input_imag", 
 							storage_req=self.state_imag_request)

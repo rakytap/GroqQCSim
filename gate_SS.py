@@ -259,12 +259,12 @@ class Gate(Gate_S_base):
 				gate_kernels_broadcasted_imag_shared_copy_dict[key] = gate_kernels_broadcasted_imag_shared_copy				
 
 	
-			address_offset = 0#8191
+			address_offset = 200#8191
 
-			layout_real_diag = layout_gate_kernels_real + f", A1({address_offset})"
-			layout_imag_diag = layout_gate_kernels_imag + f", A1({address_offset})"		
-			layout_real_off_diag = layout_gate_kernels_real_copy + f", A1({address_offset})"
-			layout_imag_off_diag = layout_gate_kernels_imag_copy + f", A1({address_offset})"	
+			layout_real_diag     = self.ML.layout_gate_kernels_real + f", A1({address_offset})"
+			layout_imag_diag     = self.ML.layout_gate_kernels_imag + f", A1({address_offset})"		
+			layout_real_off_diag = self.ML.layout_gate_kernels_real_copy + f", A1({address_offset})"
+			layout_imag_off_diag = self.ML.layout_gate_kernels_imag_copy + f", A1({address_offset})"	
 				
 			storage_req_real_diag  = g.tensor.create_storage_request( layout = layout_real_diag )
 			storage_req_imag_diag  = g.tensor.create_storage_request( layout = layout_imag_diag )

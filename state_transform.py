@@ -5,13 +5,15 @@ import sys
 
 from scipy.stats import unitary_group
 import scipy
+from memory_layouts import MemoryLayouts
 import groqQCsim
 import time
 import random
 
+qbit_num = 16
+gate_count = 7*256
 
-qbit_num = groqQCsim.qbit_num
-gate_count = groqQCsim.gate_count
+ML = MemoryLayouts( qbit_num, gate_count )
 
 
 if __name__ == "__main__":
@@ -84,7 +86,7 @@ if __name__ == "__main__":
 			circuit_1.add_U3( 0 )
 			one_qubit_circuits.append( circuit_1 )
 
-			if gate_idx < groqQCsim.second_gate_count:
+			if gate_idx < ML.second_gate_count:
 				circuit2.add_U3( target_qbit )
 		
 		elif target_qbit >= 0 and target_qbit < 21 and control_qbit >= 0 and control_qbit < 21 :	
@@ -96,7 +98,7 @@ if __name__ == "__main__":
 			circuit_1.add_RY( 0  )		
 			one_qubit_circuits.append( circuit_1 )
 
-			if gate_idx < groqQCsim.second_gate_count:
+			if gate_idx < ML.second_gate_count:
 				circuit2.add_CRY( target_qbit, control_qbit )
 		
 		else:
@@ -144,8 +146,8 @@ if __name__ == "__main__":
 
 	print( 'The single qubit gate kernels are:')
 	start_time = time.time()
-	gate_kernels = np.zeros((groqQCsim.gate_splits*80, 2, 2,), dtype=np.complex64)
-	for idx in range(groqQCsim.gate_splits*80):
+	gate_kernels = np.zeros((ML.gate_splits*80, 2, 2,), dtype=np.complex64)
+	for idx in range(ML.gate_splits*80):
 		if idx < gate_count:
 
 			gate = gates[idx]
@@ -174,7 +176,7 @@ if __name__ == "__main__":
 	
 
 
-	real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, gate_kernels, mxm_permutation = False)
+	real_part, imag_part = groqQCsim.main(qbit_num, gate_count, State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, gate_kernels, mxm_permutation = False)
 	print(' ')
 	print( 'difference between CPU oracle and Groq chip (real part): ', scipy.linalg.norm( real_part - np.real( State_transformed_oracle ) , 2), '(imag part): ', scipy.linalg.norm( imag_part - np.imag( State_transformed_oracle ) , 2) )
 
