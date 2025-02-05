@@ -85,7 +85,7 @@ class Generate_static_data(IO):
 	
 		
 		control_qbit_min = 9
-		control_qbit_max = qbit_num		
+		control_qbit_max = self.ML.qbit_num		
 
 	
 
@@ -101,7 +101,7 @@ class Generate_static_data(IO):
 	
 		for control_qbit in range(control_qbit_min, control_qbit_max+1):
 	
-			index_pair = 1 << (control_qbit - small_qbit_num_limit)
+			index_pair = 1 << (control_qbit - self.ML.small_qbit_num_limit)
 			
 			# each 2-byte column in the 16-byte blocks of the map tensor corresponds to a specific control qbit 
 			if control_qbit <= 16:
@@ -118,14 +118,14 @@ class Generate_static_data(IO):
 				vertical_offset_in_memory_map = half_memory_addresses
 							 
 			mask_lower_bits = index_pair - 1 
-			mask_upper_bits = 1 << ( qbit_num - control_qbit )
+			mask_upper_bits = 1 << ( self.ML.qbit_num - control_qbit )
 			mask_upper_bits = mask_upper_bits - 1
-			mask_upper_bits = mask_upper_bits << (control_qbit - small_qbit_num_limit )
+			mask_upper_bits = mask_upper_bits << (control_qbit - self.ML.small_qbit_num_limit )
 			
 			# the 2-byte (16-bit) memory offset needs to be splitted into two bytes
 			control_qubit_state_1_indices = np.zeros( (half_memory_addresses, 2,), dtype=np.uint8 )
 			
-			half_of_slice = 1 << (21-small_qbit_num_limit-1) # needed to offset the address for the bank alternating storage
+			half_of_slice = 1 << (21-self.ML.small_qbit_num_limit-1) # needed to offset the address for the bank alternating storage
 
 			half_memory_addresses = self.ML.memory_addresses >> 1
 			for memory_idx in range(half_memory_addresses):
@@ -182,8 +182,8 @@ class Generate_static_data(IO):
 		# memory map containing all of the memory maps
 		# maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_addresses)
 		# maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_addresses+1,...,self.ML.memory_addresses)		
-		mem_read_map      = np.zeros( (memory_addresses//2, 320,), dtype=np.uint8 )		
-		mem_read_map_pair = np.zeros( (memory_addresses//2, 320,), dtype=np.uint8 )				
+		mem_read_map      = np.zeros( (self.ML.memory_addresses//2, 320,), dtype=np.uint8 )		
+		mem_read_map_pair = np.zeros( (self.ML.memory_addresses//2, 320,), dtype=np.uint8 )				
 					
 		half_slice = 1 << 12
 
@@ -194,11 +194,11 @@ class Generate_static_data(IO):
 			#print( 'control_qbit: ', control_qbit, memory_addresses )
 			
 		
-			horizontal_offset_in_memory_map = (control_qbit-1-small_qbit_num_limit)*2 
+			horizontal_offset_in_memory_map = (control_qbit-1-self.ML.small_qbit_num_limit)*2 
 
-			control_qbit_mask = 1<<(control_qbit-small_qbit_num_limit)
+			control_qbit_mask = 1<<(control_qbit-self.ML.small_qbit_num_limit)
 		
-			target_qbit_index_pairs = [ [x, x^1] for x in range(memory_addresses) if x < x^1  ]
+			target_qbit_index_pairs = [ [x, x^1] for x in range(self.ML.memory_addresses) if x < x^1  ]
 			target_qbit_index_pairs = np.array( target_qbit_index_pairs )
 
 
@@ -259,15 +259,15 @@ class Generate_static_data(IO):
 		# memory map containing all of the memory maps
 		# maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_addresses)
 		# maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_addresses+1,...,self.ML.memory_addresses)		
-		mem_read_map = np.zeros( (memory_addresses//2, 320,), dtype=np.uint8 )		
+		mem_read_map = np.zeros( (self.ML.memory_addresses//2, 320,), dtype=np.uint8 )		
 					
 		half_slice = 1 << 12
 
 		
 
-		for control_qbit in range(9, qbit_num):
+		for control_qbit in range(9, self.ML.qbit_num):
 
-			if control_qbit == qbit_num-1:
+			if control_qbit == self.ML.qbit_num-1:
 				continue  #TODO!!!!!!!!!!!!!!!!!!!!!!!!
 
 			#print( 'control_qbit: ', control_qbit )
@@ -275,11 +275,11 @@ class Generate_static_data(IO):
 			target_qbit = control_qbit + 1 # as we get the same control qubit memory maps for each target qbit
 			
 		
-			horizontal_offset_in_memory_map = (control_qbit-1-small_qbit_num_limit)*2 
+			horizontal_offset_in_memory_map = (control_qbit-1-self.ML.small_qbit_num_limit)*2 
 
 			control_qbit_mask = 1<<(control_qbit-8)
 		
-			target_qbit_index_pairs = [ [x, x^(1<<(target_qbit-8))] for x in range(memory_addresses) if x < x^(1<<(target_qbit-8))  ]
+			target_qbit_index_pairs = [ [x, x^(1<<(target_qbit-8))] for x in range(self.ML.memory_addresses) if x < x^(1<<(target_qbit-8))  ]
 			target_qbit_index_pairs = np.array( target_qbit_index_pairs )
 
 
@@ -334,8 +334,8 @@ class Generate_static_data(IO):
 		# memory map containing all of the memory maps
 		# maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_addresses)
 		# maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_addresses+1,...,self.ML.memory_addresses)		
-		mem_read_map = np.zeros( (memory_addresses, 320,), dtype=np.uint8 )
-		mem_read_pair_map = np.zeros( (memory_addresses, 320,), dtype=np.uint8 )
+		mem_read_map = np.zeros( (self.ML.memory_addresses, 320,), dtype=np.uint8 )
+		mem_read_pair_map = np.zeros( (self.ML.memory_addresses, 320,), dtype=np.uint8 )
 		
 		'''
 					readout_indices.append( index_pairs[2*idx][0] )      # for upper row of the gate kernel (output state is 0)
@@ -353,9 +353,9 @@ class Generate_static_data(IO):
 		
 		for target_qbit in range(9, 17):
 		
-			horizontal_offset_in_memory_map = (target_qbit-1-small_qbit_num_limit)*2 
+			horizontal_offset_in_memory_map = (target_qbit-1-self.ML.small_qbit_num_limit)*2 
 		
-			index_pairs = [ [x, x^(1<<(target_qbit-8))] for x in range(memory_addresses) if x < x^(1<<(target_qbit-8)) ]
+			index_pairs = [ [x, x^(1<<(target_qbit-8))] for x in range(self.ML.memory_addresses) if x < x^(1<<(target_qbit-8)) ]
 							
 			for idx in range( len(index_pairs)//2 ):
 				
@@ -416,17 +416,17 @@ class Generate_static_data(IO):
 		"""
 	
 		# memory map containing all of the memory maps		
-		mem_write_map      = np.zeros( (memory_addresses//2, 320,), dtype=np.uint8 )
+		mem_write_map      = np.zeros( (self.ML.memory_addresses//2, 320,), dtype=np.uint8 )
 		
 		half_slice = 1 << 12
 		
 		for control_qbit in range(9, 17):
 		
-			horizontal_offset_in_memory_map = (control_qbit-1-small_qbit_num_limit)*2 
+			horizontal_offset_in_memory_map = (control_qbit-1-self.ML.small_qbit_num_limit)*2 
 
-			control_qbit_mask = 1<<(control_qbit-small_qbit_num_limit)
+			control_qbit_mask = 1<<(control_qbit-self.ML.small_qbit_num_limit)
 		
-			target_qbit_index_pairs = [ [x, x^1] for x in range(memory_addresses) if x < x^1  ]
+			target_qbit_index_pairs = [ [x, x^1] for x in range(self.ML.memory_addresses) if x < x^1  ]
 			target_qbit_index_pairs = np.array( target_qbit_index_pairs )
 
 
@@ -483,15 +483,15 @@ class Generate_static_data(IO):
 		# memory map containing all of the memory maps
 		# maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_addresses)
 		# maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_addresses+1,...,self.ML.memory_addresses)		
-		mem_write_map = np.zeros( (memory_addresses//2, 320,), dtype=np.uint8 )		
+		mem_write_map = np.zeros( (self.ML.memory_addresses//2, 320,), dtype=np.uint8 )		
 					
 		half_slice = 1 << 12
 
 		
 
-		for control_qbit in range(9, qbit_num):
+		for control_qbit in range(9, self.ML.qbit_num):
 
-			if control_qbit == qbit_num-1:
+			if control_qbit == self.ML.qbit_num-1:
 				continue  #TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 			#print( 'control_qbit: ', control_qbit )
@@ -499,11 +499,11 @@ class Generate_static_data(IO):
 			target_qbit = control_qbit + 1 # as we get the same control qubit memory maps for each target qbit
 			
 		
-			horizontal_offset_in_memory_map = (control_qbit-1-small_qbit_num_limit)*2 
+			horizontal_offset_in_memory_map = (control_qbit-1-self.ML.small_qbit_num_limit)*2 
 
 			control_qbit_mask = 1<<(control_qbit-8)
 		
-			target_qbit_index_pairs = [ [x, x^(1<<(target_qbit-8))] for x in range(memory_addresses) if x < x^(1<<(target_qbit-8))  ]
+			target_qbit_index_pairs = [ [x, x^(1<<(target_qbit-8))] for x in range(self.ML.memory_addresses) if x < x^(1<<(target_qbit-8))  ]
 			target_qbit_index_pairs = np.array( target_qbit_index_pairs )
 
 			target_qbit_index_pairs_write = np.zeros( (len(target_qbit_index_pairs)*2, ), dtype=np.uint16 )		
@@ -559,15 +559,15 @@ class Generate_static_data(IO):
 		"""
 	
 		# memory map containing all of the memory maps		
-		mem_write_map = np.zeros( (memory_addresses, 320,), dtype=np.uint8 )
+		mem_write_map = np.zeros( (self.ML.memory_addresses, 320,), dtype=np.uint8 )
 		
 		half_slice = 1 << 12
 		
-		for target_qbit in range(9, qbit_num):
+		for target_qbit in range(9, self.ML.qbit_num):
 		
-			horizontal_offset_in_memory_map = (target_qbit-1-small_qbit_num_limit)*2 
+			horizontal_offset_in_memory_map = (target_qbit-1-self.ML.small_qbit_num_limit)*2 
 		
-			index_pairs = [ [x, x^(1<<(target_qbit-8))] for x in range(memory_addresses) if x < x^(1<<(target_qbit-8)) ]
+			index_pairs = [ [x, x^(1<<(target_qbit-8))] for x in range(self.ML.memory_addresses) if x < x^(1<<(target_qbit-8)) ]
 							
 			for idx in range( len(index_pairs)//2 ):
 				
@@ -622,15 +622,15 @@ class Generate_static_data(IO):
 		with self.pgm_pkg.create_program_context(name) as pgm1:
 
 			
-			reset_mt_list = [ self.zeros_mt ] * memory_addresses
+			reset_mt_list = [ self.zeros_mt ] * self.ML.memory_addresses
 			reset_mt = g.concat( reset_mt_list, dim=0 )
 			reset_st = reset_mt.read( streams=[g.SG4_W[0]], time=0 )
 		
 			# Creates a shared tensor to reuse the memory allocation made by program pgm1
-			state_real_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_real_mt.storage_request, initialized=False)		
-			state_imag_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_imag_mt.storage_request, initialized=False)
-			state_real_copy_mt_320 = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_real_copy_mt.storage_request, initialized=False)
-			state_imag_copy_mt_320 = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_imag_copy_mt.storage_request, initialized=False)		
+			state_real_mt_320      = g.constant_tensor((self.ML.memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_real_mt.storage_request, initialized=False)		
+			state_imag_mt_320      = g.constant_tensor((self.ML.memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_imag_mt.storage_request, initialized=False)
+			state_real_copy_mt_320 = g.constant_tensor((self.ML.memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_real_copy_mt.storage_request, initialized=False)
+			state_imag_copy_mt_320 = g.constant_tensor((self.ML.memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_imag_copy_mt.storage_request, initialized=False)		
 		
 			reset_st.write( name="State_reset_real", storage_req=state_real_mt_320.storage_request)
 			reset_st.write( name="State_reset_imag", storage_req=state_imag_mt_320.storage_request)				
@@ -638,11 +638,11 @@ class Generate_static_data(IO):
 			reset_st.write( name="State_reset_imag_copy", storage_req=state_imag_copy_mt_320.storage_request)		
 			
 			
-			state_vector_first_vector      = g.split( state_real_mt_320, num_splits=memory_addresses, dim=0 )[0]
-			state_vector_copy_first_vector = g.split( state_real_copy_mt_320, num_splits=memory_addresses, dim=0 )[0]	
+			state_vector_first_vector      = g.split( state_real_mt_320, num_splits=self.ML.memory_addresses, dim=0 )[0]
+			state_vector_copy_first_vector = g.split( state_real_copy_mt_320, num_splits=self.ML.memory_addresses, dim=0 )[0]	
 					
 			
-			single_one_st = self.single_one_mt.read( streams=[g.SG4_W[0]], time=memory_addresses )
+			single_one_st = self.single_one_mt.read( streams=[g.SG4_W[0]], time=self.ML.memory_addresses )
 			single_one_st.write( name="State_reset_real_first_vector", storage_req=state_vector_first_vector.storage_request)
 			single_one_st.write( name="State_reset_real_copy_first_vector", storage_req=state_vector_copy_first_vector.storage_request)			
 			
@@ -689,34 +689,34 @@ class Generate_static_data(IO):
 			# dynamic map selectors to vectors where the target_qbit (or control_qbit) takes on state 1 or 0
 			# *state_1* is True where the target_qbit (or control_qbit) takes on state 1
 			# *state_0* is True where the target_qbit (or control_qbit) takes on state 0			
-			state_1_selector_mt         = g.input_tensor(shape=(gate_count,320,), 
+			state_1_selector_mt         = g.input_tensor(shape=(self.ML.gate_count,320,), 
                                                                      dtype=g.uint8, 
                                                                      name="state_1_selector", 
                                                                      layout=self.ML.layout_state_1_selector)
 
-			state_0_selector_mt         = g.input_tensor(shape=(gate_count,320,), 
+			state_0_selector_mt         = g.input_tensor(shape=(self.ML.gate_count,320,), 
                                                                      dtype=g.uint8, 
                                                                      name="state_0_selector", 
                                                                      layout=self.ML.layout_state_0_selector)	
 		
-			control_state_1_selector_mt = g.input_tensor(shape=(gate_count,320,), 
+			control_state_1_selector_mt = g.input_tensor(shape=(self.ML.gate_count,320,), 
                                                                      dtype=g.uint8, 
                                                                      name="control_state_1_selector", 
                                                                      layout=self.ML.layout_control_state_1_selector)
 
-			control_state_0_selector_mt = g.input_tensor(shape=(gate_count,320,), 
+			control_state_0_selector_mt = g.input_tensor(shape=(self.ML.gate_count,320,), 
                                                                      dtype=g.uint8, 
                                                                      name="control_state_0_selector", 
                                                                      layout=self.ML.layout_control_state_0_selector)
 
 
 			# 80 2x2 gate kernels are packed into real and complex 320 float32 vectors
-			self.gate_kernels_real_packed_mt = g.input_tensor(shape=(gate_splits,320,), 
+			self.gate_kernels_real_packed_mt = g.input_tensor(shape=(self.ML.gate_splits,320,), 
                                                                           dtype=g.float32, 
                                                                           name="gate_kernels_real_packed", 
                                                                           layout=self.ML.layout_gate_kernels_real_packed)
 
-			self.gate_kernels_imag_packed_mt = g.input_tensor(shape=(gate_splits,320,), 
+			self.gate_kernels_imag_packed_mt = g.input_tensor(shape=(self.ML.gate_splits,320,), 
                                                                           dtype=g.float32, 
                                                                           name="gate_kernels_imag_packed", 
                                                                           layout=self.ML.layout_gate_kernels_imag_packed)
@@ -728,12 +728,12 @@ class Generate_static_data(IO):
 			
 			# the input vector containing the memory address for the correct target qubits. 
 			# TODO: cutrrently supports only a single target qubit, but need to support 80, as the number of the packed gate kernels		
-			self.state_permute_map_selector_mt     = g.input_tensor(shape=(gate_count,320,),
+			self.state_permute_map_selector_mt     = g.input_tensor(shape=(self.ML.gate_count,320,),
                                                                                 dtype=g.uint8, 
                                                                                 name="permutation_selector", 
                                                                                 layout=self.ML.layout_state_permute_map_selector)				
 
-			self.mxm_state_permute_map_selector_mt = g.input_tensor(shape=(gate_count,320,), 
+			self.mxm_state_permute_map_selector_mt = g.input_tensor(shape=(self.ML.gate_count,320,), 
                                                                               dtype=g.uint8, 
                                                                               name="mxm_permutation_selector", 
                                                                               layout=self.ML.layout_mxm_permute_map_selector)	
@@ -755,11 +755,8 @@ class Generate_static_data(IO):
 			self.constant_1_address_offset_higher_bits_mt = g.from_data( 
                                                                            np.asarray(constant_1_address_offset_higher_bits_np, dtype=np.uint8), 
                                                                            layout=self.ML.layout_constant_1_address_offset_higher_bits )
-			'''
-			gate_counter_address_offset_higher_bits_np  = np.zeros( (320,), dtype=np.uint8 )
-			self.gate_counter_address_offset_higher_bits_mt = g.from_data( np.asarray(gate_counter_address_offset_higher_bits_np, dtype=np.uint8),
-                                                                                      layout=layout_gate_counter_address_offset_higher_bits )
-			'''
+			
+
 			self.gate_counter_address_offset_higher_bits_mt      = g.constant_tensor( (320,), 
 										g.uint8, 
 										layout=self.ML.layout_gate_counter_address_offset_higher_bits, 
@@ -796,13 +793,13 @@ class Generate_static_data(IO):
 				gate_resolved_mxm_state_permute_map_selectors_list = g.split( self.mxm_state_permute_map_selector_mt, num_splits=gate_count, dim=0 )
 				
 				state_permute_map_selector_new_mt_list = []
-				for gate_idx in range(gate_count):
+				for gate_idx in range(self.ML.gate_count):
 
 					mxm_state_permute_map_selector_mt = gate_resolved_mxm_state_permute_map_selectors_list[gate_idx]
 
 					for row_idx in range(20) :
 				
-						layout = self.ML.layout_expanded_mxm_permute_map_selector + f", A{1}({320 + gate_count + gate_idx*20 + row_idx})"
+						layout = self.ML.layout_expanded_mxm_permute_map_selector + f", A{1}({320 + self.ML.gate_count + gate_idx*20 + row_idx})"
 				
 						if row_idx == 0:
 							state_permute_map_selector_st = mxm_state_permute_map_selector_mt.read( streams=[g.SG1_E[16]], time=gate_idx*20*31 )
@@ -843,13 +840,13 @@ class Generate_static_data(IO):
 				identity                 = np.identity(320, dtype=np.int8)
 				mxm_permutation_matrices = np.zeros( (8,320,320,), dtype=np.int8 )
 
-				for target_qbit_loc in range(small_qbit_num_limit):
+				for target_qbit_loc in range(self.ML.small_qbit_num_limit):
 
 					target_qbit_pair_diff = 1 << target_qbit_loc
 
 					matrix_row_indexes = np.zeros( (320,), dtype=np.int32 )
 					for idx in range(320):
-						if (idx < matrix_size):
+						if (idx < self.ML.matrix_size):
 							matrix_row_indexes[idx] = idx ^ target_qbit_pair_diff
 						else:
 							matrix_row_indexes[idx] = idx
@@ -970,15 +967,15 @@ class Generate_static_data(IO):
 
 			
 			# generate permutation maps to reorder the state vector elements for qubits less than small_qbit_num_limit
-			permute_map = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint32 )
+			permute_map = np.zeros( (self.ML.small_qbit_num_limit,320,), dtype=np.uint32 )
 
-			for target_qbit_loc in range(small_qbit_num_limit):
+			for target_qbit_loc in range(self.ML.small_qbit_num_limit):
 
 				permute_map_np = np.zeros( (256,), dtype=np.uint32 )
 				target_qbit_pair_diff = 1 << target_qbit_loc
 				
 				for idx in range(256): # 256 = 2^8
-					if (idx < matrix_size):
+					if (idx < self.ML.matrix_size):
 						permute_map_np[idx] = idx ^ target_qbit_pair_diff
 					else:
 						permute_map_np[idx] = idx
@@ -1044,9 +1041,9 @@ class Generate_static_data(IO):
 				# generate vectors to indicate which elements in a 320 vector correspond to state |1> of target qubit less than small_qbit_num_limit 
 				# if target_qubit_loc at the idx-th element is in state_1 |1> then all the 8 bits of the idx-th element is set to 1, thus state_1[idx] = 255
 				# if target_qubit_loc at the idx-th element is in state_0 |0> then all the 8 bits of the idx-th element is set to 1, thus state_0[idx] = 255
-				states_1_np = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint8 )
-				states_0_np = np.zeros( (small_qbit_num_limit,320,), dtype=np.uint8 )
-				for target_qbit_loc in range(small_qbit_num_limit):
+				states_1_np = np.zeros( (self.ML.small_qbit_num_limit,320,), dtype=np.uint8 )
+				states_0_np = np.zeros( (self.ML.small_qbit_num_limit,320,), dtype=np.uint8 )
+				for target_qbit_loc in range(self.ML.small_qbit_num_limit):
 					target_qbit_pair_diff = 1 << target_qbit_loc
 					for idx in range(256): # 256 = 2^8
 						if (idx & target_qbit_pair_diff > 0):
@@ -1111,11 +1108,11 @@ class Generate_static_data(IO):
 				
 				# same as before but now for the control qbit
 				control_state_1_selector_st = control_state_1_selector_mt.read(streams=[g.SG1[1]])
-				control_state_1_st = g.mem_gather(states_1_mt, control_state_1_selector_st, output_streams=[g.SG1[0]], time=gate_count+1)
+				control_state_1_st = g.mem_gather(states_1_mt, control_state_1_selector_st, output_streams=[g.SG1[0]], time=self.ML.gate_count+1)
 				#control_state_1_st.write(name="control_state_1_st_oo", layout='H1(E), -1, S1(36)', program_output=True)
 				
 				control_state_0_selector_st = control_state_0_selector_mt.read(streams=[g.SG1[24]])
-				control_state_0_st = g.mem_gather(states_0_mt, control_state_0_selector_st, output_streams=[g.SG1[24]], time=gate_count+1)
+				control_state_0_st = g.mem_gather(states_0_mt, control_state_0_selector_st, output_streams=[g.SG1[24]], time=self.ML.gate_count+1)
 
 				#states_1_st = states_1_mt.read( streams=g.SG1[8], time=5000 )
 				#control_state_1_selector_st.write(name="states_1_st_ttt", layout='H1(E), -1, S1(43)', program_output=True)
@@ -1241,13 +1238,13 @@ class Generate_static_data(IO):
 				#self.distributor_map_mt   = g.from_data(distributor_map_np, layout=layout_distributor_maps_west)
 			
 
-				self.distributor_map_mt = g.input_tensor(shape=(gate_count,320,), 
+				self.distributor_map_mt = g.input_tensor(shape=(self.ML.gate_count,320,), 
                                                                          dtype=g.uint8, 
                                                                          name="control_qubit_distributor_maps", 
                                                                          layout=self.ML.layout_distributor_maps_west)
 
 				# distributor maps to select the correct memory maps for L and H target qubits 
-				self.target_qubit_distributor_map_mt = g.input_tensor(shape=(gate_count,320,), 
+				self.target_qubit_distributor_map_mt = g.input_tensor(shape=(self.ML.gate_count,320,), 
                                                                                       dtype=g.uint8, 
                                                                                       name="target_qubit_distributor_maps", 
                                                                                       layout=self.ML.layout_target_qubit_distributor_maps)
@@ -1293,11 +1290,11 @@ class Generate_static_data(IO):
 				
 				# preallocate tensors for intermediate memory tensors
 
-				gate_kernels_real_separated_mt = g.constant_tensor((gate_splits*80, 320), \
+				gate_kernels_real_separated_mt = g.constant_tensor((self.ML.gate_splits*80, 320), \
 										dtype=g.float32, layout=self.ML.layout_gate_kernels_real_buffer, \
 										initialized=False)	
 
-				gate_kernels_imag_separated_mt = g.constant_tensor((gate_splits*80, 320), \
+				gate_kernels_imag_separated_mt = g.constant_tensor((self.ML.gate_splits*80, 320), \
 										dtype=g.float32, layout=self.ML.layout_gate_kernels_imag_buffer, \
 										initialized=False)	
 
@@ -1306,8 +1303,8 @@ class Generate_static_data(IO):
 				exclusion_tensors.append( gate_kernels_imag_separated_mt )
 
 				
-				gate_kernels_real_separated_mt_list = gate_kernels_real_separated_mt.split( dim=0, num_splits=gate_splits*80 )
-				gate_kernels_imag_separated_mt_list = gate_kernels_imag_separated_mt.split( dim=0, num_splits=gate_splits*80 )	
+				gate_kernels_real_separated_mt_list = gate_kernels_real_separated_mt.split( dim=0, num_splits=self.ML.gate_splits*80 )
+				gate_kernels_imag_separated_mt_list = gate_kernels_imag_separated_mt.split( dim=0, num_splits=self.ML.gate_splits*80 )	
 				
 				# split the tensor between hemispheres WEST and EAST (each (2k+1)-th gate kernel goes to the western hemispheres, while 2k-th gates are assigned to the eastern hemisphere
 				# the gate kernel elements to be used later are the first 4 elements in each vector
@@ -1353,8 +1350,8 @@ class Generate_static_data(IO):
 			with g.ResourceScope(name="split_gates_scope2", is_buffered=True, predecessors=[split_gates_scope], time=None) as split_gates_scope2 :
 			
 							
-				gate_kernels_real_separated_mt = g.concat( gate_kernels_real_separated_mt_list[0:gate_count], dim=0)
-				gate_kernels_imag_separated_mt = g.concat( gate_kernels_imag_separated_mt_list[0:gate_count], dim=0)				
+				gate_kernels_real_separated_mt = g.concat( gate_kernels_real_separated_mt_list[0:self.ML.gate_count], dim=0)
+				gate_kernels_imag_separated_mt = g.concat( gate_kernels_imag_separated_mt_list[0:self.ML.gate_count], dim=0)				
 				
 				
 				
@@ -1369,32 +1366,32 @@ class Generate_static_data(IO):
 				exclusion_tensors_imag_copy = []
 
 				# preallocate tensors for the output    
-				for idx in range( len(gate_kernel_element_labels) ): # iterates over the labels of the gate kernel elements
+				for idx in range( len(self.ML.gate_kernel_element_labels) ): # iterates over the labels of the gate kernel elements
 				
-					label          = gate_kernel_element_labels[idx]
-					address_offset = 256 + idx*256*(gate_memory_offset_factor) # MXM permute matrices are also stored at the begining of these slices
+					label          = self.ML.gate_kernel_element_labels[idx]
+					address_offset = 256 + idx*256*(self.ML.gate_memory_offset_factor) # MXM permute matrices are also stored at the begining of these slices
 					
-					if (address_offset+gate_count-1 < 4096):
+					if (address_offset+self.ML.gate_count-1 < 4096):
 						# the start and end points of the range are in the same bank				
 						
-						layout = f"H1(E), B1(0), A{gate_count}({address_offset}-{address_offset+gate_count-1})"
+						layout = f"H1(E), B1(0), A{self.ML.gate_count}({address_offset}-{address_offset+self.ML.gate_count-1})"
 						
-						real_copy = g.constant_tensor((gate_count, 320), 
+						real_copy = g.constant_tensor((self.ML.gate_count, 320), 
 															dtype=g.float32, layout=layout + ", S4(0-3)", 
 															name = "gate_kernels_real_copy_"+label,
 															initialized=False)
 															
-						imag_copy = g.constant_tensor((gate_count, 320), 
+						imag_copy = g.constant_tensor((self.ML.gate_count, 320), 
 															dtype=g.float32, layout=layout + ", S4(4-7)", 
 															name = "gate_kernels_imag_copy_"+label,
 															initialized=False)
 															
-						real      = g.constant_tensor((gate_count, 320), 
+						real      = g.constant_tensor((self.ML.gate_count, 320), 
 															dtype=g.float32, layout=layout + ", S4(8-11)", 
 															name = "gate_kernels_real_"+label,
 															initialized=False)
 															
-						imag      = g.constant_tensor((gate_count, 320), 
+						imag      = g.constant_tensor((self.ML.gate_count, 320), 
 															dtype=g.float32, layout=layout + ", S4(12-15)", 
 															name ="gate_kernels_imag_"+label,
 															initialized=False)	
@@ -1402,24 +1399,24 @@ class Generate_static_data(IO):
 					elif ( address_offset >= 4096 ) :
 
 						
-						layout = f"H1(E), B1(1), A{gate_count}({address_offset-4096}-{address_offset+gate_count-1-4096})"
+						layout = f"H1(E), B1(1), A{self.ML.gate_count}({address_offset-4096}-{address_offset+self.ML.gate_count-1-4096})"
 						
-						real_copy = g.constant_tensor((gate_count, 320), 
+						real_copy = g.constant_tensor((self.ML.gate_count, 320), 
 															dtype=g.float32, layout=layout + ", S4(0-3)", 
 															name = "gate_kernels_real_copy_"+label,
 															initialized=False)
 															
-						imag_copy = g.constant_tensor((gate_count, 320), 
+						imag_copy = g.constant_tensor((self.ML.gate_count, 320), 
 															dtype=g.float32, layout=layout + ", S4(4-7)", 
 															name = "gate_kernels_imag_copy_"+label,
 															initialized=False)
 															
-						real      = g.constant_tensor((gate_count, 320), 
+						real      = g.constant_tensor((self.ML.gate_count, 320), 
 															dtype=g.float32, layout=layout + ", S4(8-11)", 
 															name = "gate_kernels_real_"+label,
 															initialized=False)
 															
-						imag      = g.constant_tensor((gate_count, 320), 
+						imag      = g.constant_tensor((self.ML.gate_count, 320), 
 															dtype=g.float32, layout=layout + ", S4(12-15)", 
 															name ="gate_kernels_imag_"+label,
 															initialized=False)	
@@ -1428,13 +1425,13 @@ class Generate_static_data(IO):
 						# the start and end points of the range are in different banks
 						
 						layout_part1 = f"H1(E), B1(0), A{4096-address_offset}({address_offset}-4095)"
-						layout_part2 = f"H1(E), B1(1), A{gate_count+address_offset-4096}(0-{gate_count+address_offset-4096-1})"	
+						layout_part2 = f"H1(E), B1(1), A{self.ML.gate_count+address_offset-4096}(0-{self.ML.gate_count+address_offset-4096-1})"	
 						real_copy_part1 = g.constant_tensor((4096-address_offset, 320), 
 															dtype=g.float32, layout=layout_part1 + ", S4(0-3)", 
 															name = "gate_kernels_real_copy_1"+label,
 															initialized=False)
 															
-						real_copy_part2 = g.constant_tensor((gate_count+address_offset-4096, 320), 
+						real_copy_part2 = g.constant_tensor((self.ML.gate_count+address_offset-4096, 320), 
 															dtype=g.float32, layout=layout_part2 + ", S4(0-3)", 
 															name = "gate_kernels_real_copy_2"+label,
 															initialized=False)					
@@ -1448,7 +1445,7 @@ class Generate_static_data(IO):
 															name = "gate_kernels_imag_copy_1"+label,
 															initialized=False)
 															
-						imag_copy_part2 = g.constant_tensor((gate_count+address_offset-4096, 320), 
+						imag_copy_part2 = g.constant_tensor((self.ML.gate_count+address_offset-4096, 320), 
 															dtype=g.float32, layout=layout_part2 + ", S4(4-7)", 
 															name = "gate_kernels_imag_copy_2"+label,
 															initialized=False)					
@@ -1462,7 +1459,7 @@ class Generate_static_data(IO):
 															name = "gate_kernels_real_1"+label,
 															initialized=False)
 															
-						real_part2 = g.constant_tensor((gate_count+address_offset-4096, 320), 
+						real_part2 = g.constant_tensor((self.ML.gate_count+address_offset-4096, 320), 
 															dtype=g.float32, layout=layout_part2 + ", S4(8-11)", 
 															name = "gate_kernels_real_2"+label,
 															initialized=False)					
@@ -1476,7 +1473,7 @@ class Generate_static_data(IO):
 															name = "gate_kernels_imag_1"+label,
 															initialized=False)
 															
-						imag_part2 = g.constant_tensor((gate_count+address_offset-4096, 320), 
+						imag_part2 = g.constant_tensor((self.ML.gate_count+address_offset-4096, 320), 
 															dtype=g.float32, layout=layout_part2 + ", S4(12-15)", 
 															name = "gate_kernels_imag_2"+label,
 															initialized=False)					
@@ -1527,29 +1524,6 @@ class Generate_static_data(IO):
 					exclusion_tensors.append(imag)	
 						
 	
-				'''			
-				if 256+gate_count*len(gate_kernel_element_labels) >= 4096:
-					src, sic, sr, si = [ g.concat([g.constant_tensor((3840, 320), 
-															dtype=g.float32, layout=f"H1(E), B1(0), A3840(256-4095), S4({i*4}-{(i+1)*4-1})", 
-															name = "gate_kernels_"+str(i),
-															initialized=False),
-													g.constant_tensor((gate_count*len(gate_kernel_element_labels)-3840, 320), 
-															dtype=g.float32, layout=f"H1(E), B1(1), A{gate_count*len(gate_kernel_element_labels)-3840}(0-{gate_count*len(gate_kernel_element_labels)-3840-1}), S4({i*4}-{(i+1)*4-1})", 
-															name = "gate_kernels_"+str(i),
-															initialized=False)], dim=0)
-						for i in range(4)]
-						
-				else:
-					src, sic, sr, si = [
-						g.constant_tensor((gate_count*len(gate_kernel_element_labels), 320), 
-															dtype=g.float32, layout=f"H1(E), A{gate_count*len(gate_kernel_element_labels)}(256-{256+gate_count*len(gate_kernel_element_labels)-1}), S4({i*4}-{(i+1)*4-1})", 
-															name = "gate_kernels_"+str(i),
-															initialized=False)
-						for i in range(4)]
-				
-
-
-				'''
 
 
 				# generate gate kernels to be applied on state |0> and resulting to alternating states |0> and |1> according to the periodicity of the current target qubit
@@ -1557,19 +1531,19 @@ class Generate_static_data(IO):
 				# create distributor maps for the process to broadcast elements 00,01,10,11 of the gate kernel onto a 320 element vectors
 				distributor_00_np = np.zeros( (320,), dtype=np.uint8 )
 				distribute_map_tensor_mt_00 = g.from_data( np.asarray(distributor_00_np, dtype=np.uint8), 
-                                                                           layout=self.ML.layout_distribute_map_tensor + f", A1({1320+small_qbit_num_limit})" )
+                                                                           layout=self.ML.layout_distribute_map_tensor + f", A1({1320+self.ML.small_qbit_num_limit})" )
 
 				distributor_01_np = np.ones( (320,), dtype=np.uint8 )
 				distribute_map_tensor_mt_01 = g.from_data( np.asarray(distributor_01_np, dtype=np.uint8), 
-                                                                           layout=self.ML.layout_distribute_map_tensor + f", A1({1320+small_qbit_num_limit+1})" )
+                                                                           layout=self.ML.layout_distribute_map_tensor + f", A1({1320+self.ML.small_qbit_num_limit+1})" )
 
 				distributor_10_np = np.ones( (320,), dtype=np.uint8 )*2
 				distribute_map_tensor_mt_10 = g.from_data( np.asarray(distributor_10_np, dtype=np.uint8), 
-                                                                           layout=self.ML.layout_distribute_map_tensor + f", A1({1320+small_qbit_num_limit+2})" )
+                                                                           layout=self.ML.layout_distribute_map_tensor + f", A1({1320+self.ML.small_qbit_num_limit+2})" )
 
 				distributor_11_np = np.ones( (320,), dtype=np.uint8 )*3
 				distribute_map_tensor_mt_11 = g.from_data( np.asarray(distributor_11_np, dtype=np.uint8), 
-                                                                           layout=self.ML.layout_distribute_map_tensor + f", A1({1320+small_qbit_num_limit+3})" )
+                                                                           layout=self.ML.layout_distribute_map_tensor + f", A1({1320+self.ML.small_qbit_num_limit+3})" )
 
 		
 				distribute_map_tensor_list = [distribute_map_tensor_mt_00, distribute_map_tensor_mt_01, distribute_map_tensor_mt_10, distribute_map_tensor_mt_11]
@@ -1591,9 +1565,9 @@ class Generate_static_data(IO):
 				
 				
 				
-				for idx in range(len(gate_kernel_element_labels) ): # iterates over the labels of the gate kernel elements
+				for idx in range(len(self.ML.gate_kernel_element_labels) ): # iterates over the labels of the gate kernel elements
 
-					label = gate_kernel_element_labels[idx]
+					label = self.ML.gate_kernel_element_labels[idx]
 					
 					gate_kernels_separated_mt = g.stack( [gate_kernels_real_separated_mt, gate_kernels_imag_separated_mt], dim=0 )
 					gate_kernel_st = gate_kernels_separated_mt.read( streams=g.SG4[1], time=None )
@@ -1625,23 +1599,23 @@ class Generate_static_data(IO):
 					gate_kernels_mt      = g.stack( [gate_kernels_real_mt, gate_kernels_imag_mt], dim=0 )
 					gate_kernels_copy_mt = g.stack( [gate_kernels_real_copy_mt, gate_kernels_imag_copy_mt], dim=0 )
 					
-					gate_kernel_broadcasted_st.write( storage_req=gate_kernels_mt.storage_request, time= idx*(2*gate_count + 1) )
+					gate_kernel_broadcasted_st.write( storage_req=gate_kernels_mt.storage_request, time= idx*(2*self.ML.gate_count + 1) )
 					gate_kernel_broadcasted_st.write( storage_req=gate_kernels_copy_mt.storage_request )
 
 					
-				for label in gate_kernel_element_labels:
+				for label in self.ML.gate_kernel_element_labels:
 
 					gate_kernels_real_mt      = gate_kernels_real_mt_dict[ label ]
 					gate_kernels_imag_mt      = gate_kernels_imag_mt_dict[ label ]
 					gate_kernels_real_copy_mt = gate_kernels_real_copy_mt_dict[ label ]
 					gate_kernels_imag_copy_mt = gate_kernels_imag_copy_mt_dict[ label ]
 
-					gate_kernels_real_mt_list      = gate_kernels_real_mt.split( dim=0, num_splits=gate_count )
-					gate_kernels_imag_mt_list      = gate_kernels_imag_mt.split( dim=0, num_splits=gate_count )
-					gate_kernels_real_copy_mt_list = gate_kernels_real_copy_mt.split( dim=0, num_splits=gate_count )
-					gate_kernels_imag_copy_mt_list = gate_kernels_imag_copy_mt.split( dim=0, num_splits=gate_count )
+					gate_kernels_real_mt_list      = gate_kernels_real_mt.split( dim=0, num_splits=self.ML.gate_count )
+					gate_kernels_imag_mt_list      = gate_kernels_imag_mt.split( dim=0, num_splits=self.ML.gate_count )
+					gate_kernels_real_copy_mt_list = gate_kernels_real_copy_mt.split( dim=0, num_splits=self.ML.gate_count )
+					gate_kernels_imag_copy_mt_list = gate_kernels_imag_copy_mt.split( dim=0, num_splits=self.ML.gate_count )
 
-					for gate_idx in range(gate_count):
+					for gate_idx in range(self.ML.gate_count):
 
 						self.gate_kernels_broadcasted_real_dict[f"{gate_idx}_"+label] = gate_kernels_real_mt_list[ gate_idx ]
 						self.gate_kernels_broadcasted_imag_dict[f"{gate_idx}_"+label] = gate_kernels_imag_mt_list[ gate_idx ]
@@ -1680,193 +1654,7 @@ class Generate_static_data(IO):
 				self.gate_kernels_broadcasted_real_copy_mt.is_static = True
 				self.gate_kernels_broadcasted_imag_copy_mt.is_static = True
 				
-					
-			'''
-				gate_kernels_packed_st = gate_kernels_packed_mt.read( streams=g.SG4[0], time=0 )
 
-			# split the tensor between hemispheres WEST and EAST (each (2k+1)-th gate kernel goes to the western hemispheres, while 2k-th gates are assigned to the eastern hemisphere
-				# the gate kernel elements to be used later are the first 4 elements in each vector
-				gate_kernels_imag_list = []
-				gate_kernels_real_list = []
-
-				for gate_idx in range(gate_count):
-
-					gate_kernels_packed_list = g.split_inner_splits( gate_kernels_packed_st )
-					gate_kernels_real_packed_st = gate_kernels_packed_list[0]
-					gate_kernels_imag_packed_st = gate_kernels_packed_list[1]
-
-					layout_real = layout_gate_kernels_real
-					layout_imag = layout_gate_kernels_imag
-
-					gate_kernels_imag_mt = gate_kernels_imag_packed_st.write(name=f"gate_kernel_imag_{gate_idx}", layout=layout_imag + f", A1({gate_count*4 + gate_idx + 5000})")
-					gate_kernels_real_mt = gate_kernels_real_packed_st.write(name=f"gate_kernel_real_{gate_idx}", layout=layout_real + f", A1({gate_count*4 + gate_idx + 5000})")
-
-					# add rule for mutual memory exclusion for the stored real and imaginary parts of the gate kernels
-					if ( gate_idx > 0 ):
-						g.add_mem_constraints(gate_kernels_imag_list, [gate_kernels_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)     
-						g.add_mem_constraints(gate_kernels_real_list, [gate_kernels_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)    
-
-					gate_kernels_imag_list.append( gate_kernels_imag_mt )
-					gate_kernels_real_list.append( gate_kernels_real_mt )
-			
-
-					if gate_idx < gate_count-1 :
-						permutor_request = permutor_requests[gate_idx % 2]
-						shift = 4
-						gate_kernels_packed_st = g.shift(gate_kernels_packed_st, 
-									shift, 
-									permutor_id=permutor_request, 
-									shift_src=[inst.NEW_SRC] * 2, 
-									dispatch_set=inst.DispatchSet.SET_1, 
-									input_streams=[g.SG4[0]], 
-									output_streams=[g.SG4[0]])
-
-
-
-				# generate gate kernels to be applied on state |0> and resulting to alternating states |0> and |1> according to the periodicity of the current target qubit
-
-				# create distributor maps for the process to broadcast elements 00,01,10,11 of the gate kernel onto a 320 element vectors
-				distributor_00_np = np.zeros( (320,), dtype=np.uint8 )
-				distribute_map_tensor_mt_00 = g.from_data( np.asarray(distributor_00_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({1320+small_qbit_num_limit})" )
-				distributor_01_np = np.ones( (320,), dtype=np.uint8 )
-				distribute_map_tensor_mt_01 = g.from_data( np.asarray(distributor_01_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({1320+small_qbit_num_limit+1})" )
-				distributor_10_np = np.ones( (320,), dtype=np.uint8 )*2
-				distribute_map_tensor_mt_10 = g.from_data( np.asarray(distributor_10_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({1320+small_qbit_num_limit+2})" )
-				distributor_11_np = np.ones( (320,), dtype=np.uint8 )*3
-				distribute_map_tensor_mt_11 = g.from_data( np.asarray(distributor_11_np, dtype=np.uint8), layout=layout_distribute_map_tensor + f", A1({1320+small_qbit_num_limit+3})" )
-
-				g.add_mem_constraints([distribute_map_tensor_mt_01, distribute_map_tensor_mt_10, distribute_map_tensor_mt_11], [distribute_map_tensor_mt_00], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
-				g.add_mem_constraints([distribute_map_tensor_mt_00, distribute_map_tensor_mt_10, distribute_map_tensor_mt_11], [distribute_map_tensor_mt_01], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
-				g.add_mem_constraints([distribute_map_tensor_mt_01, distribute_map_tensor_mt_00, distribute_map_tensor_mt_11], [distribute_map_tensor_mt_10], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
-
-				distribute_map_tensor_list = [distribute_map_tensor_mt_00, distribute_map_tensor_mt_01, distribute_map_tensor_mt_10, distribute_map_tensor_mt_11]
-
-	  
-
-				gate_kernels_broadcasted_imag_list = []
-				gate_kernels_broadcasted_real_list = []
-				gate_kernels_broadcasted_imag_copy_list = []
-				gate_kernels_broadcasted_real_copy_list = []
-				loop_time_long_cycle = 51 # comming from the iterations of the previous cycles (the loops are overlapping in execution)
-				loop_time_short_cycle = 31
-
-
-				for gate_idx in range(gate_count):
-
-					gate_kernel_real_mt = gate_kernels_real_list[gate_idx]
-					gate_kernel_imag_mt = gate_kernels_imag_list[gate_idx]
-
-					for idx in range(len(gate_kernel_element_labels) ): # iterates over the labels of the gate kernel elements
-						label = gate_kernel_element_labels[idx]
-
-						# concat real and imag parts to pipeline them at once through a broadcaster
-						time_tmp = 12 + 2*idx + ((gate_idx+1)//2)*loop_time_long_cycle + (gate_idx//2)*loop_time_short_cycle
-						gate_kernel_real_st = gate_kernel_real_mt.read( streams=g.SG4[1], time= time_tmp + (gate_idx%2)*4 ) 
-						gate_kernel_imag_st = gate_kernel_imag_mt.read( streams=g.SG4[1], time= time_tmp + 2 )
-		
-					
-						if gate_idx % 2 == 0 :
-							gate_kernel_st = g.concat_inner_splits( [gate_kernel_real_st, gate_kernel_imag_st] )
-						else: 
-							gate_kernel_st = g.concat_inner_splits( [gate_kernel_imag_st, gate_kernel_real_st] )
-					
-						distributor_request = distributor_requests[(gate_idx+1) % 2]
-						gate_kernel_broadcasted_st = g.distribute_8( gate_kernel_st, 
-							distribute_map_tensor_list[ idx ],
-							distributor_req=distributor_request,
-							map_stream_req=g.SG1[12],
-							bypass8=0b00001111,
-						)
-					
-						permutor_request = permutor_requests[(gate_idx+1) % 2]
-						gate_kernel_broadcasted_st = g.broadcast_lane_0( gate_kernel_broadcasted_st, 
-										permutor_request,
-										old_bitmap=[inst.NEW_SRC] * 4, 
-										mask_bitmap=0b0000,
-										input_streams=[g.SG4[3]], 
-										output_streams=[g.SG4[2]]
-						)
-	
-						# split into real ands imaginary parts	
-						gate_kernel_broadcasted_list = g.split_inner_splits( gate_kernel_broadcasted_st )
-						if gate_idx % 2 == 0 :
-							gate_kernel_broadcasted_real_st = gate_kernel_broadcasted_list[0]
-							gate_kernel_broadcasted_imag_st = gate_kernel_broadcasted_list[1]
-						else:
-							gate_kernel_broadcasted_real_st = gate_kernel_broadcasted_list[1]
-							gate_kernel_broadcasted_imag_st = gate_kernel_broadcasted_list[0]				
-					
-	
-						######################## save broadcasted elements into memory and add memory exclusion rules #############################
-
-
-						layout_real = layout_gate_kernels_real
-						layout_imag = layout_gate_kernels_imag
-						layout_real_copy = layout_gate_kernels_real_copy
-						layout_imag_copy = layout_gate_kernels_imag_copy
-						
-						address_offset = (idx+1)*256 # MXM permute matrices are also stored at the begining of these slices		
-
-
-						layout_real = layout_real + f", A1({address_offset + gate_idx})"
-						layout_imag = layout_imag + f", A1({address_offset + gate_idx})"
-
-						gate_kernel_broadcasted_real_st = g.reshape( gate_kernel_broadcasted_real_st, [1,320] )
-						gate_kernels_broadcasted_real_mt = gate_kernel_broadcasted_real_st.write(name=f"gate_kernel_broadcasted_real_{gate_idx}_"+label, layout=layout_real)#, program_output=True)
-						gate_kernel_broadcasted_imag_st = g.reshape( gate_kernel_broadcasted_imag_st, [1,320] )
-						gate_kernels_broadcasted_imag_mt = gate_kernel_broadcasted_imag_st.write(name=f"gate_kernel_broadcasted_imag_{gate_idx}_"+label, layout=layout_imag)#, program_output=True)
-					
-						# copies of the gate elements to support read concurrency in forthcoming processeses
-						layout_real = layout_real_copy + f", A1({address_offset + gate_idx})"
-						layout_imag = layout_imag_copy + f", A1({address_offset + gate_idx})"
-						gate_kernels_broadcasted_real_copy_mt = gate_kernel_broadcasted_real_st.write(name=f"gate_kernel_broadcasted_real_{gate_idx}_"+label, layout=layout_real)#, program_output=True)
-						gate_kernels_broadcasted_imag_copy_mt = gate_kernel_broadcasted_imag_st.write(name=f"gate_kernel_broadcasted_imag_{gate_idx}_"+label, layout=layout_imag)#, program_output=True)
-					
-
-						gate_kernels_broadcasted_real_mt.is_static = True
-						gate_kernels_broadcasted_imag_mt.is_static = True
-						gate_kernels_broadcasted_real_copy_mt.is_static = True
-						gate_kernels_broadcasted_imag_copy_mt.is_static = True				
-
-
-						# add rule for mutual memory exclusion for the stored real and imaginary parts of the gate kernels  
-						if ( len(gate_kernels_broadcasted_real_list) > 0 ):
-							g.add_mem_constraints(gate_kernels_broadcasted_real_list, [gate_kernels_broadcasted_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)     
-						if ( len(gate_kernels_broadcasted_imag_list) > 0 ):
-							g.add_mem_constraints(gate_kernels_broadcasted_imag_list, [gate_kernels_broadcasted_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)   
-						if ( len(gate_kernels_broadcasted_real_copy_list) > 0 ):
-							g.add_mem_constraints(gate_kernels_broadcasted_real_copy_list, [gate_kernels_broadcasted_real_copy_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)     
-						if ( len(gate_kernels_broadcasted_imag_copy_list) > 0 ):
-							g.add_mem_constraints(gate_kernels_broadcasted_imag_copy_list, [gate_kernels_broadcasted_imag_copy_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)   					
-		
-		
-						g.add_mem_constraints(gate_kernels_real_list, [gate_kernels_broadcasted_real_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)    
-						g.add_mem_constraints(gate_kernels_imag_list, [gate_kernels_broadcasted_imag_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE) 
-
-					
-						gate_kernels_broadcasted_real_list.append( gate_kernels_broadcasted_real_mt )
-						gate_kernels_broadcasted_imag_list.append( gate_kernels_broadcasted_imag_mt )
-						self.gate_kernels_broadcasted_real_dict[f"{gate_idx}_"+label] = gate_kernels_broadcasted_real_mt
-						self.gate_kernels_broadcasted_imag_dict[f"{gate_idx}_"+label] = gate_kernels_broadcasted_imag_mt
-	
-
-						self.gate_kernels_broadcasted_real_mt = g.concat( gate_kernels_broadcasted_real_list )
-						self.gate_kernels_broadcasted_imag_mt = g.concat( gate_kernels_broadcasted_imag_list )
-						self.gate_kernels_broadcasted_real_mt.name = 'gate_kernels_broadcasted_real'
-						self.gate_kernels_broadcasted_imag_mt.name = 'gate_kernels_broadcasted_imag'					
-					
-
-						gate_kernels_broadcasted_real_copy_list.append( gate_kernels_broadcasted_real_copy_mt )
-						gate_kernels_broadcasted_imag_copy_list.append( gate_kernels_broadcasted_imag_copy_mt )
-						self.gate_kernels_broadcasted_real_copy_dict[f"{gate_idx}_"+label] = gate_kernels_broadcasted_real_copy_mt
-						self.gate_kernels_broadcasted_imag_copy_dict[f"{gate_idx}_"+label] = gate_kernels_broadcasted_imag_copy_mt
-
-						self.gate_kernels_broadcasted_real_copy_mt = g.concat( gate_kernels_broadcasted_real_copy_list )
-						self.gate_kernels_broadcasted_imag_copy_mt = g.concat( gate_kernels_broadcasted_imag_copy_list )
-						self.gate_kernels_broadcasted_real_copy_mt.name = 'gate_kernels_broadcasted_real_copy'
-						self.gate_kernels_broadcasted_imag_copy_mt.name = 'gate_kernels_broadcasted_imag_copy'	
-			'''
-			
 			g.add_mem_constraints(exclusion_tensors, exclusion_tensors, g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 			self.pgm_pkg.compile_program_context(pgm1)
 			

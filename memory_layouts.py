@@ -1,24 +1,3 @@
-qbit_num = 16
-
-# label to indicate the 00, 01, 10, 11 elements of the gate kernel
-gate_kernel_element_labels = ["00", "01", "10", "11"]
-
-# gate count stored in a single packed vector 
-gate_count = 256*7 
-gate_splits = (gate_count-1+80) // 80  # on each 320-element vector 80 gate kernels are stored in the input
-gate_memory_offset_factor = ((gate_count-1+256) // 256)
-second_gate_count = 22
-
-# the number og qubits for which the gate operations need the permutor (need to reorganize the elements in a vector)
-small_qbit_num_limit = 8
-
-
-# determine the size of the part of the state vector handled in the inner split of the LPU tensors
-matrix_size   = int(2**small_qbit_num_limit)
-#memory_slices = 1 << (qbit_num-small_qbit_num_limit) # TODO:replace all the occurances of memory_slices with memory_addresses
-memory_addresses = 1 << (qbit_num-small_qbit_num_limit)
-
-
 
 class MemoryLayouts():
 

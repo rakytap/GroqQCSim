@@ -361,7 +361,7 @@ class Gate(Gate_counters):
 			
 			
 					state_permute_map_selector_shared = g.shared_memory_tensor(self.state_permute_map_selector_mt, name="state_permute_map_selector_shared")		
-					state_permute_map_selector_list   = g.split_vectors(input=state_permute_map_selector_shared, splits=[1]*gate_count)
+					state_permute_map_selector_list   = g.split_vectors(input=state_permute_map_selector_shared, splits=[1]*self.ML.gate_count)
 			
 	
 					# otherwise the permutor slices are used
@@ -435,7 +435,7 @@ class Gate(Gate_counters):
 			gate_kernels_broadcasted_real_shared_copy_dict = {}
 			gate_kernels_broadcasted_imag_shared_copy_dict = {}
 			
-			for label in gate_kernel_element_labels:
+			for label in self.ML.gate_kernel_element_labels:
 
 				key = '0_' + label
 				gate_kernel_broadcasted_real_mt = self.gate_kernels_broadcasted_real_dict[key]

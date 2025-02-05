@@ -83,10 +83,10 @@ class Gate(Gate_L_base):
 		
 		
 		read_out_qubit_0_memory_tensor_st = g.mem_gather(self.target_qubit_read_maps_L_mt, control_qbit_state_1_selector_st, output_streams=[g.SG1[0]] )
-		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_0_memory_tensor_st, [memory_addresses//2,320])
+		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_0_memory_tensor_st, [self.ML.memory_addresses//2,320])
 
 		read_out_qubit_1_memory_tensor_st = g.mem_gather(self.target_qubit_read_pair_maps_L_mt, control_qbit_state_1_selector_st, output_streams=[g.SG1[1]] )
-		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_1_memory_tensor_st, [memory_addresses//2,320])
+		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_1_memory_tensor_st, [self.ML.memory_addresses//2,320])
 		###########################
 
 		read_out_qubit_memory_tensor_st = g.stack( [read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st], dim=1 )
@@ -111,8 +111,8 @@ class Gate(Gate_L_base):
 
 		read_out_qubit_memory_tensor_st_list = read_out_qubit_memory_tensor_st.split( dim=1, num_splits=2)	
 		
-		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[0], [memory_addresses//2,320])
-		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[1], [memory_addresses//2,320])
+		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[0], [self.ML.memory_addresses//2,320])
+		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[1], [self.ML.memory_addresses//2,320])
 
 
 		#read_out_qubit_0_memory_tensor_st.write( name="rrww0", layout='H1(W), -1, S1', program_output=True )

@@ -34,7 +34,7 @@ def compile(mxm_permutation = True) -> List[str]:
 	"""
 	output_dir = "./build_iop"
 	shutil.rmtree(output_dir, ignore_errors=True)
-	pgm_pkg = g.ProgramPackage(f"QCsim_multi_program.{qbit_num}.{gate_count}", output_dir)
+	pgm_pkg = g.ProgramPackage(f"QCsim_multi_program.{ML.qbit_num}.{ML.gate_count}", output_dir)
 
 	
 
@@ -144,7 +144,7 @@ def invoke(device, iop, pgm_num, ep, tensors):
 	return outs
 
 
-def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kernels_real, gate_kernels_imag, mxm_permutation = True):
+def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kernels_real, gate_kernels_imag, ML, mxm_permutation = True):
 	"""
     This function interacts with the device driver at a lower level to show
     the control of loading 2 programs and invoking each program through
@@ -194,16 +194,16 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	# create memory maps to access the correct metadata on the chip to perform the gate operation on the chosen target_qubit
 	#if mxm_permutation :
 	#in case the MXM is used, the individual permute mtrices will occupy 20 memory addresses
-	mxm_permutation_selector = np.zeros( (gate_count,320,), dtype=np.uint8 ) #target_qbit_selector*20
+	mxm_permutation_selector = np.zeros( (ML.gate_count,320,), dtype=np.uint8 ) #target_qbit_selector*20
 	#else:  ##### !!! gate SL needs the permutor !!! #####
 	
 	# in case the permutor is used for permutation
-	permutation_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )
+	permutation_selector = np.zeros( (ML.gate_count,320,), dtype=np.uint8 )
 	
 	# maps for mem_gather to select the correct state_1 indices according to the target qubit
-	state_1_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )#np.zeros( (2,320,), dtype=np.uint8 )
-	state_0_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )#np.zeros( (2,320,), dtype=np.uint8 )	
-	for gate_idx in range(gate_count):
+	state_1_selector = np.zeros( (ML.gate_count,320,), dtype=np.uint8 )#np.zeros( (2,320,), dtype=np.uint8 )
+	state_0_selector = np.zeros( (ML.gate_count,320,), dtype=np.uint8 )#np.zeros( (2,320,), dtype=np.uint8 )	
+	for gate_idx in range(ML.gate_count):
 		target_qbit = target_qbits[gate_idx]
 		if target_qbit < 8:
 			state_0_selector[gate_idx, 0:320:16] = target_qbit
@@ -216,12 +216,12 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 		
 
 	
-	control_state_1_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )
-	for gate_idx in range(gate_count):
+	control_state_1_selector = np.zeros( (ML.gate_count,320,), dtype=np.uint8 )
+	for gate_idx in range(ML.gate_count):
 		
 		control_qbit = control_qbits[gate_idx]
 
-		if ( control_qbit < small_qbit_num_limit and control_qbit >= 0 ) :
+		if ( control_qbit < ML.small_qbit_num_limit and control_qbit >= 0 ) :
 			control_state_1_selector[gate_idx,0:320:16] = control_qbit
 		elif (control_qbit == -1 ): #no control qubit case
 			control_state_1_selector[gate_idx,0:320:16] = 0  # no control qubit is used when filetring the gate kernels
@@ -246,15 +246,15 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 
 	# control qubit distributor maps for SL gates
-	distributor_map_np = np.zeros( (gate_count, 320,), dtype=np.uint8 )
-	for gate_idx in range(gate_count):
+	distributor_map_np = np.zeros( (ML.gate_count, 320,), dtype=np.uint8 )
+	for gate_idx in range(ML.gate_count):
 	
 		control_qbit = control_qbits[gate_idx]
 		target_qbit  = target_qbits[gate_idx]
 		if control_qbit > 8 and control_qbit <= 16 and target_qbit <= 8:
 			# SL and 8L gates
-			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - small_qbit_num_limit - 1)
-			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - small_qbit_num_limit - 1) + 1
+			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - ML.small_qbit_num_limit - 1)
+			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - ML.small_qbit_num_limit - 1) + 1
 		elif control_qbit > 16 and control_qbit < 21 and target_qbit < 8:
 			# SH gate
 			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - 17)
@@ -266,21 +266,21 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			else: 
 				offset = control_qbit - 1
 			
-			distributor_map_np[gate_idx, 0:320:16] = 2*(offset - small_qbit_num_limit - 1)
-			distributor_map_np[gate_idx, 1:320:16] = 2*(offset - small_qbit_num_limit - 1) + 1
+			distributor_map_np[gate_idx, 0:320:16] = 2*(offset - ML.small_qbit_num_limit - 1)
+			distributor_map_np[gate_idx, 1:320:16] = 2*(offset - ML.small_qbit_num_limit - 1) + 1
 		else:
 			# when the control qubits is not L or H, no valid distributor map is required
 			pass
 
 
 	# target qubit distributor maps for L(?) gates
-	target_qubit_distributor_map_np = np.zeros( (gate_count, 320,), dtype=np.uint8 )
-	for gate_idx in range(gate_count):
+	target_qubit_distributor_map_np = np.zeros( (ML.gate_count, 320,), dtype=np.uint8 )
+	for gate_idx in range(ML.gate_count):
 	
 		target_qbit = target_qbits[gate_idx]
 		if target_qbit > 8 and target_qbit <= 16:
-			target_qubit_distributor_map_np[gate_idx, 0:320:16] = 2*(target_qbit - small_qbit_num_limit - 1)
-			target_qubit_distributor_map_np[gate_idx, 1:320:16] = 2*(target_qbit - small_qbit_num_limit - 1) + 1
+			target_qubit_distributor_map_np[gate_idx, 0:320:16] = 2*(target_qbit - ML.small_qbit_num_limit - 1)
+			target_qubit_distributor_map_np[gate_idx, 1:320:16] = 2*(target_qbit - ML.small_qbit_num_limit - 1) + 1
 		elif target_qbit > 16 and target_qbit < 21:
 			target_qubit_distributor_map_np[gate_idx, 0:320:16] = 2*(target_qbit - 17)
 			target_qubit_distributor_map_np[gate_idx, 1:320:16] = 2*(target_qbit - 17) + 1
@@ -291,8 +291,8 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			
 			
 	# generate packed gate kernel data
-	gate_kernels_real_packed = np.zeros( (gate_splits, 320,), dtype=np.float32 )
-	gate_kernels_imag_packed = np.zeros( (gate_splits, 320,), dtype=np.float32 )
+	gate_kernels_real_packed = np.zeros( (ML.gate_splits, 320,), dtype=np.float32 )
+	gate_kernels_imag_packed = np.zeros( (ML.gate_splits, 320,), dtype=np.float32 )
 
 	gate_kernels_real_shape = gate_kernels_real.shape
 	gate_kernels_imag_shape = gate_kernels_imag.shape
@@ -342,7 +342,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	start_time = time.time()		
 	# create input_output buffers
 	input_buffer_size = 1
-	output_buffer_size = gate_count
+	output_buffer_size = ML.gate_count
 	
 	# The first 3 program does not use these preallocated buffers
 	input_buffers = [ [], [], [] ]
@@ -412,7 +412,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	
 	start_time = time.time()
 	
-	for gate_idx in range(gate_count):
+	for gate_idx in range(ML.gate_count):
 
 		if gate_idx % 50 == 0:
 			time.sleep(0.05)
@@ -424,10 +424,10 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 		if target_qbit == control_qbit:
 			error("QCsim::run: The control qubit and target qubit should be different")
 
-		elif target_qbit >= qbit_num:
+		elif target_qbit >= ML.qbit_num:
 			error("QCsim::run: The target qubit should be less than teh number of qubits")
 
-		elif control_qbit >= qbit_num:
+		elif control_qbit >= ML.qbit_num:
 			error("QCsim::run: The control qubit should be less than teh number of qubits")
 
 		elif target_qbit >= 0 and target_qbit < 8 and control_qbit == -1: 
@@ -567,7 +567,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 	start_time = time.time()
 	
-	for gate_idx in range(second_gate_count):
+	for gate_idx in range(ML.second_gate_count):
 
 		if gate_idx % 50 == 0:
 			time.sleep(0.05)
@@ -579,10 +579,10 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 		if target_qbit == control_qbit:
 			error("QCsim::run: The control qubit and target qubit should be different")
 
-		elif target_qbit >= qbit_num:
+		elif target_qbit >= ML.qbit_num:
 			error("QCsim::run: The target qubit should be less than teh number of qubits")
 
-		elif control_qbit >= qbit_num:
+		elif control_qbit >= ML.qbit_num:
 			error("QCsim::run: The control qubit should be less than teh number of qubits")
 
 		elif target_qbit >= 0 and target_qbit < 8 and control_qbit == -1: 
@@ -737,13 +737,13 @@ def main( qbit_num, gate_count, State_orig_real_float32, State_orig_imag_float32
 	if tocompile:
 		iop_files = compile( mxm_permutation )
 	else:
-		iop_files = [f"./build_iop/QCsim_multi_program.{qbit_num}.{gate_count}.0.iop"]
+		iop_files = [f"./build_iop/QCsim_multi_program.{ML.qbit_num}.{ML.gate_count}.0.iop"]
 	print(f"Program compiled to IOP file: {iop_files}")
 
 	import time
 
 	start_time = time.time()
-	transformed_state = run(iop_files[0], State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, np.real(gate_kernels), np.imag(gate_kernels), mxm_permutation )
+	transformed_state = run(iop_files[0], State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, np.real(gate_kernels), np.imag(gate_kernels), ML, mxm_permutation )
 
 	print("total time elapsed during computations with Groq: ", time.time() - start_time )
 	

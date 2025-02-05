@@ -74,7 +74,7 @@ class Gate(Gate_S_base):
 			gate_kernels_broadcasted_real_shared_copy_dict = {}
 			gate_kernels_broadcasted_imag_shared_copy_dict = {} #TODO delete these dictionaries. Not needed anymore
 			
-			for label in gate_kernel_element_labels:
+			for label in self.ML.gate_kernel_element_labels:
 
 				key = '0_' + label
 				gate_kernel_broadcasted_real_mt = self.gate_kernels_broadcasted_real_dict[key]
