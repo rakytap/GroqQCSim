@@ -31,11 +31,10 @@ if __name__ == "__main__":
 		target_qbit = random.randint(17, 18)
 		
 		tmp = random.randint(0,1)
-		if tmp == 0:
+		if tmp == 10:
 			control_qbit = -1
 		else:
-			control_qbit = random.randint(0, qbit_num-1)	
-		control_qbit = -1
+			control_qbit = random.randint(0, 7)	
 		
 			
 
@@ -93,8 +92,9 @@ if __name__ == "__main__":
 		
 		
 		
+	
 
-	print("tq0:",target_qbits[0])
+	print(target_qbits, control_qbits)
 	# get the number of free parameters in the circuit
 	parameter_num = circuit.get_Parameter_Num()
 	print('Number of parameters in the circuit: ', parameter_num, flush=True)
