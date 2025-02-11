@@ -93,6 +93,9 @@ def compile(mxm_permutation = True) -> List[str]:
 
 	# program to perform gate_HL operation
 	program.gate_HL_program()
+
+	# program to perform gate_HL operation
+	program.gate_H8_program()
 	
 	iops = pgm_pkg.assemble()
 
@@ -196,6 +199,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device.load(iop[4], unsafe_keep_entry_points=True) #H
 	device.load(iop[5], unsafe_keep_entry_points=True) #HS
 	device.load(iop[6], unsafe_keep_entry_points=True) #HL
+	device.load(iop[7], unsafe_keep_entry_points=True) #H8
 
 	print("time elapsed with IOP uploading: ", time.time() - start_time )
 			
@@ -454,6 +458,10 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
 	output_buffer_indices.append( 0 )
 
+	entry_point = iop["gate_H8"]["compute"]	
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
 
 	print("time elapsed with creating buffers: ", time.time() - start_time )			
 
@@ -614,7 +622,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 		elif target_qbit > 16 and target_qbit < 21 and control_qbit >= 0 and control_qbit < 8:
 
-			# pogram perfroming the Gate_LH operation
+			# pogram perfroming the Gate_HS operation
 			index_of_gate_program = 5
 			entry_point = iop["gate_HS"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
@@ -623,9 +631,18 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 		elif target_qbit > 16 and target_qbit < 21 and control_qbit > 8 and control_qbit <= 16:
 
-			# pogram perfroming the Gate_LH operation
-			index_of_gate_program = 5
+			# pogram perfroming the Gate_HL operation
+			index_of_gate_program = 6
 			entry_point = iop["gate_HL"]["compute"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+		elif target_qbit > 16 and target_qbit < 21 and control_qbit == 8:
+
+			# pogram perfroming the Gate_HL operation
+			index_of_gate_program = 7
+			entry_point = iop["gate_H8"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -672,8 +689,8 @@ def main( State_orig_real_float32, State_orig_imag_float32, target_qbits, contro
 		raise "qbit_num must be set with method initialize_qbit_num( qbit_num ) with a value greater or equal to 8"
 
 	
-	iop_files = compile( mxm_permutation )
-	# iop_files = ['./build_iop/QCsim_multi_program.0.iop']
+	# iop_files = compile( mxm_permutation )
+	iop_files = ['./build_iop/QCsim_multi_program.0.iop']
 	print(f"Program compiled to IOP file: {iop_files}")
 
 	import time
