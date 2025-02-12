@@ -19,6 +19,7 @@ memory_addresses = 1 << (qbit_num-small_qbit_num_limit)
 
 layout_target_qubit_read_maps_8L = f"H1(W), A{memory_addresses}(0-{memory_addresses-1}), S1(43)"
 layout_target_qubit_read_maps_LL = f"H1(W), A{memory_addresses}(0-{memory_addresses-1}), S1(42)"
+layout_target_qubit_read_maps_HL = f"H1(W), A{memory_addresses}(0-{memory_addresses-1}), S1(36)"
 
 # memory gather maps for L target qubits
 layout_target_qubit_read_pair_maps_L = f"H1(W), A{memory_addresses}(0-{memory_addresses-1}), S1(41)"
@@ -34,28 +35,28 @@ layout_target_qubit_read_maps_8L_pair = f"H1(W), A{memory_addresses}(0-{memory_a
 
 
 # gate counter: for reading out the correct permute map selector (each gate act on a different target qubit)
-layout_gate_counter_perm_map_selector = f"H1(W), A{1}(3200), S1(36)"
+layout_gate_counter_perm_map_selector = f"H1(W), A{1}(3200), S1(35)"
 
 # control qubit dependent distributor map for SL gate
 address_offset = 256*(gate_memory_offset_factor)
-layout_distributor_maps_west         = f"H1(W), A{gate_count}(0-{gate_count-1}), S1(36)"  #TODO HAVE A disptributor map also on the east
-layout_target_qubit_distributor_maps = f"H1(W), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S1(36)"  #TODO HAVE A disptributor map also on the east
+layout_distributor_maps_west         = f"H1(W), A{gate_count}(0-{gate_count-1}), S1(35)"  #TODO HAVE A disptributor map also on the east
+layout_target_qubit_distributor_maps = f"H1(W), A{gate_count}({address_offset}-{address_offset+gate_count-1}), S1(35)"  #TODO HAVE A disptributor map also on the east
 
 # permute maps used to reorder the state vector elements according to the given target qubit (permute map is also stored on the easter hemisphere)
-layout_permute_maps_west = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(35)"
+layout_permute_maps_west = f"A{small_qbit_num_limit}(0-{small_qbit_num_limit-1}), H1(W), S1(34)"
 
 
 # gate counter: for reading out the correct distributor map for choosing the correct L control qubit memory maps
-layout_gate_counter_distributor_maps_west = "H1(W), A1(0), S1(34)"
+layout_gate_counter_distributor_maps_west = "H1(W), A1(0), S1(33)"
 
 
 #gate counter: for reading control_state_1_broadcasted and control_state_0_boradcasted (each gate act on a different target qubit)
-layout_gate_counter_target_qubit_L_distributor_maps = f"H1(W), A{1}(0), S1(33)"
+layout_gate_counter_target_qubit_L_distributor_maps = f"H1(W), A{1}(0), S1(32)"
 
 
 
 # memory layout for the mxm permutation marices (identical permutation matrices are also stored on the easterns hemisphere)
-layout_mxm_permutation_matrices_west = f"H1(W), A{small_qbit_num_limit*20}(4096-{4096+small_qbit_num_limit*20-1}), S16(18-36)" 
+layout_mxm_permutation_matrices_west = f"H1(W), A{small_qbit_num_limit*20}(4096-{4096+small_qbit_num_limit*20-1}), S16(17-35)" 
 
 
 # layout to gather map selecting the permutation map corresponding to the target qubit  -- the MT should be replaced by on chip determined gather map, currently it is uploaded from CPU

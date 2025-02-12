@@ -8,7 +8,7 @@ import numpy as np
 
 class Gate(Gate_H_base):
 	"""
-	A class used to implement the gate operation on qubits S with no control qubits
+	A class used to implement the gate operation on qubits H with control qubit S
 
 
 	Attributes
@@ -39,7 +39,7 @@ class Gate(Gate_H_base):
 		self.alu_req_11 = g.tensor.create_alu_request( [8], 1 )
 		
 		
-	def gather_control_qubit_selector_LS(self, save=False ):
+	def gather_control_qubit_selector_HS(self, save=False ):
 		# state_1_mt: if target_qubit_loc at the idx-th element is in state_1 |1> then all the 8 bits of the idx-th element is set to 1, thus state_1[idx] = 255
 		# state_0_mt: if target_qubit_loc at the idx-th element is in state_0 |0> then all the 8 bits of the idx-th element is set to 1, thus state_0[idx] = 255
 		# Creates a shared tensor to reuse the memory allocation made by program pgm1
@@ -91,7 +91,7 @@ class Gate(Gate_H_base):
 	def filter_gate_element( self, gate_counter_gate_element_selector_mt, filtering_element_mt, address_offset, time, label ):
 	
 	
-		control_state_0_broadcasted_st, control_state_1_broadcasted_st = self.gather_control_qubit_selector_LS()
+		control_state_0_broadcasted_st, control_state_1_broadcasted_st = self.gather_control_qubit_selector_HS()
 		
 		filtering_element_st = filtering_element_mt.read( streams = g.SG4_W[6] )
 			
@@ -437,8 +437,8 @@ class Gate(Gate_H_base):
 				
 				
 				# export the calculated state into memory and set program output
-				target_qubit_L_write_map_st = self.select_target_qbit_write_map_H_east()
-				self.write_tranformed_states_2_mem( Psi_transformed_real_st, Psi_transformed_imag_st, target_qubit_L_write_map_st )
+				target_qubit_H_write_map_st = self.select_target_qbit_write_map_H_east()
+				self.write_tranformed_states_2_mem( Psi_transformed_real_st, Psi_transformed_imag_st, target_qubit_H_write_map_st )
 				
 				
 				

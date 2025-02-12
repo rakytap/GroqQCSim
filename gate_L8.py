@@ -105,13 +105,13 @@ class Gate(Gate_L_base):
 		# constant tensors to address the slices for temporary storage as unsaved data give timing errors during compilation
 		dummy_space = g.constant_tensor( [memory_addresses//2, 320], 
 						g.float32, 
-						layout= f'H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S4(23-27)',  
+						storage_req=self.dummy_space_storage_req,
 						name=f"dummy_space_for_L8", 
 						initialized=False)
 						
 		dummy_space_2 = g.constant_tensor( [memory_addresses//2, 320], 
 						g.float32, 
-						layout= f'H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S4(29-32)', 
+						storage_req=self.dummy_space_2_storage_req,
 						name=f"dummy_space_for_L8_2",
 						initialized=False)
         

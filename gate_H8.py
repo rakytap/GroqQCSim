@@ -8,7 +8,7 @@ import numpy as np
 
 class Gate(Gate_H_base):
 	"""
-	A class used to implement the gate operation on qubits S with no control qubits
+	A class used to implement the gate operation on qubits H with control qubit 8
 
 
 	Attributes
@@ -36,7 +36,7 @@ class Gate(Gate_H_base):
 
 
 
-	def write_tranformed_states_2_mem_L8( self, Psi_transformed_real_st, Psi_transformed_imag_st, target_qubit_L_write_map_st):
+	def write_tranformed_states_2_mem_H8( self, Psi_transformed_real_st, Psi_transformed_imag_st, target_qubit_L_write_map_st):
 	
 		"""
 		Function used to scatter the transformed state vector into the memory. Every second calculated data are stored according to the control qubit state 1 of qubit 8
@@ -105,13 +105,13 @@ class Gate(Gate_H_base):
 		# constant tensors to address the slices for temporary storage as unsaved data give timing errors during compilation
 		dummy_space = g.constant_tensor( [memory_addresses//2, 320], 
 						g.float32, 
-						layout= f'H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S4(23-27)',  
+						storage_req=self.dummy_space_storage_req,
 						name=f"dummy_space_for_H8", 
 						initialized=False)
 						
 		dummy_space_2 = g.constant_tensor( [memory_addresses//2, 320], 
 						g.float32, 
-						layout= f'H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S4(29-32)', 
+						storage_req=self.dummy_space_2_storage_req,
 						name=f"dummy_space_for_H8_2",
 						initialized=False)
         
@@ -195,8 +195,8 @@ class Gate(Gate_H_base):
 				
 				
 				# export the calculated state into memory and set program output
-				target_qubit_L_write_map_st = self.select_target_qbit_write_map_H_east()
-				self.write_tranformed_states_2_mem_L8( Psi_transformed_real_st, Psi_transformed_imag_st, target_qubit_L_write_map_st )
+				target_qubit_H_write_map_st = self.select_target_qbit_write_map_H_east()
+				self.write_tranformed_states_2_mem_H8( Psi_transformed_real_st, Psi_transformed_imag_st, target_qubit_H_write_map_st )
 				
 				
 			with g.ResourceScope(name=f"increase_gate_counters_scope", is_buffered=True, predecessors=[apply_gate_scope], time=None) as increase_gate_counters_scope :

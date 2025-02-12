@@ -8,7 +8,7 @@ import numpy as np
 
 class Gate_H_base(Gate_counters):
 	"""
-	A class used to implement the gate operation on qubits S with no control qubits
+	A class used to implement the gate operation on qubits H with no control qubits
 
 
 	Attributes
@@ -44,7 +44,7 @@ class Gate_H_base(Gate_counters):
 
 	def select_target_qbit_read_map_H_west(self):
 		"""
-		Function used to read out the correct target qubit map to gather the target qubits L from the memory
+		Function used to read out the correct target qubit map to gather the target qubits H from the memory
 		The target qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
 		The target memory maps of control qubits 9, ..., 17 are stored in the lower half of one slice (addresses 0,1,..., 2^12).
 		The target memory maps of control qubits 18, ..., 20 are stored in the upper half of one slice (addresses 2^12,..., 2^13). 		
@@ -87,8 +87,8 @@ class Gate_H_base(Gate_counters):
 
 
 		read_out_qubit_1_memory_tensor_mt = g.stack( read_out_state_1_memory_tensor_list, dim=0 )
-		read_out_qubit_1_memory_tensor_mt.set_program_output()
-		read_out_qubit_1_memory_tensor_mt.name = "rrrrwwww1"
+		# read_out_qubit_1_memory_tensor_mt.set_program_output()
+		# read_out_qubit_1_memory_tensor_mt.name = "rrrrwwww1"
 		read_out_qubit_1_memory_tensor_st = read_out_qubit_1_memory_tensor_mt.read( streams=g.SG1[1] )
 		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_1_memory_tensor_st, [memory_addresses,320])
 
@@ -132,7 +132,7 @@ class Gate_H_base(Gate_counters):
 
 	def select_target_qbit_write_map_H_east(self):
 		"""
-		Function used to read out the correct target qubit map for scattering the target qubits L into the memory
+		Function used to read out the correct target qubit map for scattering the target qubits H into the memory
 		The target qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
 		The target memory maps of control qubits 9, ..., 17 are stored in the lower half of one slice (addresses 0,1,..., 2^12).
 		The target memory maps of control qubits 18, ..., 20 are stored in the upper half of one slice (addresses 2^12,..., 2^13). 		
@@ -150,7 +150,6 @@ class Gate_H_base(Gate_counters):
 		"""
 
 
-		print("in write map H")
 		target_qubit_write_maps_H_st = self.target_qubit_write_maps_H_mt.read( streams=g.SG1[16] )
 
 		
@@ -172,8 +171,7 @@ class Gate_H_base(Gate_counters):
 					                             transposer_req=self.transposer_request_to_qubit_state_write, 
 					                             stream_order=[0])	
 
-		target_qubit_write_maps_H_st.write(name="ooo1", layout='H1(W), -1, S1', program_output=True )
-		print("gateH write map")
+		# target_qubit_write_maps_H_st.write(name="ooo1", layout='H1(W), -1, S1', program_output=True )
 
 		return target_qubit_write_maps_H_st	
 

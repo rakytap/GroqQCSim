@@ -8,7 +8,7 @@ import numpy as np
 
 class Gate(Gate_H_base):
 	"""
-	A class used to implement the gate operation on qubits S with no control qubits
+	A class used to implement the gate operation on qubits H with no control qubits
 
 
 	Attributes
@@ -39,7 +39,7 @@ class Gate(Gate_H_base):
 	
 	def gate_H_program(self):
 		"""
-		Function implementing the L gate operation on the Groq chip
+		Function implementing the H gate operation on the Groq chip
 		"""
         
 		#############################################################################################################x		
@@ -88,7 +88,6 @@ class Gate(Gate_H_base):
 				
 				
 				# export the calculated state into memory and set program output
-				print("write map called")
 				target_qubit_H_write_map_st = self.select_target_qbit_write_map_H_east()
 				# target_qubit_H_write_map_st.write( name='ooo1', layout='H1(W), -1, S1', program_output=True)
 				self.write_tranformed_states_2_mem( Psi_transformed_real_st, Psi_transformed_imag_st, target_qubit_H_write_map_st )

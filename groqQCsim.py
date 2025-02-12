@@ -43,59 +43,62 @@ def compile(mxm_permutation = True) -> List[str]:
 	program.upload_state_program()	
 	program.download_state_program()	
 	
-	# # program to perform gate_S operation
-	# program.gate_S_program()
-	#
-	# # program to perform gate_SS operation
-	# program.gate_SS_program()
-	#
-	# # program to perform gate_SL operation
-	# program.gate_SL_program()
-	#
-	# # program to perform gate_S8 operation
-	# program.gate_S8_program()
-	#
-	# # program to perform gate_SH operation
-	# program.gate_SH_program()
-	#
-	# # program to perform gate_L operation
-	# program.gate_L_program()
-	#
-	# # program to perform gate_LL operation
-	# program.gate_LL_program()
-	#
-	# # program to perform gate_LS operation
-	# program.gate_LS_program()
-	#
-	# # program to perform gate_8 operation
-	# program.gate_8_program()
-	#
-	# # program to perform gate_8S operation
-	# program.gate_8S_program()
-	#
-	# # program to perform gate_L8 operation
-	# program.gate_L8_program()			
-	#
-	# # program to perform gate_8L operation
-	# program.gate_8L_program()	
-	#
-	# # program to perform gate_8H operation
-	# program.gate_8H_program()	
-	#
-	# # program to perform gate_LH operation
-	# program.gate_LH_program()
-	#
-	# # program to perform gate_H operation
-	# program.gate_H_program()
-	#
-	# # program to perform gate_HS operation
-	# program.gate_HS_program()
-	#
-	# # program to perform gate_HL operation
+	# program to perform gate_S operation
+	program.gate_S_program()
+	
+	# program to perform gate_SS operation
+	program.gate_SS_program()
+	
+	# program to perform gate_SL operation
+	program.gate_SL_program()
+	
+	# program to perform gate_S8 operation
+	program.gate_S8_program()
+	
+	# program to perform gate_SH operation
+	program.gate_SH_program()
+	
+	# program to perform gate_L operation
+	program.gate_L_program()
+	
+	# program to perform gate_LL operation
+	program.gate_LL_program()
+	
+	# program to perform gate_LS operation
+	program.gate_LS_program()
+	
+	# program to perform gate_8 operation
+	program.gate_8_program()
+	
+	# program to perform gate_8S operation
+	program.gate_8S_program()
+	
+	# program to perform gate_L8 operation
+	program.gate_L8_program()			
+	
+	# program to perform gate_8L operation
+	program.gate_8L_program()	
+	
+	# program to perform gate_8H operation
+	program.gate_8H_program()	
+	
+	# program to perform gate_LH operation
+	program.gate_LH_program()
+	
+	# program to perform gate_H operation
+	program.gate_H_program()
+	
+	# program to perform gate_HS operation
+	program.gate_HS_program()
+	
+	# program to perform gate_HL operation
 	program.gate_HL_program()
-
+	
 	# program to perform gate_H8 operation
 	program.gate_H8_program()
+	
+	# program to perform gate_HL operation
+	program.gate_HH_program()
 	
 	iops = pgm_pkg.assemble()
 
@@ -182,24 +185,25 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	
 	device.load(iop[1], unsafe_keep_entry_points=True) # upload state vector
 	device.load(iop[2], unsafe_keep_entry_points=True) # download state vector
-	# device.load(iop[3], unsafe_keep_entry_points=True) #S	
-	# device.load(iop[4], unsafe_keep_entry_points=True) #SS	
-	# device.load(iop[5], unsafe_keep_entry_points=True) #SL
-	# device.load(iop[6], unsafe_keep_entry_points=True) #S8
-	# device.load(iop[7], unsafe_keep_entry_points=True) #SH
-	# device.load(iop[8], unsafe_keep_entry_points=True) #L
-	# device.load(iop[9], unsafe_keep_entry_points=True) #LL
-	# device.load(iop[10], unsafe_keep_entry_points=True) #LS	
-	# device.load(iop[11], unsafe_keep_entry_points=True) #8	
-	# device.load(iop[12], unsafe_keep_entry_points=True) #8S			
-	# device.load(iop[13], unsafe_keep_entry_points=True) #L8	
-	# device.load(iop[14], unsafe_keep_entry_points=True) #8L	
-	# device.load(iop[15], unsafe_keep_entry_points=True) #8H	
-	# device.load(iop[16], unsafe_keep_entry_points=True) #LH
-	# device.load(iop[17], unsafe_keep_entry_points=True) #H
-	# device.load(iop[18], unsafe_keep_entry_points=True) #HS
-	device.load(iop[3], unsafe_keep_entry_points=True) #HL
-	device.load(iop[4], unsafe_keep_entry_points=True) #H8
+	device.load(iop[3], unsafe_keep_entry_points=True) #S	
+	device.load(iop[4], unsafe_keep_entry_points=True) #SS	
+	device.load(iop[5], unsafe_keep_entry_points=True) #SL
+	device.load(iop[6], unsafe_keep_entry_points=True) #S8
+	device.load(iop[7], unsafe_keep_entry_points=True) #SH
+	device.load(iop[8], unsafe_keep_entry_points=True) #L
+	device.load(iop[9], unsafe_keep_entry_points=True) #LL
+	device.load(iop[10], unsafe_keep_entry_points=True) #LS	
+	device.load(iop[11], unsafe_keep_entry_points=True) #8	
+	device.load(iop[12], unsafe_keep_entry_points=True) #8S			
+	device.load(iop[13], unsafe_keep_entry_points=True) #L8	
+	device.load(iop[14], unsafe_keep_entry_points=True) #8L	
+	device.load(iop[15], unsafe_keep_entry_points=True) #8H	
+	device.load(iop[16], unsafe_keep_entry_points=True) #LH
+	device.load(iop[17], unsafe_keep_entry_points=True) #H
+	device.load(iop[18], unsafe_keep_entry_points=True) #HS
+	device.load(iop[19], unsafe_keep_entry_points=True) #HL
+	device.load(iop[20], unsafe_keep_entry_points=True) #H8
+	device.load(iop[21], unsafe_keep_entry_points=True) #H8
 
 	print("time elapsed with IOP uploading: ", time.time() - start_time )
 			
@@ -286,7 +290,6 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			else: 
 				offset = control_qbit - 1
 			
-			print(target_qbit, control_qbit, offset - small_qbit_num_limit - 1)
 			distributor_map_np[gate_idx, 0:320:16] = 2*(offset - small_qbit_num_limit - 1)
 			distributor_map_np[gate_idx, 1:320:16] = 2*(offset - small_qbit_num_limit - 1) + 1
 		elif control_qbit > 16 and control_qbit < 21 and target_qbit > 8 and target_qbit < 21:
@@ -376,92 +379,97 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	output_buffers = [ [], [], [] ]
 	output_buffer_indices = [ [], [], [] ]
 	
-	# entry_point = iop["gate_S"]["compute"]
-	# input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
-	# output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
-	# output_buffer_indices.append( 0 )
-	#
-	# entry_point = iop["gate_SS"]["compute"]
-	# input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
-	# output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
-	# output_buffer_indices.append( 0 )	
-	#
-	# entry_point = iop["gate_SL"]["compute"]	
-	# input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
-	# output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
-	# output_buffer_indices.append( 0 )
-	#
-	# entry_point = iop["gate_S8"]["compute"]			
-	# input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
-	# output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
-	# output_buffer_indices.append( 0 )
-	#
-	# entry_point = iop["gate_SH"]["compute"]		
-	# input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
-	# output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
-	# output_buffer_indices.append( 0 )
-	#
-	# entry_point = iop["gate_L"]["compute"]	
-	# input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
-	# output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
-	# output_buffer_indices.append( 0 )
-	#
-	# entry_point = iop["gate_LL"]["compute"]	
-	# input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
-	# output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
-	# output_buffer_indices.append( 0 )
-	#
-	# entry_point = iop["gate_LS"]["compute"]
-	# input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
-	# output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
-	# output_buffer_indices.append( 0 )
-	#
-	# entry_point = iop["gate_8"]["compute"]	
-	# input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
-	# output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
-	# output_buffer_indices.append( 0 )
-	#
-	# entry_point = iop["gate_8S"]["compute"]
-	# input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
-	# output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
-	# output_buffer_indices.append( 0 )
-	#
-	# entry_point = iop["gate_L8"]["compute"]	
-	# input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
-	# output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
-	# output_buffer_indices.append( 0 )
-	#
-	# entry_point = iop["gate_8L"]["compute"]	
-	# input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
-	# output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
-	# output_buffer_indices.append( 0 )
-	#
-	# entry_point = iop["gate_8H"]["compute"]	
-	# input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
-	# output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
-	# output_buffer_indices.append( 0 )
-	#
-	# entry_point = iop["gate_LH"]["compute"]	
-	# input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
-	# output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
-	# output_buffer_indices.append( 0 )
-	#
-	# entry_point = iop["gate_H"]["compute"]	
-	# input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
-	# output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
-	# output_buffer_indices.append( 0 )
-	#
-	# entry_point = iop["gate_HS"]["compute"]	
-	# input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
-	# output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
-	# output_buffer_indices.append( 0 )
+	entry_point = iop["gate_S"]["compute"]
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
+	
+	entry_point = iop["gate_SS"]["compute"]
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )	
+	
+	entry_point = iop["gate_SL"]["compute"]	
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
+	
+	entry_point = iop["gate_S8"]["compute"]			
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
+	
+	entry_point = iop["gate_SH"]["compute"]		
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
+	
+	entry_point = iop["gate_L"]["compute"]	
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
+	
+	entry_point = iop["gate_LL"]["compute"]	
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
+	
+	entry_point = iop["gate_LS"]["compute"]
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
+	
+	entry_point = iop["gate_8"]["compute"]	
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
+	
+	entry_point = iop["gate_8S"]["compute"]
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
+	
+	entry_point = iop["gate_L8"]["compute"]	
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
+	
+	entry_point = iop["gate_8L"]["compute"]	
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
+	
+	entry_point = iop["gate_8H"]["compute"]	
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
+	
+	entry_point = iop["gate_LH"]["compute"]	
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
+	
+	entry_point = iop["gate_H"]["compute"]	
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
+	
+	entry_point = iop["gate_HS"]["compute"]	
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
 
-	entry_point = iop["gate_HL"]["mono"]	
+	entry_point = iop["gate_HL"]["compute"]	
 	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
 	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
 	output_buffer_indices.append( 0 )
 
 	entry_point = iop["gate_H8"]["compute"]	
+	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
+	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
+	output_buffer_indices.append( 0 )
+
+	entry_point = iop["gate_HH"]["compute"]	
 	input_buffers.append( runtime.BufferArray(entry_point.input, input_buffer_size) )
 	output_buffers.append( runtime.BufferArray(entry_point.output, output_buffer_size) )
 	output_buffer_indices.append( 0 )
@@ -635,8 +643,8 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 		elif target_qbit > 16 and target_qbit < 21 and control_qbit > 8 and control_qbit < 16:
 
 			# pogram perfroming the Gate_HL operation
-			index_of_gate_program = 3
-			entry_point = iop["gate_HL"]["mono"]
+			index_of_gate_program = 19
+			entry_point = iop["gate_HL"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -644,8 +652,17 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 		elif target_qbit > 16 and target_qbit < 21 and control_qbit == 8:
 
 			# pogram perfroming the Gate_HL operation
-			index_of_gate_program = 4
+			index_of_gate_program = 20
 			entry_point = iop["gate_H8"]["compute"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+		elif target_qbit > 16 and target_qbit < 21 and control_qbit >= 16 and control_qbit < 21:
+
+			# pogram perfroming the Gate_HH operation
+			index_of_gate_program = 21
+			entry_point = iop["gate_HH"]["compute"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -654,16 +671,9 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			error("QCsim::run: Unimplemented case wit target qubit and control qubit.")
 			
-		# gate_output = invoke_gate(device, iop, index_of_gate_program, entry_point, input_buffer, output_buffer)	
-		time.sleep(.01)
-		gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
-		if target_qbit == 17 and control_qbit == 12:
-			print(target_qbit, control_qbit)
-			print(gate_output["rrww0"][:20, :2])
-			print(30*"#")
-			print(gate_output["rrww1"][:20, :2])
-			# print(30*"#")
-			# print(gate_output["uuu"][:20, :2])
+		gate_output = invoke_gate(device, iop, index_of_gate_program, entry_point, input_buffer, output_buffer)	
+		time.sleep(.001)
+		# gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
 		#print( gate_output)
 	
 	print("time elapsed on groq with gate operations: ", time.time() - start_time )

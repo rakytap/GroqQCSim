@@ -13,6 +13,8 @@ class Generate_static_data(IO):
 		self.gate_kernels_broadcasted_imag_dict = {}
 		self.gate_kernels_broadcasted_real_copy_dict = {}
 		self.gate_kernels_broadcasted_imag_copy_dict = {}				
+		self.dummy_space_storage_req = g.tensor.create_storage_request( layout=f'H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S4(22-26)' )
+		self.dummy_space_2_storage_req = g.tensor.create_storage_request( layout=f'H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S4(27-31)' )
 
 
 
@@ -309,6 +311,88 @@ class Generate_static_data(IO):
 				
 				idx_mem_a = controlled_qubit_state_1_map_indices[2*idx]
 				idx_mem_b = controlled_qubit_state_1_map_indices[2*idx+1]
+																			
+								
+				# the 2-byte (16-bit) memory offset needs to be splitted into two bytes
+				lower_bits_of_addresses_idx_mem_a  = idx_mem_a & 255
+				higher_bits_of_addresses_idx_mem_a = (idx_mem_a >> 8 ) & 255
+
+				lower_bits_of_addresses_idx_mem_b  = idx_mem_b & 255
+				higher_bits_of_addresses_idx_mem_b = (idx_mem_b >> 8 ) & 255
+					
+
+				row_idx = 4*idx+vertical_offset_in_memory_map
+				for superlane_idx in range(20):
+					col_idx = horizontal_offset_in_memory_map + 16*superlane_idx
+					
+					mem_read_map[ row_idx+0, col_idx ]   = lower_bits_of_addresses_idx_mem_a
+					mem_read_map[ row_idx+0, col_idx+1 ] = higher_bits_of_addresses_idx_mem_a
+
+					mem_read_map[ row_idx+1, col_idx ]   = lower_bits_of_addresses_idx_mem_b
+					mem_read_map[ row_idx+1, col_idx+1 ] = higher_bits_of_addresses_idx_mem_b
+
+					mem_read_map[ row_idx+2, col_idx ]   = lower_bits_of_addresses_idx_mem_a
+					mem_read_map[ row_idx+2, col_idx+1 ] = higher_bits_of_addresses_idx_mem_a
+
+					mem_read_map[ row_idx+3, col_idx ]   = lower_bits_of_addresses_idx_mem_b
+					mem_read_map[ row_idx+3, col_idx+1 ] = higher_bits_of_addresses_idx_mem_b
+																				
+			
+		#print( mem_read_map[:,0:2] )
+		return mem_read_map
+
+	def generate_target_qubit_HL_control_qbit_read_maps(self):
+		"""
+		Function to generate memory maps for the control qubits to gather state vector elements from the memory for target qubits H corresponding to control qbit state 1
+		
+		Return
+		--------
+		returns with the generated numpy version of the memmory maps
+		"""
+	
+		# memory map containing all of the memory maps
+		# maps for control_qbits for 8,9,...,15 on the upper half of the memory tensor (addresses 0,...,half_memory_slices)
+		# maps for control_qbits for 16,...,21 on the lower half of the memory tensor (addresses half_memory_slices+1,...,memory_slices)		
+		mem_read_map = np.zeros( (memory_addresses, 320,), dtype=np.uint8 )		
+					
+		half_memory_slices = memory_slices >> 1
+		control_qbit_min = 9
+		control_qbit_max = qbit_num
+
+
+		for control_qbit in range(control_qbit_min, control_qbit_max-1):
+			if control_qbit < 16:
+				horizontal_offset_in_memory_map = (control_qbit-control_qbit_min)*2 
+			else:
+				horizontal_offset_in_memory_map = (control_qbit-16)*2 
+
+			if control_qbit < 16:
+				vertical_offset_in_memory_map = 0
+			else:
+				vertical_offset_in_memory_map = half_memory_slices
+
+			#print( 'control_qbit: ', control_qbit )
+
+			target_qbit = control_qbit + 1 # as we get the same control qubit memory maps for each target qbit
+			
+		
+
+			control_qbit_mask = 1<<(control_qbit-8)
+		
+			target_qbit_index_pairs = [ [x, x^(1<<(target_qbit-8))] for x in range(memory_addresses) if x < x^(1<<(target_qbit-8))  ]
+			target_qbit_index_pairs = np.array( target_qbit_index_pairs )
+
+
+			# indices in the target qbit maps having control qubit states 1
+			controlled_qubit_state_1_map_indices = np.argwhere( (target_qbit_index_pairs[:,0] & control_qbit_mask) > 0 )
+			#print( controlled_qubit_state_1_map_indices.size, mem_read_map.shape )
+			#print( controlled_qubit_state_1_map_indices )
+
+			
+			for idx in range( controlled_qubit_state_1_map_indices.size//2 ):
+				
+				idx_mem_a = controlled_qubit_state_1_map_indices[2*idx]+half_memory_slices
+				idx_mem_b = controlled_qubit_state_1_map_indices[2*idx+1]+half_memory_slices
 																			
 								
 				# the 2-byte (16-bit) memory offset needs to be splitted into two bytes
@@ -1127,8 +1211,6 @@ class Generate_static_data(IO):
 
 				# generate memeory write maps for target qubits H
 				mem_write_map = self.generate_target_qubit_H_write_maps()
-				print("map in uplad")
-				print(mem_write_map[:10, :10])
 			
 				self.target_qubit_write_maps_H_mt = g.from_data(mem_write_map, layout=layout_target_qubit_write_maps_H)
 				self.target_qubit_write_maps_H_mt.is_static = True
@@ -1158,6 +1240,11 @@ class Generate_static_data(IO):
 				self.target_qubit_read_maps_LL_mt      = g.from_data(mem_read_map, layout=layout_target_qubit_read_maps_LL)	
 				self.target_qubit_read_maps_LL_mt.is_static      = True				
 
+				# tensor to store mem gather maps for HL gates
+				mem_read_map = self.generate_target_qubit_HL_control_qbit_read_maps()	
+
+				self.target_qubit_read_maps_HL_mt      = g.from_data(mem_read_map, layout=layout_target_qubit_read_maps_HL)	
+				self.target_qubit_read_maps_HL_mt.is_static      = True				
 
 				# tensor to store mem gather maps for 8L gates (two of them is needed because of the peculiar bank alternating strategy)
 				mem_read_map, mem_read_map_pair = self.generate_target_qubit_8L_control_qbit_read_maps()			

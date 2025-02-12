@@ -8,7 +8,7 @@ import numpy as np
 
 class Gate(Gate_H_base):
 	"""
-	A class used to implement the gate operation on qubits S with no control qubits
+	A class used to implement the gate operation on qubits H with control qubits L
 
 
 	Attributes
@@ -43,7 +43,7 @@ class Gate(Gate_H_base):
 
 	def select_target_qbit_read_map_west_HL(self):
 		"""
-		Function used to read out the correct target qubit map to gather the target qubits L from the memory
+		Function used to read out the correct target qubit map to gather the target qubits H from the memory
 		The target qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
 		The target memory maps of control qubits 9, ..., 17 are stored in the lower half of one slice (addresses 0,1,..., 2^12).
 		The target memory maps of control qubits 18, ..., 20 are stored in the upper half of one slice (addresses 2^12,..., 2^13). 		
@@ -62,7 +62,7 @@ class Gate(Gate_H_base):
 
 
 		half_memory_slices = memory_slices >> 1
-		control_qbit_state_1_selector_list = g.split(self.target_qubit_read_maps_LL_mt, 1)
+		control_qbit_state_1_selector_list = g.split(self.target_qubit_read_maps_HL_mt, 1)
 		control_qbit_state_1_selector_mt = g.concat(control_qbit_state_1_selector_list[:half_memory_slices])
 		control_qbit_state_1_selector_st = control_qbit_state_1_selector_mt.read( streams=g.SG1[16] )
 		
@@ -85,14 +85,10 @@ class Gate(Gate_H_base):
 					                             
 		
 		
-		read_out_qubit_0_memory_tensor_list = self.target_qubit_read_maps_L_mt.split(dim=0, num_splits=memory_addresses)
-		read_out_qubit_0_memory_tensor_mt = g.stack(read_out_qubit_0_memory_tensor_list[half_memory_slices:], dim=0)
-		read_out_qubit_0_memory_tensor_st = g.mem_gather(read_out_qubit_0_memory_tensor_mt, control_qbit_state_1_selector_st, output_streams=[g.SG1[0]] )
+		read_out_qubit_0_memory_tensor_st = g.mem_gather(self.target_qubit_read_maps_L_mt, control_qbit_state_1_selector_st, output_streams=[g.SG1[0]] )
 		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_0_memory_tensor_st, [memory_addresses//2,320])
 
-		read_out_qubit_1_memory_tensor_list = self.target_qubit_read_pair_maps_L_mt.split(dim=0, num_splits=memory_addresses)
-		read_out_qubit_1_memory_tensor_mt = g.stack(read_out_qubit_1_memory_tensor_list[half_memory_slices:], dim=0)
-		read_out_qubit_1_memory_tensor_st = g.mem_gather(read_out_qubit_1_memory_tensor_mt, control_qbit_state_1_selector_st, output_streams=[g.SG1[1]] )
+		read_out_qubit_1_memory_tensor_st = g.mem_gather(self.target_qubit_read_pair_maps_L_mt, control_qbit_state_1_selector_st, output_streams=[g.SG1[1]] )
 		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_1_memory_tensor_st, [memory_addresses//2,320])
 		###########################
 
@@ -122,8 +118,8 @@ class Gate(Gate_H_base):
 		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[1], [memory_addresses//2,320])
 
 
-		read_out_qubit_0_memory_tensor_st.write( name="rrww0", layout='H1(W), -1, S1', program_output=True )
-		read_out_qubit_1_memory_tensor_st.write( name="rrww1", layout='H1(W), -1, S1(43)', program_output=True )
+		# read_out_qubit_0_memory_tensor_st.write( name="rrww0", layout='H1(W), -1, S1', program_output=True )
+		# read_out_qubit_1_memory_tensor_st.write( name="rrww1", layout='H1(W), -1, S1(43)', program_output=True )
 		#distributor_map_st.write( name="distr_map", layout='H1(W), -1, S1(43)', program_output=True )
 		#self.target_qubit_distributor_map_mt.set_program_output()
 		
@@ -135,7 +131,7 @@ class Gate(Gate_H_base):
 
 	def select_target_qbit_write_map_east_HL(self):
 		"""
-		Function used to read out the correct target qubit map for scattering the target qubits L into the memory
+		Function used to read out the correct target qubit map for scattering the target qubits H into the memory
 		The target qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
 		The target memory maps of control qubits 9, ..., 17 are stored in the lower half of one slice (addresses 0,1,..., 2^12).
 		The target memory maps of control qubits 18, ..., 20 are stored in the upper half of one slice (addresses 2^12,..., 2^13). 		
@@ -178,7 +174,7 @@ class Gate(Gate_H_base):
 		
 		
 		
-		target_qubit_write_maps_L_st = g.mem_gather(self.target_qubit_write_maps_H_mt, control_qbit_state_1_selector_st, output_streams=[g.SG1[16]] )
+		target_qubit_write_maps_H_st = g.mem_gather(self.target_qubit_write_maps_H_mt, control_qbit_state_1_selector_st, output_streams=[g.SG1[16]] )
 		#target_qubit_write_maps_L_st = self.target_qubit_write_maps_L_mt.read( streams=g.SG1[16] )
 
 		
@@ -188,7 +184,7 @@ class Gate(Gate_H_base):
 		distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
 		#distributor_map_st                      = self.target_qubit_distributor_map_mt.read( streams=g.SG1[8] )
 		
-		target_qubit_write_maps_L_st = g.distribute_8( target_qubit_write_maps_L_st, 
+		target_qubit_write_maps_H_st = g.distribute_8( target_qubit_write_maps_H_st, 
 									distributor_map_st,
 									distributor_req=self.distributor_request_to_qubit_state_write,
 									map_stream_req=g.SG1[8],
@@ -196,13 +192,13 @@ class Gate(Gate_H_base):
 									)	
 
 		
-		target_qubit_write_maps_L_st = g.transpose_null(target_qubit_write_maps_L_st, 
+		target_qubit_write_maps_H_st = g.transpose_null(target_qubit_write_maps_H_st, 
 					                             transposer_req=self.transposer_request_to_qubit_state_write, 
 					                             stream_order=[0])	
 
 		# target_qubit_write_maps_L_st.write(name="uuu", layout='H1(W), -1, S1', program_output=True )
 
-		return target_qubit_write_maps_L_st	
+		return target_qubit_write_maps_H_st	
 	
 	def gate_HL_program(self):
 		"""
@@ -267,8 +263,8 @@ class Gate(Gate_H_base):
 				
 				
 				# export the calculated state into memory and set program output
-				target_qubit_L_write_map_st = self.select_target_qbit_write_map_east_HL()
-				self.write_tranformed_states_2_mem( Psi_transformed_real_st, Psi_transformed_imag_st, target_qubit_L_write_map_st )
+				target_qubit_H_write_map_st = self.select_target_qbit_write_map_east_HL()
+				self.write_tranformed_states_2_mem( Psi_transformed_real_st, Psi_transformed_imag_st, target_qubit_H_write_map_st )
 				
 				
 			with g.ResourceScope(name=f"increase_gate_counters_scope", is_buffered=True, predecessors=[apply_gate_scope], time=None) as increase_gate_counters_scope :
