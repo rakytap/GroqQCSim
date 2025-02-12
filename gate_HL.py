@@ -84,33 +84,14 @@ class Gate(Gate_H_base):
 					                             
 					                             
 		
-		target_qubit_0_state_read_maps_list = self.target_qubit_read_maps_L_mt.split( dim=0, num_splits=memory_addresses)
-		target_qubit_1_state_read_maps_list = self.target_qubit_read_pair_maps_L_mt.split( dim=0, num_splits=memory_addresses)
-		read_out_state_0_memory_tensor_list = []
-		read_out_state_1_memory_tensor_list = []
-		for idx in range(memory_addresses//4):
-
-			# idx, idx+1 needed for bank alternation strategy
-			read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ memory_addresses//2 + 2*idx ] )	# for upper row of the gate kernel (output state is 0)
-			read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ memory_addresses//2 + 2*idx+1 ] )	# for upper row of the gate kernel (output state is 0)
-			read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ memory_addresses//2 + 2*idx ] )	# for lower row of the gate kernel (output state is 1) 
-			read_out_state_0_memory_tensor_list.append( target_qubit_0_state_read_maps_list[ memory_addresses//2 + 2*idx+1 ] )	# for lower row of the gate kernel (output state is 1) 
-
-			# idx, idx+1 needed for bank alternation strategy
-			read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ memory_addresses//2 + 2*idx ] )	# for upper row of the gate kernel (output state is 0)
-			read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ memory_addresses//2 + 2*idx+1 ] )	# for upper row of the gate kernel (output state is 0)
-			read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ memory_addresses//2 + 2*idx ] )	# for lower row of the gate kernel (output state is 1) 
-			read_out_state_1_memory_tensor_list.append( target_qubit_1_state_read_maps_list[ memory_addresses//2 + 2*idx+1 ] )	# for lower row of the gate kernel (output state is 1) 
-
-
-		read_out_qubit_0_memory_tensor_mt = g.stack( read_out_state_0_memory_tensor_list, dim=0 )
-
+		
+		read_out_qubit_0_memory_tensor_list = self.target_qubit_read_maps_L_mt.split(dim=0, num_splits=memory_addresses)
+		read_out_qubit_0_memory_tensor_mt = g.stack(read_out_qubit_0_memory_tensor_list[half_memory_slices:], dim=0)
 		read_out_qubit_0_memory_tensor_st = g.mem_gather(read_out_qubit_0_memory_tensor_mt, control_qbit_state_1_selector_st, output_streams=[g.SG1[0]] )
 		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_0_memory_tensor_st, [memory_addresses//2,320])
 
-
-		read_out_qubit_1_memory_tensor_mt = g.stack( read_out_state_1_memory_tensor_list, dim=0 )
-
+		read_out_qubit_1_memory_tensor_list = self.target_qubit_read_pair_maps_L_mt.split(dim=0, num_splits=memory_addresses)
+		read_out_qubit_1_memory_tensor_mt = g.stack(read_out_qubit_1_memory_tensor_list[half_memory_slices:], dim=0)
 		read_out_qubit_1_memory_tensor_st = g.mem_gather(read_out_qubit_1_memory_tensor_mt, control_qbit_state_1_selector_st, output_streams=[g.SG1[1]] )
 		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_1_memory_tensor_st, [memory_addresses//2,320])
 		###########################
@@ -141,8 +122,8 @@ class Gate(Gate_H_base):
 		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[1], [memory_addresses//2,320])
 
 
-		read_out_qubit_0_memory_tensor_st.write( name="test0", layout='H1(W), -1, S1', program_output=True )
-		read_out_qubit_1_memory_tensor_st.write( name="test1", layout='H1(W), -1, S1', program_output=True )
+		read_out_qubit_0_memory_tensor_st.write( name="rrww0", layout='H1(W), -1, S1', program_output=True )
+		read_out_qubit_1_memory_tensor_st.write( name="rrww1", layout='H1(W), -1, S1(43)', program_output=True )
 		#distributor_map_st.write( name="distr_map", layout='H1(W), -1, S1(43)', program_output=True )
 		#self.target_qubit_distributor_map_mt.set_program_output()
 		
@@ -219,13 +200,13 @@ class Gate(Gate_H_base):
 					                             transposer_req=self.transposer_request_to_qubit_state_write, 
 					                             stream_order=[0])	
 
-		target_qubit_write_maps_L_st.write(name="test2", layout='H1(W), -1, S1', program_output=True )
+		# target_qubit_write_maps_L_st.write(name="uuu", layout='H1(W), -1, S1', program_output=True )
 
 		return target_qubit_write_maps_L_st	
 	
 	def gate_HL_program(self):
 		"""
-		Function implementing the LL gate operation on the Groq chip
+		Function implementing the HL gate operation on the Groq chip
 		"""
         
 		#############################################################################################################x		
