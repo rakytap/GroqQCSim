@@ -106,13 +106,13 @@ class Gate(Gate_H_base):
 		dummy_space = g.constant_tensor( [memory_addresses//2, 320], 
 						g.float32, 
 						layout= f'H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S4(23-27)',  
-						name=f"dummy_space_for_L8", 
+						name=f"dummy_space_for_H8", 
 						initialized=False)
 						
 		dummy_space_2 = g.constant_tensor( [memory_addresses//2, 320], 
 						g.float32, 
 						layout= f'H1(W), A{memory_addresses//2}(0-{memory_addresses//2-1}), S4(29-32)', 
-						name=f"dummy_space_for_L8_2",
+						name=f"dummy_space_for_H8_2",
 						initialized=False)
         
 		dummy_space_8     = g.reinterpret(dummy_space, dtype=g.int8)

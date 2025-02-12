@@ -34,7 +34,7 @@ if __name__ == "__main__":
 		if tmp == 10:
 			control_qbit = -1
 		else:
-			control_qbit = random.randint(8, 8)	
+			control_qbit = random.randint(9, 15)	
 		
 			
 
