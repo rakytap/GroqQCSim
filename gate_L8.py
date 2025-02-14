@@ -55,10 +55,10 @@ class Gate(Gate_L_base):
 		"""	
 	
 		# define state with 320 vectors instead of 256 inner splits
-		Psi_real_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_real_mt.storage_request, initialized=False)		
-		Psi_imag_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_imag_mt.storage_request, initialized=False)
-		Psi_real_copy_mt_320 = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_real_copy_mt.storage_request, initialized=False)
-		Psi_imag_copy_mt_320 = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_imag_copy_mt.storage_request, initialized=False)
+		Psi_real_mt_320      = g.constant_tensor((self.ML.memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_real_mt.storage_request, initialized=False)		
+		Psi_imag_mt_320      = g.constant_tensor((self.ML.memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_imag_mt.storage_request, initialized=False)
+		Psi_real_copy_mt_320 = g.constant_tensor((self.ML.memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_real_copy_mt.storage_request, initialized=False)
+		Psi_imag_copy_mt_320 = g.constant_tensor((self.ML.memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_imag_copy_mt.storage_request, initialized=False)
 
 				
 		# separating the tensors along the slice dimension (separating the bytes)
@@ -77,15 +77,15 @@ class Gate(Gate_L_base):
 		# write the calculated states into the memory with mem scatter
 		
 		#choose every second data element in the streams to get control qubit state = 1 for qubit 8
-		Psi_transformed_real_st_list        = g.split(Psi_transformed_real_st, dim=0, num_splits=memory_addresses )
+		Psi_transformed_real_st_list        = g.split(Psi_transformed_real_st, dim=0, num_splits=self.ML.memory_addresses )
 		Psi_transformed_real_st_second_half = g.stack( Psi_transformed_real_st_list[1::2], dim=0 ) # data stored in bank0 corresponding to control qubit state 1	
 		Psi_transformed_real_st_first_half  = g.stack( Psi_transformed_real_st_list[0::2], dim=0 )	# data stored in bank0 corresponding to control qubit state 0	
 		
-		Psi_transformed_imag_st_list        = g.split(Psi_transformed_imag_st, dim=0, num_splits=memory_addresses )
+		Psi_transformed_imag_st_list        = g.split(Psi_transformed_imag_st, dim=0, num_splits=self.ML.memory_addresses )
 		Psi_transformed_imag_st_second_half = g.stack( Psi_transformed_imag_st_list[1::2], dim=0 ) # data stored in bank0 corresponding to control qubit state 1
 		Psi_transformed_imag_st_first_half  = g.stack( Psi_transformed_imag_st_list[0::2], dim=0 )	# data stored in bank0 corresponding to control qubit state 0	
 		
-		target_qubit_L_write_map_st_list        = g.split(target_qubit_L_write_map_st, dim=0, num_splits=memory_addresses )
+		target_qubit_L_write_map_st_list        = g.split(target_qubit_L_write_map_st, dim=0, num_splits=self.ML.memory_addresses )
 		target_qubit_L_write_map_st_second_half = g.stack( target_qubit_L_write_map_st_list[1::2], dim=0 ) # data stored in bank0 corresponding to control qubit state 1
 		target_qubit_L_write_map_st_first_half  = g.stack( target_qubit_L_write_map_st_list[0::2], dim=0 )	# data stored in bank0 corresponding to control qubit state 0	
 		
@@ -103,13 +103,13 @@ class Gate(Gate_L_base):
 		Psi_transformed_imag_bytes_mt_list_first_half  = g.split(Psi_transformed_imag_mt_320_8_first_half, dim=-2, num_splits=g.float32.size)	
 		
 		# constant tensors to address the slices for temporary storage as unsaved data give timing errors during compilation
-		dummy_space = g.constant_tensor( [memory_addresses//2, 320], 
+		dummy_space = g.constant_tensor( [self.ML.memory_addresses//2, 320], 
 						g.float32, 
 						storage_req=self.dummy_space_storage_req,
 						name=f"dummy_space_for_L8", 
 						initialized=False)
 						
-		dummy_space_2 = g.constant_tensor( [memory_addresses//2, 320], 
+		dummy_space_2 = g.constant_tensor( [self.ML.memory_addresses//2, 320], 
 						g.float32, 
 						storage_req=self.dummy_space_2_storage_req,
 						name=f"dummy_space_for_L8_2",

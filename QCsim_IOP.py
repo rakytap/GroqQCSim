@@ -1,3 +1,4 @@
+from memory_layouts import MemoryLayouts
 from gate_S import Gate as Gate_S
 from gate_SS import Gate as Gate_SS
 from gate_SL import Gate as Gate_SL
@@ -26,5 +27,12 @@ import numpy as np
 class Gate_IOP(Gate_S, Gate_SS, Gate_SL, Gate_S8, Gate_SH, Gate_L, Gate_LL, Gate_LS, Gate_8, Gate_8S, Gate_L8, Gate_8L, Gate_8H, Gate_LH, Gate_H, Gate_HS, Gate_HL, Gate_H8, Gate_HH):
 
 
-	def __init__(self, pgm_pkg, mxm_permutation=True):
+	def __init__(self, pgm_pkg, ML_, mxm_permutation=True):
+
+		if not isinstance(ML_, MemoryLayouts ):
+			raise TypeError("Input ML should be an initialized MemoryLayouts instance") 
+
+		# class storing the memory layouts
+		self.ML = ML_
+
 		super().__init__(pgm_pkg, mxm_permutation = mxm_permutation )

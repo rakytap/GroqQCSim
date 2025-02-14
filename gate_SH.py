@@ -56,11 +56,11 @@ class Gate(Gate_counters):
 		"""
 
 		# half of the memory slices on which the state is stored
-		half_memory_slices = memory_slices >> 1
+		half_memory_addresses = self.ML.memory_addresses >> 1
 
 		control_qubit_address_maps_SH_east_list = g.split( self.control_qubit_address_maps_SL_east_shared, 1 )
 
-		control_qubit_address_maps_SH_east_mt   = g.concat( control_qubit_address_maps_SH_east_list[half_memory_slices:memory_slices] )
+		control_qubit_address_maps_SH_east_mt   = g.concat( control_qubit_address_maps_SH_east_list[half_memory_addresses:self.ML.memory_addresses] )
 		control_qubit_address_maps_SH_east_st   = control_qubit_address_maps_SH_east_mt.read( streams = g.SG1[27], time=time )
 
 
@@ -107,11 +107,11 @@ class Gate(Gate_counters):
 		"""
 
 		# half of the memory slices on which the state is stored
-		half_memory_slices = memory_slices >> 1
+		half_memory_addresses = self.ML.memory_addresses >> 1
 
 		control_qubit_address_maps_SH_west_list = g.split( self.control_qubit_address_maps_SL_west_shared, 1 )
 
-		control_qubit_address_maps_SH_west_mt   = g.concat( control_qubit_address_maps_SH_west_list[half_memory_slices:half_memory_slices << 1] )
+		control_qubit_address_maps_SH_west_mt   = g.concat( control_qubit_address_maps_SH_west_list[half_memory_addresses:half_memory_addresses << 1] )
 		control_qubit_address_maps_SH_west_st   = control_qubit_address_maps_SH_west_mt.read( streams = g.SG1[31], time=time )
 		
 		
@@ -186,7 +186,8 @@ class Gate(Gate_counters):
 				control_qubit_address_maps_SL_east_st   = self.select_H_control_qubit_map_east()
 						                                                         
 				control_qubit_address_maps_SL_east_copy_mt = control_qubit_address_maps_SL_east_st.write( name='control_qubit_address_map_SL_east_copy',
-														 layout=layout_control_qubit_address_maps_SL_east_b, time=0 )
+														 layout=self.ML.layout_control_qubit_address_maps_SL_east_b, 
+                                                                                                                 time=0 )
 			
 			
 			#################################################################################
@@ -226,8 +227,8 @@ class Gate(Gate_counters):
 					mxm_permute_row_west_st_list = []					
 			
 					# mxm only accepts tensors with an inner dim of 320, thus 256 inner splits should be extended to 320
-					state_real_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=State_input_real_shared.storage_request, initialized=False)
-					state_imag_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=State_input_imag_shared.storage_request, initialized=False)
+					state_real_mt_320 = g.constant_tensor((self.ML.memory_addresses, 320), dtype=g.float32, storage_req=State_input_real_shared.storage_request, initialized=False)
+					state_imag_mt_320 = g.constant_tensor((self.ML.memory_addresses, 320), dtype=g.float32, storage_req=State_input_imag_shared.storage_request, initialized=False)
 
 					state_real_mt_320 = g.reinterpret(state_real_mt_320, dtype=g.int8)
 					state_imag_mt_320 = g.reinterpret(state_imag_mt_320, dtype=g.int8)
@@ -244,8 +245,8 @@ class Gate(Gate_counters):
 					
 					
 										
-					# 20 cycles to read the permute matrix, 8 for installing the weights and each matmul operation takes "memory_slices" cycles
-					time_list = [0, 0, 1*half_memory_slices, 1*half_memory_slices]
+					# 20 cycles to read the permute matrix, 8 for installing the weights and each matmul operation takes "self.ML.memory_addresses" cycles
+					time_list = [0, 0, 1*half_memory_addresses, 1*half_memory_addresses]
 					weights_list = []
 					weights_list.append(g.install_weights(permute_matrix_west_1_st, planes=mxm_requests[0], time=0))
 					weights_list.append(g.install_weights(permute_matrix_west_2_st, planes=mxm_requests[1], time=20))					
@@ -254,9 +255,9 @@ class Gate(Gate_counters):
 
 				
 					control_qubit_address_maps_SL_east_list_a = g.split( self.control_qubit_address_maps_SL_east_shared, 1 )
-					control_qubit_address_maps_SL_west_tmp   = g.concat( control_qubit_address_maps_SL_west_list[0:half_memory_slices] )
-					control_qubit_address_maps_SL_east_tmp_a = g.concat( control_qubit_address_maps_SL_east_list_a[0:half_memory_slices] )
-					#control_qubit_address_maps_SL_east_tmp_b = g.concat( control_qubit_address_maps_SL_east_list_b[0:half_memory_slices] )
+					control_qubit_address_maps_SL_west_tmp   = g.concat( control_qubit_address_maps_SL_west_list[0:half_memory_addresses] )
+					control_qubit_address_maps_SL_east_tmp_a = g.concat( control_qubit_address_maps_SL_east_list_a[0:half_memory_addresses] )
+					#control_qubit_address_maps_SL_east_tmp_b = g.concat( control_qubit_address_maps_SL_east_list_b[0:half_memory_addresses] )
 					
 										
 					
@@ -312,8 +313,17 @@ class Gate(Gate_counters):
 					state_permuted_real_mt = g.reinterpret(state_permuted_real_mt, dtype=g.float32)
 					state_permuted_imag_mt = g.reinterpret(state_permuted_imag_mt, dtype=g.float32)
 
-					permuted_state_real_mt = g.constant_tensor(state_permuted_real_mt.shape, g.float32, name="permuted_result_real", storage_req=self.state_real_copy_request, initialized=False)
-					permuted_state_imag_mt = g.constant_tensor(state_permuted_imag_mt.shape, g.float32, name="permuted_result_imag", storage_req=self.state_imag_copy_request, initialized=False)
+					permuted_state_real_mt = g.constant_tensor(state_permuted_real_mt.shape, 
+                                                                                   g.float32, 
+                                                                                   name="permuted_result_real", 
+                                                                                   storage_req=self.state_real_copy_request, 
+                                                                                   initialized=False)
+
+					permuted_state_imag_mt = g.constant_tensor(state_permuted_imag_mt.shape, 
+                                                                                   g.float32, 
+                                                                                   name="permuted_result_imag", 
+                                                                                   storage_req=self.state_imag_copy_request, 
+                                                                                   initialized=False)
 
 				else: # if permutor is used to generate qubit pairs
 
@@ -328,8 +338,8 @@ class Gate(Gate_counters):
 		
 
 					# byte-wise permutation of the state vector
-					Psi_real_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=State_input_real_shared.storage_request, initialized=False)		
-					Psi_imag_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=State_input_imag_shared.storage_request, initialized=False)
+					Psi_real_mt_320 = g.constant_tensor((self.ML.memory_addresses, 320), dtype=g.float32, storage_req=State_input_real_shared.storage_request, initialized=False)		
+					Psi_imag_mt_320 = g.constant_tensor((self.ML.memory_addresses, 320), dtype=g.float32, storage_req=State_input_imag_shared.storage_request, initialized=False)
 					Psi_real_mt_320 = g.reinterpret(Psi_real_mt_320, dtype=g.int8)
 					Psi_imag_mt_320 = g.reinterpret(Psi_imag_mt_320, dtype=g.int8)		
 	
@@ -351,7 +361,7 @@ class Gate(Gate_counters):
 			
 			
 					state_permute_map_selector_shared = g.shared_memory_tensor(self.state_permute_map_selector_mt, name="state_permute_map_selector_shared")		
-					state_permute_map_selector_list   = g.split_vectors(input=state_permute_map_selector_shared, splits=[1]*gate_count)
+					state_permute_map_selector_list   = g.split_vectors(input=state_permute_map_selector_shared, splits=[1]*self.ML.gate_count)
 			
 	
 					# otherwise the permutor slices are used
@@ -359,8 +369,8 @@ class Gate(Gate_counters):
 					permute_maps_mt_east_shared = g.shared_memory_tensor(self.permute_maps_mt_east, name="permute_maps_east_shared")			
 
 
-					half_memory_slices = memory_slices >> 1
-					permutation_time_starts = [0, half_memory_slices, 2*half_memory_slices, 3*half_memory_slices]
+					half_memory_addresses = self.ML.memory_addresses >> 1
+					permutation_time_starts = [0, half_memory_addresses, 2*half_memory_addresses, 3*half_memory_addresses]
 									
 				
 
@@ -378,11 +388,22 @@ class Gate(Gate_counters):
 
 						control_qubit_address_maps_SL_east_copy_st = control_qubit_address_maps_SL_east_copy_mt.read( streams = g.SG1_W[30] )		
 						
-						state_real_byte_st                 = g.mem_gather(Psi_real_mt_list[byte_idx], control_qubit_address_maps_SL_west_st, output_streams=[g.SG1_E[0]] )
-						state_permute_map_selector_east_st = g.mem_gather(state_permute_map_selector_shared, gate_counter_perm_map_selector_st_b, output_streams=[g.SG1_E[24]])				
+						state_real_byte_st                 = g.mem_gather(Psi_real_mt_list[byte_idx], 
+                                                                                                  control_qubit_address_maps_SL_west_st, 
+                                                                                                  output_streams=[g.SG1_E[0]] )
+
+						state_permute_map_selector_east_st = g.mem_gather(state_permute_map_selector_shared, 
+                                                                                                  gate_counter_perm_map_selector_st_b, 
+                                                                                                  output_streams=[g.SG1_E[24]])				
+
 						#state_permute_map_selector_east_st = state_permute_map_selector_list[0].read(streams=[g.SG1_E[24]])	
 						permute_map_west_st                = g.mem_gather(permute_maps_mt_east_shared, state_permute_map_selector_east_st, output_streams=[g.SG1_E[24]])		
-						permuted_state_real_st_8           = g.permute_inner(state_real_byte_st, permute_map_west_st, permutor_req=permutor_requests[1], input_streams=[g.SG1_E[0], g.SG1_E[24]], output_streams=g.SG1[4], time=permutation_time_starts[byte_idx] )
+						permuted_state_real_st_8           = g.permute_inner(state_real_byte_st, 
+                                                                                                     permute_map_west_st, 
+                                                                                                     permutor_req=permutor_requests[1], 
+                                                                                                     input_streams=[g.SG1_E[0], g.SG1_E[24]], 
+                                                                                                     output_streams=g.SG1[4], 
+                                                                                                     time=permutation_time_starts[byte_idx] )
 				
 
 						g.mem_scatter(permuted_state_real_st_8, Psi_real_copy_mt_list[byte_idx], control_qubit_address_maps_SL_east_copy_st)
@@ -395,7 +416,11 @@ class Gate(Gate_counters):
 						state_permute_map_selector_west_st = g.mem_gather(state_permute_map_selector_shared, gate_counter_perm_map_selector_st_a, output_streams=[g.SG1_W[24]])	
 						#state_permute_map_selector_west_st = state_permute_map_selector_list[0].read(streams=[g.SG1_W[24]])	
 						permute_map_west_st                = g.mem_gather(permute_maps_mt_west_shared, state_permute_map_selector_west_st, output_streams=[g.SG1_W[24]])
-						permuted_state_imag_st_8           = g.permute_inner(state_imag_byte_st, permute_map_west_st, permutor_req=permutor_requests[0], input_streams=[g.SG1_W[0], g.SG1_E[24]], output_streams=g.SG1[4])#, time=permutation_time_starts[byte_idx]+0*memory_addresses )
+						permuted_state_imag_st_8           = g.permute_inner(state_imag_byte_st, 
+                                                                                                     permute_map_west_st, 
+                                                                                                     permutor_req=permutor_requests[0], 
+                                                                                                     input_streams=[g.SG1_W[0], g.SG1_E[24]], 
+                                                                                                     output_streams=g.SG1[4])#, time=permutation_time_starts[byte_idx]+0*memory_addresses )
 				
 
 						g.mem_scatter(permuted_state_imag_st_8, Psi_imag_copy_mt_list[byte_idx], control_qubit_address_maps_SL_east_st)
@@ -410,7 +435,7 @@ class Gate(Gate_counters):
 			gate_kernels_broadcasted_real_shared_copy_dict = {}
 			gate_kernels_broadcasted_imag_shared_copy_dict = {}
 			
-			for label in gate_kernel_element_labels:
+			for label in self.ML.gate_kernel_element_labels:
 
 				key = '0_' + label
 				gate_kernel_broadcasted_real_mt = self.gate_kernels_broadcasted_real_dict[key]
@@ -438,10 +463,10 @@ class Gate(Gate_counters):
 			#address_offset = 4*gate_count
 			address_offset = 200
 
-			layout_real_diag     = layout_gate_kernels_real + f", A1({address_offset})"
-			layout_imag_diag     = layout_gate_kernels_imag + f", A1({address_offset})"		
-			layout_real_off_diag = layout_gate_kernels_real_copy + f", A1({address_offset})"
-			layout_imag_off_diag = layout_gate_kernels_imag_copy + f", A1({address_offset})"	
+			layout_real_diag     = self.ML.layout_gate_kernels_real + f", A1({address_offset})"
+			layout_imag_diag     = self.ML.layout_gate_kernels_imag + f", A1({address_offset})"		
+			layout_real_off_diag = self.ML.layout_gate_kernels_real_copy + f", A1({address_offset})"
+			layout_imag_off_diag = self.ML.layout_gate_kernels_imag_copy + f", A1({address_offset})"	
 				
 			storage_req_real_diag     = g.tensor.create_storage_request( layout = layout_real_diag )
 			storage_req_imag_diag     = g.tensor.create_storage_request( layout = layout_imag_diag )
@@ -466,8 +491,8 @@ class Gate(Gate_counters):
 				with g.ResourceScope(name=f"prepare_filtered_gate_elements_scope", is_buffered=True, time=0) as prepare_filtered_gate_elements_scope :
 				
 				
-					gate_counter_gate_filtering_selector_shared = g.shared_memory_tensor(self.gate_counter_gate_filtering_selector_mt,   \
-												   										name="gate_counter_gate_filtering_selector_shared") 
+					gate_counter_gate_filtering_selector_shared = g.shared_memory_tensor(self.gate_counter_gate_filtering_selector_mt,  
+                                                                                                              name="gate_counter_gate_filtering_selector_shared") 
 
 					# gather streams to filter and mix gate elements for the unitary transformation
 					state_1_broadcasted_st, state_0_broadcasted_st = self.gather_gate_filter_tensors()
@@ -584,10 +609,10 @@ class Gate(Gate_counters):
 			with g.ResourceScope(name=f"apply_gate_scope", is_buffered=True, predecessors=[prepare_state_pair_scope], time=None) as apply_gate_scope :
 
 				# define state with 320 vectors instead of 256 inner splits
-				Psi_real_mt_320      = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=State_input_real_shared.storage_request, initialized=False)		
-				Psi_imag_mt_320      = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=State_input_imag_shared.storage_request, initialized=False)
-				Psi_real_copy_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=State_input_real_copy_shared.storage_request, initialized=False)
-				Psi_imag_copy_mt_320 = g.constant_tensor((memory_slices, 320), dtype=g.float32, storage_req=State_input_imag_copy_shared.storage_request, initialized=False)
+				Psi_real_mt_320      = g.constant_tensor((self.ML.memory_addresses, 320), dtype=g.float32, storage_req=State_input_real_shared.storage_request, initialized=False)		
+				Psi_imag_mt_320      = g.constant_tensor((self.ML.memory_addresses, 320), dtype=g.float32, storage_req=State_input_imag_shared.storage_request, initialized=False)
+				Psi_real_copy_mt_320 = g.constant_tensor((self.ML.memory_addresses, 320), dtype=g.float32, storage_req=State_input_real_copy_shared.storage_request, initialized=False)
+				Psi_imag_copy_mt_320 = g.constant_tensor((self.ML.memory_addresses, 320), dtype=g.float32, storage_req=State_input_imag_copy_shared.storage_request, initialized=False)
 
 				
 				# separating the tensors along the slice dimension (separating the bytes)
@@ -618,24 +643,24 @@ class Gate(Gate_counters):
 					
 					# Real part
 					state_real_byte_st  = g.mem_gather(Psi_real_bytes_mt_list[byte_idx], control_qubit_address_maps_SL_west_st, output_streams=[g.SG1_E[byte_idx]] )
-					state_real_byte_st  = g.reshape( state_real_byte_st, [half_memory_slices,1,320] )
+					state_real_byte_st  = g.reshape( state_real_byte_st, [half_memory_addresses,1,320] )
 					state_real_bytes_st_list.append( state_real_byte_st )
 
 					# Imag part
 					state_imag_byte_st  = g.mem_gather(Psi_imag_bytes_mt_list[byte_idx], control_qubit_address_maps_SL_west_st, output_streams=[g.SG1_E[3*4+byte_idx]] )
-					state_imag_byte_st  = g.reshape( state_imag_byte_st, [half_memory_slices,1,320] )
+					state_imag_byte_st  = g.reshape( state_imag_byte_st, [half_memory_addresses,1,320] )
 					state_imag_bytes_st_list.append( state_imag_byte_st )
 
 
 					# Real part of copy
 					state_real_copy_byte_st  = g.mem_gather(Psi_real_bytes_copy_mt_list[byte_idx], control_qubit_address_maps_SL_west_st, output_streams=[g.SG1_E[6*4+byte_idx]] )
-					state_real_copy_byte_st  = g.reshape( state_real_copy_byte_st, [half_memory_slices,1,320] )
+					state_real_copy_byte_st  = g.reshape( state_real_copy_byte_st, [half_memory_addresses,1,320] )
 					state_real_copy_bytes_st_list.append( state_real_copy_byte_st )
 
 
 					# Imag part of copy
 					state_imag_copy_byte_st  = g.mem_gather(Psi_imag_bytes_copy_mt_list[byte_idx], control_qubit_address_maps_SL_west_st, output_streams=[g.SG1_E[4*4+byte_idx]] )
-					state_imag_copy_byte_st  = g.reshape( state_imag_copy_byte_st, [half_memory_slices,1,320] )
+					state_imag_copy_byte_st  = g.reshape( state_imag_copy_byte_st, [half_memory_addresses,1,320] )
 					state_imag_copy_bytes_st_list.append( state_imag_copy_byte_st )
 
 

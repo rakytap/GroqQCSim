@@ -118,18 +118,20 @@ class Gate(Gate_L_base):
 				
 		gate_element_st = g.add( gate_element_st, filtering_element_st, alus=self.alu_req_10, output_streams=g.SG4_E[4] )
 
-							
-		# addresses from gate_count*4 to gate_count*5    on EAST hemispheres are occupied with the shifted (and still packed) gate kernels  -- this is temporary used.
-		#layout_gate_kernels_real_copy 	="H1(E), S4(0-3)"
-		#layout_gate_kernels_imag_copy	="H1(E), S4(4-7)"
-		#layout_gate_kernels_real	="H1(E), S4(8-11)"
-		#layout_gate_kernels_imag	="H1(E), S4(12-15)"				
+									
 				
 		gate_element_st_list = gate_element_st.split( dim=0, num_splits=2 )	
-		gate_element_real_filtered_mt      = gate_element_st_list[0].write(name='gate_real_'+label+ '_filtered', layout=layout_gate_kernels_real + f', A1({address_offset})' )
-		gate_element_imag_filtered_mt      = gate_element_st_list[1].write(name='gate_imag_'+label+ '_filtered', layout=layout_gate_kernels_imag + f', A1({address_offset})' )
-		gate_element_real_filtered_copy_mt = gate_element_st_list[0].write(name='gate_real_'+label+ '_copy_filtered', layout=layout_gate_kernels_real_copy + f', A1({address_offset})' )
-		gate_element_imag_filtered_copy_mt = gate_element_st_list[1].write(name='gate_imag_'+label+ '_copy_filtered', layout=layout_gate_kernels_imag_copy + f', A1({address_offset})' )
+		gate_element_real_filtered_mt      = gate_element_st_list[0].write(name='gate_real_'+label+ '_filtered', 
+                                                                                   layout=self.ML.layout_gate_kernels_real + f', A1({address_offset})' )
+
+		gate_element_imag_filtered_mt      = gate_element_st_list[1].write(name='gate_imag_'+label+ '_filtered', 
+                                                                                   layout=self.ML.layout_gate_kernels_imag + f', A1({address_offset})' )
+
+		gate_element_real_filtered_copy_mt = gate_element_st_list[0].write(name='gate_real_'+label+ '_copy_filtered', 
+                                                                                    layout=self.ML.layout_gate_kernels_real_copy + f', A1({address_offset})' )
+
+		gate_element_imag_filtered_copy_mt = gate_element_st_list[1].write(name='gate_imag_'+label+ '_copy_filtered', 
+                                                                                    layout=self.ML.layout_gate_kernels_imag_copy + f', A1({address_offset})' )
 				
 				
 		

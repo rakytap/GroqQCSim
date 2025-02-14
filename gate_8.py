@@ -72,16 +72,16 @@ class Gate(Gate_8_base):
 
 			with g.ResourceScope(name=f"apply_gate_scope", is_buffered=True, predecessors=[], time=0) as apply_gate_scope :
 
-				pairs = [ [x,x^1] for x in range(memory_addresses) if x < x^1   ]
+				pairs = [ [x,x^1] for x in range(self.ML.memory_addresses) if x < x^1   ]
  
 
-				inner_dims = [x.reshape(2, matrix_size) for x in g.stack(
-						[Psi_transformed_real_mt, Psi_transformed_imag_mt], dim=0).split(dim=1, num_splits=memory_addresses)]
+				inner_dims = [x.reshape(2, self.ML.matrix_size) for x in g.stack(
+						[Psi_transformed_real_mt, Psi_transformed_imag_mt], dim=0).split(dim=1, num_splits=self.ML.memory_addresses)]
 
-				inner_dims_copy = [x.reshape(2, matrix_size) for x in g.stack(
-						[Psi_transformed_real_copy_mt, Psi_transformed_imag_copy_mt], dim=0).split(dim=1, num_splits=memory_addresses)]
+				inner_dims_copy = [x.reshape(2, self.ML.matrix_size) for x in g.stack(
+						[Psi_transformed_real_copy_mt, Psi_transformed_imag_copy_mt], dim=0).split(dim=1, num_splits=self.ML.memory_addresses)]
 
-				#inner_dims (2, memory_addresses, matrix_size) -> [(2, matrix_size)]*memory_addresses 
+				#inner_dims (2, memory_addresses, self.ML.matrix_size) -> [(2, self.ML.matrix_size)]*memory_addresses 
 				pairs_to_concat0_0 = []
 				pairs_to_concat0_1 = []
 				pairs_to_concat1_0 = []
@@ -100,12 +100,12 @@ class Gate(Gate_8_base):
 				pairs_to_concat1_1 = g.stack(pairs_to_concat1_1, dim=0)
 
 				pairs0 = g.stack([pairs_to_concat0_0, pairs_to_concat1_0], dim=0)
-				pairs0 = [x.reshape(2, memory_addresses//2, matrix_size) for x in pairs0.split(num_splits=2, dim=2)]
+				pairs0 = [x.reshape(2, self.ML.memory_addresses//2, self.ML.matrix_size) for x in pairs0.split(num_splits=2, dim=2)]
 
 				pairs1 = g.stack([pairs_to_concat1_1, pairs_to_concat0_1], dim=0)
-				pairs1 = [x.reshape(2, memory_addresses//2, matrix_size) for x in pairs1.split(num_splits=2, dim=2)]
+				pairs1 = [x.reshape(2, self.ML.memory_addresses//2, self.ML.matrix_size) for x in pairs1.split(num_splits=2, dim=2)]
 			
-				new_shape = (2, memory_addresses//2, 1, matrix_size)
+				new_shape = (2, self.ML.memory_addresses//2, 1, self.ML.matrix_size)
 
 				pairs0[0] = pairs0[0].reshape(*new_shape).transpose(1, 0, 2, 3)
 				pairs0[1] = pairs0[1].reshape(*new_shape).transpose(1, 0, 2, 3)
@@ -139,11 +139,11 @@ class Gate(Gate_8_base):
 
 				pairs_to_store0 = g.stack([pairs_to_concat0_0, pairs_to_concat0_1], dim=0)
 				pairs_to_store1 = g.stack([pairs_to_concat1_0, pairs_to_concat1_1], dim=0)
-				#pairs_to_store (2, memory_addresses//2, 2, matrix_size)
+				#pairs_to_store (2, memory_addresses//2, 2, self.ML.matrix_size)
 
 				pairs0_0, pairs0_1 = g.split(pairs_to_store0, num_splits=2, dim=2)
 				pairs1_0, pairs1_1 = g.split(pairs_to_store1, num_splits=2, dim=2)
-				#pairs (2, memory_addresses//2, 1, matrix_size)
+				#pairs (2, memory_addresses//2, 1, self.ML.matrix_size)
 
 
 				pairs0_0 = pairs0_0.reshape(*new_shape).transpose(1, 0, 2, 3)

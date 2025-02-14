@@ -296,7 +296,7 @@ class Gate_S_base(Gate_counters):
 		gate_counter_perm_map_selector_st_b   = gate_counter_perm_map_selector_shared.read(streams=[g.SG1_E[0]])		
 
 		state_permute_map_selector_shared = g.shared_memory_tensor(self.state_permute_map_selector_mt, name="state_permute_map_selector_shared")		
-		state_permute_map_selector_list   = g.split_vectors(input=state_permute_map_selector_shared, splits=gate_count)
+		state_permute_map_selector_list   = g.split_vectors(input=state_permute_map_selector_shared, splits=self.ML.gate_count)
 			
 		# otherwise the permutor slices are used
 		permute_maps_mt_west_shared = g.shared_memory_tensor(self.permute_maps_mt_west, name="permute_maps_west_shared")
@@ -325,8 +325,8 @@ class Gate_S_base(Gate_counters):
 
 		memory_addresses = permuted_state_real_st_8.physical_shape.outer_size >> 2
 
-		permuted_state_real_st_8 = g.reshape(permuted_state_real_st_8, [memory_addresses, 4, matrix_size] )
-		permuted_state_imag_st_8 = g.reshape(permuted_state_imag_st_8, [memory_addresses, 4, matrix_size] )
+		permuted_state_real_st_8 = g.reshape(permuted_state_real_st_8, [memory_addresses, 4, self.ML.matrix_size] )
+		permuted_state_imag_st_8 = g.reshape(permuted_state_imag_st_8, [memory_addresses, 4, self.ML.matrix_size] )
 				
 		permuted_state_real_st = g.reinterpret(permuted_state_real_st_8, g.float32 )
 		permuted_state_imag_st = g.reinterpret(permuted_state_imag_st_8, g.float32 )

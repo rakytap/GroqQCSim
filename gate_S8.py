@@ -74,7 +74,7 @@ class Gate(Gate_S_base):
 		gate_counter_perm_map_selector_st_b   = gate_counter_perm_map_selector_shared.read(streams=[g.SG1_E[0]])		
 
 		state_permute_map_selector_shared = g.shared_memory_tensor(self.state_permute_map_selector_mt, name="state_permute_map_selector_shared")		
-		state_permute_map_selector_list   = g.split_vectors(input=state_permute_map_selector_shared, splits=gate_count)
+		state_permute_map_selector_list   = g.split_vectors(input=state_permute_map_selector_shared, splits=self.ML.gate_count)
 			
 		# otherwise the permutor slices are used
 		permute_maps_mt_west_shared = g.shared_memory_tensor(self.permute_maps_mt_west, name="permute_maps_west_shared")
@@ -103,8 +103,8 @@ class Gate(Gate_S_base):
 
 		memory_addresses = permuted_state_real_st_8.physical_shape.outer_size >> 2
 
-		permuted_state_real_st_8 = g.reshape(permuted_state_real_st_8, [memory_addresses, 4, matrix_size] )
-		permuted_state_imag_st_8 = g.reshape(permuted_state_imag_st_8, [memory_addresses, 4, matrix_size] )
+		permuted_state_real_st_8 = g.reshape(permuted_state_real_st_8, [memory_addresses, 4, self.ML.matrix_size] )
+		permuted_state_imag_st_8 = g.reshape(permuted_state_imag_st_8, [memory_addresses, 4, self.ML.matrix_size] )
 				
 		permuted_state_real_st = g.reinterpret(permuted_state_real_st_8, g.float32 )
 		permuted_state_imag_st = g.reinterpret(permuted_state_imag_st_8, g.float32 )
@@ -176,7 +176,7 @@ class Gate(Gate_S_base):
 			gate_kernels_broadcasted_real_shared_copy_dict = {}
 			gate_kernels_broadcasted_imag_shared_copy_dict = {}
 			
-			for label in gate_kernel_element_labels:
+			for label in self.ML.gate_kernel_element_labels:
 
 				key = '0_' + label
 				gate_kernel_broadcasted_real_mt = self.gate_kernels_broadcasted_real_dict[key]
@@ -201,10 +201,10 @@ class Gate(Gate_S_base):
 			#address_offset = 4*gate_count
 			address_offset = 200
 
-			layout_real_diag = layout_gate_kernels_real + f", A1({address_offset})"
-			layout_imag_diag = layout_gate_kernels_imag + f", A1({address_offset})"		
-			layout_real_off_diag = layout_gate_kernels_real_copy + f", A1({address_offset})"
-			layout_imag_off_diag = layout_gate_kernels_imag_copy + f", A1({address_offset})"	
+			layout_real_diag     = self.ML.layout_gate_kernels_real + f", A1({address_offset})"
+			layout_imag_diag     = self.ML.layout_gate_kernels_imag + f", A1({address_offset})"		
+			layout_real_off_diag = self.ML.layout_gate_kernels_real_copy + f", A1({address_offset})"
+			layout_imag_off_diag = self.ML.layout_gate_kernels_imag_copy + f", A1({address_offset})"	
 				
 			storage_req_real_diag  = g.tensor.create_storage_request( layout = layout_real_diag )
 			storage_req_imag_diag  = g.tensor.create_storage_request( layout = layout_imag_diag )
@@ -390,8 +390,8 @@ class Gate(Gate_S_base):
 
 
 				# create half of the tensors to store the permuted elements
-				Psi_transformed_real_st_list = g.split( Psi_transformed_real_st, dim=0, num_splits=memory_addresses )
-				Psi_transformed_imag_st_list = g.split( Psi_transformed_imag_st, dim=0, num_splits=memory_addresses )
+				Psi_transformed_real_st_list = g.split( Psi_transformed_real_st, dim=0, num_splits=self.ML.memory_addresses )
+				Psi_transformed_imag_st_list = g.split( Psi_transformed_imag_st, dim=0, num_splits=self.ML.memory_addresses )
 
 				Psi_transformed_real_half_st = g.concat(Psi_transformed_real_st_list[1::2], dim=0 )
 				Psi_transformed_imag_half_st = g.concat(Psi_transformed_imag_st_list[1::2], dim=0 )
@@ -399,14 +399,14 @@ class Gate(Gate_S_base):
 				Psi_transformed_real_half2_st = g.concat(Psi_transformed_real_st_list[0::2], dim=0 )
 				Psi_transformed_imag_half2_st = g.concat(Psi_transformed_imag_st_list[0::2], dim=0 )
 
-				Psi_transformed_real_mt_list = g.split( state_real_mt_320, dim=0, num_splits=memory_addresses )
-				Psi_transformed_imag_mt_list = g.split( state_imag_mt_320, dim=0, num_splits=memory_addresses )
+				Psi_transformed_real_mt_list = g.split( state_real_mt_320, dim=0, num_splits=self.ML.memory_addresses )
+				Psi_transformed_imag_mt_list = g.split( state_imag_mt_320, dim=0, num_splits=self.ML.memory_addresses )
 
 				Psi_transformed_real_half_mt = g.concat( Psi_transformed_real_mt_list[1::2], dim=0 )
 				Psi_transformed_imag_half_mt = g.concat( Psi_transformed_imag_mt_list[1::2], dim=0 )
 
-				Psi_transformed_real_copy_mt_list = g.split( state_real_copy_mt_320, dim=0, num_splits=memory_addresses )
-				Psi_transformed_imag_copy_mt_list = g.split( state_imag_copy_mt_320, dim=0, num_splits=memory_addresses )
+				Psi_transformed_real_copy_mt_list = g.split( state_real_copy_mt_320, dim=0, num_splits=self.ML.memory_addresses )
+				Psi_transformed_imag_copy_mt_list = g.split( state_imag_copy_mt_320, dim=0, num_splits=self.ML.memory_addresses )
 
 				Psi_transformed_real_copy_half_mt = g.concat( Psi_transformed_real_copy_mt_list[1::2], dim=0 )
 				Psi_transformed_imag_copy_half_mt = g.concat( Psi_transformed_imag_copy_mt_list[1::2], dim=0 )

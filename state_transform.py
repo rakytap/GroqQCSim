@@ -5,22 +5,26 @@ import sys
 
 from scipy.stats import unitary_group
 import scipy
+from memory_layouts import MemoryLayouts
 import groqQCsim
 import time
 import random
 
-qbit_num = groqQCsim.qbit_num
-gate_count = groqQCsim.gate_count
+qbit_num = 16
+gate_count = 7*256
+
+ML = MemoryLayouts( qbit_num, gate_count )
 
 
 if __name__ == "__main__":
-	'''
-	target_qbits  = [6] * gate_count
-	control_qbits = [0] * gate_count
-	'''
-	#target_qbits  = [12,  12, 0,  10, 8, 6,   8,  4, 15, 3, 13, 16, 8, 5, 8, 12, 7]
-	#control_qbits = [-1,  8, 15,  4,  2, 10, -1, -1, 10, 5, 7,  8, -1, 0, 7, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
 
+	
+	#target_qbits  = [3] * gate_count
+	#control_qbits = [-1] * gate_count
+	'''
+	target_qbits  = [12,  12, 0,  10, 8, 6,   8,  4, 15, 3, 13, 16, 8, 5, 8, 12, 7]
+	control_qbits = [-1,  8, 15,  4,  2, 10, -1, -1, 10, 5, 7,  8, -1, 0, 7, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
+	'''
 	
 	#target_qbits  = [6,  2,  12, 1, 15, 8, 16, 4,  6, 16, 10, 11, 15,  8, 12, 13, 8]
 	#control_qbits = [-1, -1, 3,  0, 3, -1, 9, 10,  8,  7, -1,  16,  7, -1, 2, 8, 11] #-1 ... no control qubit is incolved in the operation
@@ -41,7 +45,7 @@ if __name__ == "__main__":
 		if target_qbit != control_qbit:		
 			target_qbits.append( target_qbit )
 			control_qbits.append( control_qbit )		
-         
+        
 	
 	if len(target_qbits) != gate_count:
 		raise Exception("Number of target qubits in the list of target qubits should be equal to the gate count")
@@ -53,15 +57,19 @@ if __name__ == "__main__":
 
 	# determine the soze of the unitary to be decomposed
 	matrix_size = 1 << qbit_num
-	   
+	
 	State_orig_real = np.random.rand( matrix_size )
 	State_orig_imag = np.random.rand( matrix_size )
+	#State_orig_real = np.zeros(matrix_size, dtype=np.float_)
+	#State_orig_real[0] = 1.0
+	#State_orig_imag = np.zeros(matrix_size, dtype=np.float_)
 	State_orig = State_orig_real + 1j*State_orig_imag
 	State_orig = State_orig/np.linalg.norm(State_orig)
 
 
 	one_qubit_circuits = []
 	circuit = Circuit(qbit_num)
+	circuit2 = Circuit(qbit_num) ########
 	for gate_idx in range( len(target_qbits) ):
 
 		target_qbit  = target_qbits[gate_idx]
@@ -77,6 +85,9 @@ if __name__ == "__main__":
 			circuit_1 = Circuit( 1 )
 			circuit_1.add_U3( 0 )
 			one_qubit_circuits.append( circuit_1 )
+
+			if gate_idx < ML.second_gate_count:
+				circuit2.add_U3( target_qbit )
 		
 		elif target_qbit >= 0 and target_qbit < 21 and control_qbit >= 0 and control_qbit < 21 :	
 	
@@ -86,6 +97,9 @@ if __name__ == "__main__":
 			circuit_1 = Circuit( 1 )
 			circuit_1.add_RY( 0  )		
 			one_qubit_circuits.append( circuit_1 )
+
+			if gate_idx < ML.second_gate_count:
+				circuit2.add_CRY( target_qbit, control_qbit )
 		
 		else:
 			error("Unimplemented case wit target qubit and control qubit.")
@@ -99,8 +113,9 @@ if __name__ == "__main__":
 	print('Number of parameters in the circuit: ', parameter_num, flush=True)
 
 	#create an array of random parameters
+	np.random.seed(0)
 	parameters = np.random.rand( parameter_num )*2*np.pi
-	#print('parameters: ', parameters )
+	print('parameters: ', parameters )
 	
 	'''
 	if parameters.size > 3:
@@ -117,32 +132,39 @@ if __name__ == "__main__":
 	start_time = time.time()
 	
 	circuit.apply_to( parameters, State_transformed_oracle )
+	circuit2.apply_to( parameters, State_transformed_oracle )
 	time_Cpp = time.time()-start_time
 
 
 	#####################################################
-	# get the gate kernel
+	# get the gate kernels
+    
 	gates = circuit.get_Gates()
+    
+	# constructing quantum circuit
+	#for gate in gates:
+
 
 	print( 'The single qubit gate kernels are:')
 	start_time = time.time()
-	gate_kernels = np.zeros((groqQCsim.gate_splits*80, 2, 2,), dtype=np.complex64)
-	for idx in range(groqQCsim.gate_splits*80):
+	gate_kernels = np.zeros((ML.gate_splits*80, 2, 2,), dtype=np.complex64)
+	for idx in range(ML.gate_splits*80):
 		if idx < gate_count:
+
 			gate = gates[idx]
 			parameter_idx = gate.get_Parameter_Start_Index()
+
+
 			gate_parameter_num = one_qubit_circuits[idx].get_Parameter_Num()
+
 			parameters_1       = parameters[parameter_idx: parameter_idx+gate_parameter_num]
 
-			#print( parameters_1 )
 			gate_kernel_single = one_qubit_circuits[idx].get_Matrix( parameters_1 )
 			gate_kernels[idx]  = gate_kernel_single
-			#print( gate_kernel_single )
-			#print(' ')
+
 	time_kernel_extract = time.time()-start_time
 
 	print( "gate kernel shape: ", gate_kernels.shape )
-
 
 	#####################################################
 	# running Groq 
@@ -155,7 +177,7 @@ if __name__ == "__main__":
 	
 
 
-	real_part, imag_part = groqQCsim.main(State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, gate_kernels, mxm_permutation = False)
+	real_part, imag_part = groqQCsim.main(qbit_num, gate_count, State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, gate_kernels, mxm_permutation = False)
 	print(' ')
 	print( 'difference between CPU oracle and Groq chip (real part): ', scipy.linalg.norm( real_part - np.real( State_transformed_oracle ) , 2), '(imag part): ', scipy.linalg.norm( imag_part - np.imag( State_transformed_oracle ) , 2) )
 

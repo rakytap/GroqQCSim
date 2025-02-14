@@ -12,6 +12,8 @@ from typing import List
 import utils
 from memory_layouts import *
 
+ML = None
+
 try:
     import groq.runtime.driver as runtime
 except ImportError:
@@ -32,13 +34,13 @@ def compile(mxm_permutation = True) -> List[str]:
 	"""
 	output_dir = "./build_iop"
 	shutil.rmtree(output_dir, ignore_errors=True)
-	pgm_pkg = g.ProgramPackage("QCsim_multi_program", output_dir)
+	pgm_pkg = g.ProgramPackage(f"QCsim_multi_program.{ML.qbit_num}.{ML.gate_count}", output_dir)
 
 	
 
-	program = Gate_IOP(pgm_pkg, mxm_permutation = mxm_permutation)
+	program = Gate_IOP(pgm_pkg, ML, mxm_permutation = mxm_permutation)
 	# Defines a program to upload the inputs
-	program.upload_program()
+	program.gate_upload_program()
 	
 	program.upload_state_program()	
 	program.download_state_program()	
@@ -99,6 +101,9 @@ def compile(mxm_permutation = True) -> List[str]:
 	
 	# program to perform gate_HL operation
 	program.gate_HH_program()
+
+	# program to reset the state vector to (1,0,0,0,0,0,0,...)
+	program.reset_state_vector_program()	
 	
 	iops = pgm_pkg.assemble()
 
@@ -160,7 +165,7 @@ def invoke(device, iop, pgm_num, ep, tensors):
 	return outs
 
 
-def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kernels_real, gate_kernels_imag, mxm_permutation = True):
+def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kernels_real, gate_kernels_imag, ML, mxm_permutation = True):
 	"""
     This function interacts with the device driver at a lower level to show
     the control of loading 2 programs and invoking each program through
@@ -186,6 +191,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device.load(iop[1], unsafe_keep_entry_points=True) # upload state vector
 	device.load(iop[2], unsafe_keep_entry_points=True) # download state vector
 	device.load(iop[3], unsafe_keep_entry_points=True) #S	
+	
 	device.load(iop[4], unsafe_keep_entry_points=True) #SS	
 	device.load(iop[5], unsafe_keep_entry_points=True) #SL
 	device.load(iop[6], unsafe_keep_entry_points=True) #S8
@@ -216,16 +222,16 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	# create memory maps to access the correct metadata on the chip to perform the gate operation on the chosen target_qubit
 	#if mxm_permutation :
 	#in case the MXM is used, the individual permute mtrices will occupy 20 memory addresses
-	mxm_permutation_selector = np.zeros( (gate_count,320,), dtype=np.uint8 ) #target_qbit_selector*20
+	mxm_permutation_selector = np.zeros( (ML.gate_count,320,), dtype=np.uint8 ) #target_qbit_selector*20
 	#else:  ##### !!! gate SL needs the permutor !!! #####
 	
 	# in case the permutor is used for permutation
-	permutation_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )
+	permutation_selector = np.zeros( (ML.gate_count,320,), dtype=np.uint8 )
 	
 	# maps for mem_gather to select the correct state_1 indices according to the target qubit
-	state_1_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )#np.zeros( (2,320,), dtype=np.uint8 )
-	state_0_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )#np.zeros( (2,320,), dtype=np.uint8 )	
-	for gate_idx in range(gate_count):
+	state_1_selector = np.zeros( (ML.gate_count,320,), dtype=np.uint8 )#np.zeros( (2,320,), dtype=np.uint8 )
+	state_0_selector = np.zeros( (ML.gate_count,320,), dtype=np.uint8 )#np.zeros( (2,320,), dtype=np.uint8 )	
+	for gate_idx in range(ML.gate_count):
 		target_qbit = target_qbits[gate_idx]
 		if target_qbit < 8:
 			state_0_selector[gate_idx, 0:320:16] = target_qbit
@@ -238,12 +244,12 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 		
 
 	
-	control_state_1_selector = np.zeros( (gate_count,320,), dtype=np.uint8 )
-	for gate_idx in range(gate_count):
+	control_state_1_selector = np.zeros( (ML.gate_count,320,), dtype=np.uint8 )
+	for gate_idx in range(ML.gate_count):
 		
 		control_qbit = control_qbits[gate_idx]
 
-		if ( control_qbit < small_qbit_num_limit and control_qbit >= 0 ) :
+		if ( control_qbit < ML.small_qbit_num_limit and control_qbit >= 0 ) :
 			control_state_1_selector[gate_idx,0:320:16] = control_qbit
 		elif (control_qbit == -1 ): #no control qubit case
 			control_state_1_selector[gate_idx,0:320:16] = 0  # no control qubit is used when filetring the gate kernels
@@ -268,17 +274,17 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 
 	# control qubit distributor maps for SL gates
-	distributor_map_np = np.zeros( (gate_count, 320,), dtype=np.uint8 )
-	for gate_idx in range(gate_count):
+	distributor_map_np = np.zeros( (ML.gate_count, 320,), dtype=np.uint8 )
+	for gate_idx in range(ML.gate_count):
 	
 		control_qbit = control_qbits[gate_idx]
 		target_qbit  = target_qbits[gate_idx]
 		if control_qbit > 8 and control_qbit <= 16 and target_qbit <= 8:
 			# SL and 8L gates
-			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - small_qbit_num_limit - 1)
-			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - small_qbit_num_limit - 1) + 1
-		elif control_qbit > 16 and control_qbit < 21 and target_qbit <= 8:
-			# SH and 8H gates
+			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - ML.small_qbit_num_limit - 1)
+			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - ML.small_qbit_num_limit - 1) + 1
+		elif control_qbit > 16 and control_qbit < 21 and target_qbit < 8:
+			# SH gate
 			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - 17)
 			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - 17) + 1
 		elif control_qbit > 8 and control_qbit <= 16 and target_qbit > 8 and target_qbit < 21:
@@ -290,8 +296,8 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			else: 
 				offset = control_qbit - 1
 			
-			distributor_map_np[gate_idx, 0:320:16] = 2*(offset - small_qbit_num_limit - 1)
-			distributor_map_np[gate_idx, 1:320:16] = 2*(offset - small_qbit_num_limit - 1) + 1
+			distributor_map_np[gate_idx, 0:320:16] = 2*(offset - ML.small_qbit_num_limit - 1)
+			distributor_map_np[gate_idx, 1:320:16] = 2*(offset - ML.small_qbit_num_limit - 1) + 1
 		elif control_qbit > 16 and control_qbit < 21 and target_qbit > 8 and target_qbit < 21:
 			# LH gate
 			if control_qbit < target_qbit:
@@ -299,21 +305,21 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			else: 
 				offset = control_qbit - 1
 			
-			distributor_map_np[gate_idx, 0:320:16] = 2*(offset - small_qbit_num_limit - 1 -7)
-			distributor_map_np[gate_idx, 1:320:16] = 2*(offset - small_qbit_num_limit - 1 -7) + 1
+			distributor_map_np[gate_idx, 0:320:16] = 2*(offset - ML.small_qbit_num_limit - 1 -7)
+			distributor_map_np[gate_idx, 1:320:16] = 2*(offset - ML.small_qbit_num_limit - 1 -7) + 1
 		else:
 			# when the control qubits is not L or H, no valid distributor map is required
 			pass
 
 
 	# target qubit distributor maps for L(?) gates
-	target_qubit_distributor_map_np = np.zeros( (gate_count, 320,), dtype=np.uint8 )
-	for gate_idx in range(gate_count):
+	target_qubit_distributor_map_np = np.zeros( (ML.gate_count, 320,), dtype=np.uint8 )
+	for gate_idx in range(ML.gate_count):
 	
 		target_qbit = target_qbits[gate_idx]
 		if target_qbit > 8 and target_qbit <= 16:
-			target_qubit_distributor_map_np[gate_idx, 0:320:16] = 2*(target_qbit - small_qbit_num_limit - 1)
-			target_qubit_distributor_map_np[gate_idx, 1:320:16] = 2*(target_qbit - small_qbit_num_limit - 1) + 1
+			target_qubit_distributor_map_np[gate_idx, 0:320:16] = 2*(target_qbit - ML.small_qbit_num_limit - 1)
+			target_qubit_distributor_map_np[gate_idx, 1:320:16] = 2*(target_qbit - ML.small_qbit_num_limit - 1) + 1
 		elif target_qbit > 16 and target_qbit < 21:
 			target_qubit_distributor_map_np[gate_idx, 0:320:16] = 2*(target_qbit - 17)
 			target_qubit_distributor_map_np[gate_idx, 1:320:16] = 2*(target_qbit - 17) + 1
@@ -324,8 +330,8 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			
 			
 	# generate packed gate kernel data
-	gate_kernels_real_packed = np.zeros( (gate_splits, 320,), dtype=np.float32 )
-	gate_kernels_imag_packed = np.zeros( (gate_splits, 320,), dtype=np.float32 )
+	gate_kernels_real_packed = np.zeros( (ML.gate_splits, 320,), dtype=np.float32 )
+	gate_kernels_imag_packed = np.zeros( (ML.gate_splits, 320,), dtype=np.float32 )
 
 	gate_kernels_real_shape = gate_kernels_real.shape
 	gate_kernels_imag_shape = gate_kernels_imag.shape
@@ -346,6 +352,13 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	
 
 
+	start_time = time.time()	
+	entry_point = iop["uplod_state_vector"]["mono"]	
+	pgm_upload_state_vector_output = invoke(device, iop, 1, entry_point, {"State_input_real": input_real, "State_input_imag": input_imag})
+	print("time elapsed with uploading the initial state vector: ", time.time() - start_time )	
+
+
+
 
 	# run the upload program
 	start_time = time.time()	
@@ -357,10 +370,6 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	#print( pgm_1_output["gate_kernel_packed_1"][:,:,0:12] )
 	#return None, None
 	
-	start_time = time.time()	
-	entry_point = iop["uplod_state_vector"]["mono"]	
-	pgm_upload_state_vector_output = invoke(device, iop, 1, entry_point, {"State_input_real": input_real, "State_input_imag": input_imag})
-	print("time elapsed with uploading the initial state vector: ", time.time() - start_time )	
 
 
 	# run the gate split program
@@ -372,7 +381,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	start_time = time.time()		
 	# create input_output buffers
 	input_buffer_size = 1
-	output_buffer_size = gate_count
+	output_buffer_size = ML.gate_count
 	
 	# The first 3 program does not use these preallocated buffers
 	input_buffers = [ [], [], [] ]
@@ -475,11 +484,13 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	output_buffer_indices.append( 0 )
 
 	print("time elapsed with creating buffers: ", time.time() - start_time )			
-
-
+	
 	start_time = time.time()
 	
-	for gate_idx in range(gate_count):
+	for gate_idx in range(ML.gate_count):
+
+		if gate_idx % 50 == 0:
+			time.sleep(0.05)
 
 		target_qbit  = target_qbits[gate_idx]
 		control_qbit = control_qbits[gate_idx]
@@ -488,16 +499,16 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 		if target_qbit == control_qbit:
 			error("QCsim::run: The control qubit and target qubit should be different")
 
-		elif target_qbit >= qbit_num:
+		elif target_qbit >= ML.qbit_num:
 			error("QCsim::run: The target qubit should be less than teh number of qubits")
 
-		elif control_qbit >= qbit_num:
+		elif control_qbit >= ML.qbit_num:
 			error("QCsim::run: The control qubit should be less than teh number of qubits")
 
 		elif target_qbit >= 0 and target_qbit < 8 and control_qbit == -1: 
 			# pogram perfroming the Gate_S operation
 			index_of_gate_program = 3
-			entry_point = iop["gate_S"]["compute"]
+			entry_point = iop["gate_S"]["mono"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -506,7 +517,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_SS operation
 			index_of_gate_program = 4
-			entry_point = iop["gate_SS"]["compute"]
+			entry_point = iop["gate_SS"]["mono"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -515,7 +526,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_SL operation
 			index_of_gate_program = 5
-			entry_point = iop["gate_SL"]["compute"]
+			entry_point = iop["gate_SL"]["mono"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -524,7 +535,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_S8 operation
 			index_of_gate_program = 6
-			entry_point = iop["gate_S8"]["compute"]
+			entry_point = iop["gate_S8"]["mono"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -533,7 +544,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_SH operation
 			index_of_gate_program = 7
-			entry_point = iop["gate_SH"]["compute"]
+			entry_point = iop["gate_SH"]["mono"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -543,7 +554,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_L operation
 			index_of_gate_program = 8
-			entry_point = iop["gate_L"]["compute"]
+			entry_point = iop["gate_L"]["mono"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -553,7 +564,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_LL operation
 			index_of_gate_program = 9
-			entry_point = iop["gate_LL"]["compute"]
+			entry_point = iop["gate_LL"]["mono"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -562,7 +573,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_LS operation
 			index_of_gate_program = 10
-			entry_point = iop["gate_LS"]["compute"]
+			entry_point = iop["gate_LS"]["mono"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -570,7 +581,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 		elif target_qbit == 8 and control_qbit == -1: 
 			# pogram perfroming the Gate_8 operation
 			index_of_gate_program = 11
-			entry_point = iop["gate_8"]["compute"]
+			entry_point = iop["gate_8"]["mono"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -580,7 +591,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_8S operation
 			index_of_gate_program = 12
-			entry_point = iop["gate_8S"]["compute"]
+			entry_point = iop["gate_8S"]["mono"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -589,7 +600,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_L8 operation
 			index_of_gate_program = 13
-			entry_point = iop["gate_L8"]["compute"]
+			entry_point = iop["gate_L8"]["mono"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -599,7 +610,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			# pogram perfroming the Gate_8L operation
 			index_of_gate_program = 14
-			entry_point = iop["gate_8L"]["compute"]
+			entry_point = iop["gate_8L"]["mono"]
 			input_buffer = input_buffers[index_of_gate_program][0]
 			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
 			output_buffer_indices[index_of_gate_program] += 1
@@ -672,11 +683,232 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			error("QCsim::run: Unimplemented case wit target qubit and control qubit.")
 			
 		gate_output = invoke_gate(device, iop, index_of_gate_program, entry_point, input_buffer, output_buffer)	
-		time.sleep(.001)
-		# gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
-		#print( gate_output)
+		#gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+		#if gate_idx==0 or gate_idx == gate_count-1:
+		#	print(gate_output)
 	
 	print("time elapsed on groq with gate operations: ", time.time() - start_time )
+
+
+
+###################################################################################x
+	# run the upload program
+	start_time = time.time()	
+	entry_point = iop["upload"]["mono"]
+	pgm_1_output = invoke(device, iop, 0, entry_point, {"mxm_permutation_selector": mxm_permutation_selector, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector, "control_qubit_distributor_maps": distributor_map_np, "target_qubit_distributor_maps": target_qubit_distributor_map_np})
+	print("time elapsed with uploading gate data: ", time.time() - start_time )
+
+	
+	output_buffer_indices = [ [], [], [] ]
+	for _ in range(12):
+		output_buffer_indices.append( 0 )
+
+	start_time = time.time()
+	
+	for gate_idx in range(ML.second_gate_count):
+
+		if gate_idx % 50 == 0:
+			time.sleep(0.05)
+
+		target_qbit  = target_qbits[gate_idx]
+		control_qbit = control_qbits[gate_idx]
+	
+		# run the gate program
+		if target_qbit == control_qbit:
+			error("QCsim::run: The control qubit and target qubit should be different")
+
+		elif target_qbit >= ML.qbit_num:
+			error("QCsim::run: The target qubit should be less than teh number of qubits")
+
+		elif control_qbit >= ML.qbit_num:
+			error("QCsim::run: The control qubit should be less than teh number of qubits")
+
+		elif target_qbit >= 0 and target_qbit < 8 and control_qbit == -1: 
+			# pogram perfroming the Gate_S operation
+			index_of_gate_program = 3
+			entry_point = iop["gate_S"]["mono"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+		elif target_qbit >= 0 and target_qbit < 8 and control_qbit < 8 and control_qbit >= 0: 
+
+			# pogram perfroming the Gate_SS operation
+			index_of_gate_program = 4
+			entry_point = iop["gate_SS"]["mono"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+			
+		elif target_qbit >= 0 and target_qbit < 8 and control_qbit > 8 and control_qbit <= 16:
+
+			# pogram perfroming the Gate_SL operation
+			index_of_gate_program = 5
+			entry_point = iop["gate_SL"]["mono"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+		elif target_qbit >= 0 and target_qbit < 8 and control_qbit == 8:
+
+			# pogram perfroming the Gate_S8 operation
+			index_of_gate_program = 6
+			entry_point = iop["gate_S8"]["mono"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+		elif target_qbit >= 0 and target_qbit < 8 and control_qbit > 16 and control_qbit <= 21:
+
+			# pogram perfroming the Gate_SH operation
+			index_of_gate_program = 7
+			entry_point = iop["gate_SH"]["mono"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+
+		elif target_qbit > 8 and target_qbit <= 16 and control_qbit == -1:
+
+			# pogram perfroming the Gate_L operation
+			index_of_gate_program = 8
+			entry_point = iop["gate_L"]["mono"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+
+		elif target_qbit > 8 and target_qbit <= 16 and control_qbit > 8 and control_qbit <= 16:
+
+			# pogram perfroming the Gate_LL operation
+			index_of_gate_program = 9
+			entry_point = iop["gate_LL"]["mono"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+			
+		elif target_qbit > 8 and target_qbit <= 16 and control_qbit >=0 and control_qbit < 8:
+
+			# pogram perfroming the Gate_LS operation
+			index_of_gate_program = 10
+			entry_point = iop["gate_LS"]["mono"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+			
+		elif target_qbit == 8 and control_qbit == -1: 
+			# pogram perfroming the Gate_8 operation
+			index_of_gate_program = 11
+			entry_point = iop["gate_8"]["mono"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+
+		elif target_qbit == 8 and control_qbit < 8 and control_qbit >= 0: 
+
+			# pogram perfroming the Gate_8S operation
+			index_of_gate_program = 12
+			entry_point = iop["gate_8S"]["mono"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+			
+		elif target_qbit > 8 and target_qbit <= 16 and control_qbit == 8: 
+
+			# pogram perfroming the Gate_L8 operation
+			index_of_gate_program = 13
+			entry_point = iop["gate_L8"]["mono"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+			
+		elif target_qbit == 8 and target_qbit <= 16 and control_qbit > 8 and control_qbit <= 16: 
+
+			# pogram perfroming the Gate_L8 operation
+			index_of_gate_program = 14
+			entry_point = iop["gate_8L"]["mono"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+		elif target_qbit == 8 and control_qbit > 16 and control_qbit < 21: 
+
+			# pogram perfroming the Gate_8H operation
+			index_of_gate_program = 15
+			entry_point = iop["gate_8H"]["compute"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+		elif target_qbit > 8 and target_qbit <= 16 and control_qbit > 16 and control_qbit < 21:
+
+			# pogram perfroming the Gate_LH operation
+			index_of_gate_program = 16
+			entry_point = iop["gate_LH"]["compute"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+		elif target_qbit > 16 and target_qbit < 22 and control_qbit == -1:
+
+			# pogram perfroming the Gate_H operation
+			index_of_gate_program = 17 
+			entry_point = iop["gate_H"]["compute"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+		elif target_qbit > 16 and target_qbit < 21 and control_qbit >= 0 and control_qbit < 8:
+
+			# pogram perfroming the Gate_HS operation
+			index_of_gate_program = 18
+			entry_point = iop["gate_HS"]["compute"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+		elif target_qbit > 16 and target_qbit < 21 and control_qbit > 8 and control_qbit < 16:
+
+			# pogram perfroming the Gate_HL operation
+			index_of_gate_program = 19
+			entry_point = iop["gate_HL"]["compute"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+		elif target_qbit > 16 and target_qbit < 21 and control_qbit == 8:
+
+			# pogram perfroming the Gate_HL operation
+			index_of_gate_program = 20
+			entry_point = iop["gate_H8"]["compute"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+		elif target_qbit > 16 and target_qbit < 21 and control_qbit >= 16 and control_qbit < 21:
+
+			# pogram perfroming the Gate_HH operation
+			index_of_gate_program = 21
+			entry_point = iop["gate_HH"]["compute"]
+			input_buffer = input_buffers[index_of_gate_program][0]
+			output_buffer = output_buffers[index_of_gate_program][ output_buffer_indices[index_of_gate_program] ]	
+			output_buffer_indices[index_of_gate_program] += 1
+
+		else:
+
+			error("QCsim::run: Unimplemented case wit target qubit and control qubit.")
+			
+		gate_output = invoke_gate(device, iop, index_of_gate_program, entry_point, input_buffer, output_buffer)	
+		#gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+		#if gate_idx==0 :
+		#	print(gate_output)
+	
+	print("time elapsed on groq with gate operations: ", time.time() - start_time )
+	
+
+###################################################################################x
 
 	# download the transformed state vector
 	start_time = time.time()	
@@ -695,21 +927,24 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 
 
-def main( State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, gate_kernels, mxm_permutation = True ):
+def main( qbit_num, gate_count, State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, gate_kernels, mxm_permutation = True ):
 	"""Compiles and runs the example programs."""
 	
-	if qbit_num is None:
-		raise "qbit_num must be set with method initialize_qbit_num( qbit_num ) with a value greater or equal to 8"
+	global ML
+	ML = MemoryLayouts( qbit_num, gate_count )
 
-	
-	# iop_files = compile( mxm_permutation )
-	iop_files = ['./build_iop/QCsim_multi_program.0.iop']
+
+	tocompile = 1
+	if tocompile:
+		iop_files = compile( mxm_permutation )
+	else:
+		iop_files = [f"./build_iop/QCsim_multi_program.{ML.qbit_num}.{ML.gate_count}.0.iop"]
 	print(f"Program compiled to IOP file: {iop_files}")
 
 	import time
 
 	start_time = time.time()
-	transformed_state = run(iop_files[0], State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, np.real(gate_kernels), np.imag(gate_kernels), mxm_permutation )
+	transformed_state = run(iop_files[0], State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, np.real(gate_kernels), np.imag(gate_kernels), ML, mxm_permutation )
 
 	print("total time elapsed during computations with Groq: ", time.time() - start_time )
 	
