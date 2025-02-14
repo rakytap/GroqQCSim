@@ -458,7 +458,7 @@ class Generate_static_data(IO):
 		for target_qbit in range(target_qbit_min, target_qbit_max):
 		
 			if target_qbit <= 16:
-				horizontal_offset_in_memory_map = (target_qbit-1-small_qbit_num_limit)*2 
+				horizontal_offset_in_memory_map = (target_qbit-target_qbit_min)*2 
 				vertical_offset_in_memory_map = 0
 			else:
 				horizontal_offset_in_memory_map = (target_qbit-17)*2

@@ -114,13 +114,13 @@ class Gate(Gate_8_base):
 		Returns with the stream tensor of the target qubits memory map.
 		"""	 
 		# half of the memory slices on which the state is stored
-		half_memory_slices = memory_slices >> 1
+		half_memory_addresses = self.ML.memory_addresses >> 1
 
 		read_out_qubit_0_memory_tensor_list = g.split(self.target_qubit_read_maps_8L_shared, 1)
 		read_out_qubit_1_memory_tensor_list = g.split(self.target_qubit_read_maps_8L_pair_shared, 1)
 
-		read_out_qubit_0_memory_tensor_mt = g.concat(read_out_qubit_0_memory_tensor_list[0:half_memory_slices])
-		read_out_qubit_1_memory_tensor_mt = g.concat(read_out_qubit_1_memory_tensor_list[0:half_memory_slices])
+		read_out_qubit_0_memory_tensor_mt = g.concat(read_out_qubit_0_memory_tensor_list[0:half_memory_addresses])
+		read_out_qubit_1_memory_tensor_mt = g.concat(read_out_qubit_1_memory_tensor_list[0:half_memory_addresses])
 
 		read_out_qubit_0_memory_tensor_st = read_out_qubit_0_memory_tensor_mt.read( streams=g.SG1[0] )
 		read_out_qubit_1_memory_tensor_st = read_out_qubit_1_memory_tensor_mt.read( streams=g.SG1[1] )
@@ -179,13 +179,13 @@ class Gate(Gate_8_base):
 		Returns with the stream tensor of the target qubits memory map.
 		"""
 		# half of the memory slices on which the state is stored
-		half_memory_slices = memory_slices >> 1
+		half_memory_addresses = self.ML.memory_addresses >> 1
 
 		write_qubit_memory_tensor_list_a = g.split(self.target_qubit_write_maps_8L_mt, 1)
 		write_qubit_memory_tensor_list_b = g.split(self.target_qubit_write_maps_8L_mt_b, 1)
 
-		write_qubit_memory_tensor_mt_a = g.concat(write_qubit_memory_tensor_list_a[0:half_memory_slices])
-		write_qubit_memory_tensor_mt_b = g.concat(write_qubit_memory_tensor_list_b[0:half_memory_slices])
+		write_qubit_memory_tensor_mt_a = g.concat(write_qubit_memory_tensor_list_a[0:half_memory_addresses])
+		write_qubit_memory_tensor_mt_b = g.concat(write_qubit_memory_tensor_list_b[0:half_memory_addresses])
 
 		time_delay = 3
 

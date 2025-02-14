@@ -125,10 +125,10 @@ class Gate(Gate_H_base):
 		#layout_gate_kernels_imag	="H1(E), S4(12-15)"				
 				
 		gate_element_st_list = gate_element_st.split( dim=0, num_splits=2 )	
-		gate_element_real_filtered_mt      = gate_element_st_list[0].write(name='gate_real_'+label+ '_filtered', layout=layout_gate_kernels_real + f', A1({address_offset})' )
-		gate_element_imag_filtered_mt      = gate_element_st_list[1].write(name='gate_imag_'+label+ '_filtered', layout=layout_gate_kernels_imag + f', A1({address_offset})' )
-		gate_element_real_filtered_copy_mt = gate_element_st_list[0].write(name='gate_real_'+label+ '_copy_filtered', layout=layout_gate_kernels_real_copy + f', A1({address_offset})' )
-		gate_element_imag_filtered_copy_mt = gate_element_st_list[1].write(name='gate_imag_'+label+ '_copy_filtered', layout=layout_gate_kernels_imag_copy + f', A1({address_offset})' )
+		gate_element_real_filtered_mt      = gate_element_st_list[0].write(name='gate_real_'+label+ '_filtered', layout=self.ML.layout_gate_kernels_real + f', A1({address_offset})' )
+		gate_element_imag_filtered_mt      = gate_element_st_list[1].write(name='gate_imag_'+label+ '_filtered', layout=self.ML.layout_gate_kernels_imag + f', A1({address_offset})' )
+		gate_element_real_filtered_copy_mt = gate_element_st_list[0].write(name='gate_real_'+label+ '_copy_filtered', layout=self.ML.layout_gate_kernels_real_copy + f', A1({address_offset})' )
+		gate_element_imag_filtered_copy_mt = gate_element_st_list[1].write(name='gate_imag_'+label+ '_copy_filtered', layout=self.ML.layout_gate_kernels_imag_copy + f', A1({address_offset})' )
 				
 				
 		

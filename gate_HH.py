@@ -61,9 +61,9 @@ class Gate(Gate_H_base):
 		"""
 
 
-		half_memory_slices = memory_slices >> 1
+		half_memory_slices = self.ML.memory_addresses >> 1
 		control_qbit_state_1_selector_list = g.split(self.target_qubit_read_maps_HL_mt, 1)
-		control_qbit_state_1_selector_mt = g.concat(control_qbit_state_1_selector_list[half_memory_slices:memory_slices])
+		control_qbit_state_1_selector_mt = g.concat(control_qbit_state_1_selector_list[half_memory_slices:self.ML.memory_addresses])
 		control_qbit_state_1_selector_st = control_qbit_state_1_selector_mt.read( streams=g.SG1[16] )
 		
 		
@@ -86,10 +86,10 @@ class Gate(Gate_H_base):
 		
 		
 		read_out_qubit_0_memory_tensor_st = g.mem_gather(self.target_qubit_read_maps_L_mt, control_qbit_state_1_selector_st, output_streams=[g.SG1[0]] )
-		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_0_memory_tensor_st, [memory_addresses//2,320])
+		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_0_memory_tensor_st, [self.ML.memory_addresses//2,320])
 
 		read_out_qubit_1_memory_tensor_st = g.mem_gather(self.target_qubit_read_pair_maps_L_mt, control_qbit_state_1_selector_st, output_streams=[g.SG1[1]] )
-		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_1_memory_tensor_st, [memory_addresses//2,320])
+		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_1_memory_tensor_st, [self.ML.memory_addresses//2,320])
 		###########################
 
 		read_out_qubit_memory_tensor_st = g.stack( [read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st], dim=1 )
@@ -114,8 +114,8 @@ class Gate(Gate_H_base):
 
 		read_out_qubit_memory_tensor_st_list = read_out_qubit_memory_tensor_st.split( dim=1, num_splits=2)	
 		
-		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[0], [memory_addresses//2,320])
-		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[1], [memory_addresses//2,320])
+		read_out_qubit_0_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[0], [self.ML.memory_addresses//2,320])
+		read_out_qubit_1_memory_tensor_st = g.reshape( read_out_qubit_memory_tensor_st_list[1], [self.ML.memory_addresses//2,320])
 
 
 		#read_out_qubit_0_memory_tensor_st.write( name="rrww0", layout='H1(W), -1, S1', program_output=True )
@@ -148,9 +148,9 @@ class Gate(Gate_H_base):
 		Returns with the stream tensor of the target qubits memory map.
 		"""
 
-		half_memory_slices = memory_slices >> 1
+		half_memory_slices = self.ML.memory_addresses >> 1
 		control_qbit_state_1_selector_list = g.split(self.target_qubit_write_maps_LL_mt, 1)
-		control_qbit_state_1_selector_mt = g.concat(control_qbit_state_1_selector_list[half_memory_slices:memory_slices])
+		control_qbit_state_1_selector_mt = g.concat(control_qbit_state_1_selector_list[half_memory_slices:self.ML.memory_addresses])
 		control_qbit_state_1_selector_st = control_qbit_state_1_selector_mt.read( streams=g.SG1[15] )
 		
 		gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1_W[9]] )		

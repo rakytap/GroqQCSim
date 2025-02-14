@@ -62,6 +62,7 @@ class Gate_H_base(Gate_counters):
 		"""
 
 
+		memory_addresses = self.ML.memory_addresses
 		target_qubit_0_state_read_maps_list = self.target_qubit_read_maps_L_mt.split( dim=0, num_splits=memory_addresses)
 		target_qubit_1_state_read_maps_list = self.target_qubit_read_pair_maps_L_mt.split( dim=0, num_splits=memory_addresses)
 		read_out_state_0_memory_tensor_list = []
@@ -389,6 +390,7 @@ class Gate_H_base(Gate_counters):
 			The imaginary part of the input state vector, where the target qubit is in state 1
 		
 		"""
+		memory_addresses = self.ML.memory_addresses
 
 		# define state with 320 vectors instead of 256 inner splits
 		Psi_real_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_real_mt.storage_request, initialized=False)		
@@ -485,6 +487,7 @@ class Gate_H_base(Gate_counters):
 		
 		"""	
 	
+		memory_addresses = self.ML.memory_addresses
 		# define state with 320 vectors instead of 256 inner splits
 		Psi_real_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_real_mt.storage_request, initialized=False)		
 		Psi_imag_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_imag_mt.storage_request, initialized=False)

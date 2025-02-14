@@ -54,6 +54,7 @@ class Gate(Gate_H_base):
 		
 		"""	
 	
+		memory_addresses = self.ML.memory_addresses
 		# define state with 320 vectors instead of 256 inner splits
 		Psi_real_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_real_mt.storage_request, initialized=False)		
 		Psi_imag_mt_320      = g.constant_tensor((memory_addresses, 320), dtype=g.float32, storage_req=self.State_input_imag_mt.storage_request, initialized=False)

@@ -944,7 +944,7 @@ def main( qbit_num, gate_count, State_orig_real_float32, State_orig_imag_float32
 	import time
 
 	start_time = time.time()
-	transformed_state = run(iop_files[0], State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, np.real(gate_kernels), np.imag(gate_kernels), ML, mxm_permutation )
+	#transformed_state = run(iop_files[0], State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, np.real(gate_kernels), np.imag(gate_kernels), ML, mxm_permutation )
 
 	print("total time elapsed during computations with Groq: ", time.time() - start_time )
 	
