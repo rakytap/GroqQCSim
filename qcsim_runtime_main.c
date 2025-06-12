@@ -599,7 +599,7 @@ int load_iop(size_t num_qubits, int device_idx)
 
   state.num_qubits[device_idx] = num_qubits;
   state.max_gates[device_idx] = max_gates;
-  printf("Initialized Groq for %lu qbits on device %d\n", num_qubits, device_idx);
+  //printf("Initialized Groq for %lu qbits on device %d\n", num_qubits, device_idx);
   return 0;
 }
 
