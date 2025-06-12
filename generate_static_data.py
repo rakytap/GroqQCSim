@@ -685,8 +685,11 @@ class Generate_static_data(IO):
 		mem_write_map = np.zeros( (self.ML.memory_addresses, 320,), dtype=np.uint8 )
 		
 		half_slice = 1 << 12
+	
+		target_qbit_min = 9
+		target_qbit_max = min( self.ML.qbit_num, 17 ) 
 		
-		for target_qbit in range(9, self.ML.qbit_num):
+		for target_qbit in range(target_qbit_min, target_qbit_max):
 		
 			horizontal_offset_in_memory_map = (target_qbit-1-self.ML.small_qbit_num_limit)*2 
 		

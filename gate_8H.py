@@ -99,8 +99,8 @@ class Gate(Gate_8_base):
 		"""
 		Function used to read out the correct target qubit map to gather the target qubits L from the memory
 		The target qubit map is used to select those memory addresses of the state vector for which the control qubit is in state 1.
-		The target memory maps of control qubits 9, ..., 17 are stored in the lower half of one slice (addresses 0,1,..., 2^12).
-		The target memory maps of control qubits 18, ..., 20 are stored in the upper half of one slice (addresses 2^12,..., 2^13). 		
+		The target memory maps of control qubits 9, ..., 16 are stored in the lower half of one slice (addresses 0,1,..., 2^12).
+		The target memory maps of control qubits 17, ..., 20 are stored in the upper half of one slice (addresses 2^12,..., 2^13). 		
 		The 320-byte vector is splitted into 20 16-byte superlanes. 
 		In each 16-byte segments the first two bytes are used to address a memory on a slice. 
 		Thus, 8 memory maps can be stored in a single 16-byte superlane. Distributors are used to move the memory addresses into the position of the first two bytes.

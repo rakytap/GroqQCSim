@@ -33,7 +33,14 @@ const char* program_strings[] = { "upload",  //0
                            "gate_8S",  //12
                            "gate_L8",  //13
                            "gate_8L",  //14
-                           "state_vector_reset"   //15
+                           "gate_8H",  //15
+                           "gate_LH",  //16
+                           "gate_H",  //17
+                           "gate_HS",  //18
+                           "gate_HL",  //19
+                           "gate_H8",  //20
+                           "gate_HH",  //21
+                           "state_vector_reset"   //22
                          }; //<target_qubit> or <target_qubit><control_qubit>
 
 #define UPLOAD_IDX 0
@@ -51,11 +58,18 @@ const char* program_strings[] = { "upload",  //0
 #define GATE_8S_IDX 12
 #define GATE_L8_IDX 13
 #define GATE_8L_IDX 14
-#define SV_RESET_IDX 15
+#define GATE_8H_IDX 15
+#define GATE_LH_IDX 16
+#define GATE_H_IDX 17
+#define GATE_HS_IDX 18
+#define GATE_HL_IDX 19
+#define GATE_H8_IDX 20
+#define GATE_HH_IDX 21
+#define SV_RESET_IDX 22
     
 // Numbers indicated with ? should be revised
-//                       { {S, 8, L, H?}, {SS, 8S, LS, HS?}, {S8, 8, L8, H8?}, {SL, 8L, LL, HL?}, {SH, 8H?, LH?, HH} }  
-int qubitProgs[][4] = { { 3, 11, 8, 8 }, { 4, 12, 10, 10 }, { 6, 11, 13, 13 }, { 5, 14, 9, 9 }, { 7, 14, 9, 9 } }; //+1 for non-single qubit, 0 for S(< 8), 1 for 8, 2 for H(> 8 < 16), 3 for H(>= 16) 
+//  qubitProgs[control_qbit][target_qbit] =  { {S, 8, L, H}, {SS, 8S, LS, HS}, {S8, 8, L8, H8}, {SL, 8L, LL, HL}, {SH, 8H, LH, HH} }  
+int qubitProgs[][4] = { { 3, 11, 8, 17 }, { 4, 12, 10, 18 }, { 6, 11, 13, 20 }, { 5, 14, 9, 19 }, { 7, 15, 16, 21 } }; //+1 for non-single qubit, 0 for S(< 8), 1 for 8, 2 for H(> 8 < 16), 3 for H(>= 16) 
     
 // input/output parameter strings for the individual programs
 // "uplod_state_vector"
@@ -74,7 +88,7 @@ const char* state_vector_gate_upload_strings[] = { "gate_kernels_real_packed", "
 #define NUM_INPUTS (sizeof(state_vector_input_strings) / sizeof(const char*))
 #define NUM_OUTPUTS (sizeof(state_vector_output_strings) / sizeof(const char*))
     
-#define QUEUE_LIMIT 16
+#define QUEUE_LIMIT 1
 //#define QUEUE_LIMIT 1
 #define MAX_DEVICE 8
 
@@ -806,33 +820,127 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
                 gateimag[i*4+j] = gates[(cur_gate+i)*4+j].imag;
             }
 
+            int target_qbit = target_qubits[cur_gate+i];
+            int control_qbit = control_qubits[cur_gate+i];
+
             for (int j = 0; j < 320; j+=16) {
+
                 if (target_qubits[cur_gate+i] < 8) {
+                    // S gates
+                    state_0_sel[i*320+j] = target_qbit;
+                    state_1_sel[i*320+j] = target_qbit;
+                    perm_sel[i*320+j] = target_qbit;
+                }
+
+                if (control_qubits[cur_gate+i] < 8 && control_qubits[cur_gate+i] >= 0) {
+                    // SS, LS, HS gates
+                    control_0_sel[i*320+j] = control_qubits[cur_gate+i];
+                    control_1_sel[i*320+j] = control_qubits[cur_gate+i];
+                }
+
+
+                // control qubit distributor maps for SL gates
+		        if (control_qbit > 8 && control_qbit <= 16 && target_qbit <= 8 ) {
+			        // SL and 8L gates
+                    control_qubit_dmap[i*320+j] = 2*(control_qbit - 9);
+                    control_qubit_dmap[i*320+j+1] = 2*(control_qbit - 9) + 1;
+                }
+                else if (control_qbit > 16 && control_qbit < 21 && target_qbit <= 8) {
+			        // SH and 8H gates
+                    control_qubit_dmap[i*320+j] = 2*(control_qbit - 17);
+                    control_qubit_dmap[i*320+j+1] = 2*(control_qbit - 17) + 1;
+                }
+		        else if (control_qbit > 8 && control_qbit <= 16 && target_qbit > 8 && target_qbit < 21) {
+			        // LL gate
+                    int offset;
+			        if (control_qbit == 16 && control_qbit < target_qbit ) {
+				        offset = 9;
+                    }
+			        else if (control_qbit < target_qbit) {
+				        offset = control_qbit;
+                    }
+			        else {
+				        offset = control_qbit - 1;
+                    }
+
+                    control_qubit_dmap[i*320+j] = 2*(offset-9);
+                    control_qubit_dmap[i*320+j+1] = 2*(offset-9) + 1;
+                }
+		        else if (control_qbit > 16 && control_qbit < 21 && target_qbit > 8 && target_qbit < 21 ) {
+			        // LH gate
+                    int offset;
+			        if (control_qbit < target_qbit) {
+				        offset = control_qbit;
+                    }
+			        else {
+				        offset = control_qbit - 1;
+                    }
+
+                    control_qubit_dmap[i*320+j] = 2*(offset-9-7);
+                    control_qubit_dmap[i*320+j+1] = 2*(offset-9-7) + 1;
+                }
+		        else {
+			        // when the control qubits is not L or H, no valid distributor map is required
+                }
+
+                // target qubit distributor maps for L and H gates
+		        if (target_qbit > 8 && target_qbit <= 16 ) {
+                    target_qubit_dmap[i*320+j] = 2*(target_qbit - 8 - 1);
+                    target_qubit_dmap[i*320+j+1] = 2*(target_qbit - 8 - 1) + 1;
+                }
+		        else if (target_qbit > 16 && target_qbit < 21) {
+                    target_qubit_dmap[i*320+j] = 2*(target_qbit - 17);
+                    target_qubit_dmap[i*320+j+1] = 2*(target_qbit - 17) + 1;
+                }
+		        else {
+			        // when the target qubit is not L or H, no valid distributor map is required
+			        // the map selectors are padded with zeros for these cases
+                    target_qubit_dmap[i*320+j] = 0;
+                    target_qubit_dmap[i*320+j+1] = 0;
+                }
+			
+                /*
+                if (target_qubits[cur_gate+i] < 8) {
+                    // S gates
                     state_0_sel[i*320+j] = target_qubits[cur_gate+i];
                     state_1_sel[i*320+j] = target_qubits[cur_gate+i];
                     perm_sel[i*320+j] = target_qubits[cur_gate+i];
                 }
                 if (control_qubits[cur_gate+i] < 8 && control_qubits[cur_gate+i] >= 0) {
+                    // ?S gates
                     control_0_sel[i*320+j] = control_qubits[cur_gate+i];
                     control_1_sel[i*320+j] = control_qubits[cur_gate+i];
                 }
+                    */
+                
+                /*
                 if (target_qubits[cur_gate+i] > 8 && target_qubits[cur_gate+i] <= 16) {
+                    // L gates
                     target_qubit_dmap[i*320+j] = 2*(target_qubits[cur_gate+i] - 8 - 1);
                     target_qubit_dmap[i*320+j+1] = 2*(target_qubits[cur_gate+i] - 8 - 1) + 1;
+
                 } else if (target_qubits[cur_gate+i] > 16) {
+                    // H gates
                     target_qubit_dmap[i*320+j] = 2*(target_qubits[cur_gate+i] - 17);
                     target_qubit_dmap[i*320+j+1] = 2*(target_qubits[cur_gate+i] - 17) + 1;
                 }
+
                 if (control_qubits[cur_gate+i] > 8 && control_qubits[cur_gate+i] <= 16 && target_qubits[cur_gate+i] <= 8) {
+                    // SL, 8L gates
                     control_qubit_dmap[i*320+j] = 2*(control_qubits[cur_gate+i] - 8 - 1);
                     control_qubit_dmap[i*320+j+1] = 2*(control_qubits[cur_gate+i] - 8 - 1) + 1;
-                } else if (control_qubits[cur_gate+i] > 16 && target_qubits[cur_gate+i] < 8) {
+
+                } else if (control_qubits[cur_gate+i] > 16 && target_qubits[cur_gate+i] <= 8) {
+                    // SH, 8H gates
                     control_qubit_dmap[i*320+j] = 2*(control_qubits[cur_gate+i] - 17);
                     control_qubit_dmap[i*320+j+1] = 2*(control_qubits[cur_gate+i] - 17) + 1;
+
                 } else if (control_qubits[cur_gate+i] > 8 && control_qubits[cur_gate+i] <= 16 && target_qubits[cur_gate+i] > 8) {
+                    // LL, HL gates
                     control_qubit_dmap[i*320+j] = 2*(control_qubits[cur_gate+i] - (control_qubits[cur_gate+i] >= target_qubits[cur_gate+i]) - 8 - 1);
                     control_qubit_dmap[i*320+j+1] = 2*(control_qubits[cur_gate+i] - (control_qubits[cur_gate+i] >= target_qubits[cur_gate+i]) - 8 - 1) + 1;
                 }           
+                */
             }
         }
         //run the gate upload program
@@ -893,8 +1001,8 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
         //run compute number of gates times - with invoke queuing
 
         for (unsigned int i = 0; i < tot_gates; i++) {
-            int c = (control_qubits[cur_gate+i] != -1) + (control_qubits[cur_gate+i] >= 8) + (control_qubits[cur_gate+i] > 8) + (control_qubits[cur_gate+i] >= 16);
-            int t = (target_qubits[cur_gate+i] >= 8) + (target_qubits[cur_gate+i] > 8) + (target_qubits[cur_gate+i] >= 16);
+            int c = (control_qubits[cur_gate+i] != -1) + (control_qubits[cur_gate+i] >= 8) + (control_qubits[cur_gate+i] > 8) + (control_qubits[cur_gate+i] > 16);
+            int t = (target_qubits[cur_gate+i] >= 8) + (target_qubits[cur_gate+i] > 8) + (target_qubits[cur_gate+i] > 16);
             int p = qubitProgs[c][t];
             //printf("target_qbit=%d control_qbit=%d program_idx=%d\n", target_qubits[cur_gate+i], control_qubits[cur_gate+i], p);
             int queueIdx = queueFree->data;
@@ -949,7 +1057,7 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
     free(completionQueue);
 
     // download the state vector from the chip
-    status = groq_invoke(state.device[device_num], state.inputBuffers[device_num][DOWNLOAD_SV_IDX], 0, state.outputBuffers[device_num][2], 0, &completion);
+    status = groq_invoke(state.device[device_num], state.inputBuffers[device_num][DOWNLOAD_SV_IDX], 0, state.outputBuffers[device_num][DOWNLOAD_SV_IDX], 0, &completion);
     if (status) {
         printf("ERROR: sv download invoke failed %d\n", status);
         return 1;

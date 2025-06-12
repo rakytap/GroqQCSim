@@ -10,7 +10,7 @@ import groqQCsim
 import time
 import random
 
-qbit_num = 16
+qbit_num = 20
 gate_count = 7*256
 
 ML = MemoryLayouts( qbit_num, gate_count )
@@ -19,8 +19,8 @@ ML = MemoryLayouts( qbit_num, gate_count )
 if __name__ == "__main__":
 
 	
-	#target_qbits  = [3] * gate_count
-	#control_qbits = [-1] * gate_count
+	#target_qbits  = [8] * gate_count
+	#control_qbits = [17] * gate_count
 	'''
 	target_qbits  = [12,  12, 0,  10, 8, 6,   8,  4, 15, 3, 13, 16, 8, 5, 8, 12, 7]
 	control_qbits = [-1,  8, 15,  4,  2, 10, -1, -1, 10, 5, 7,  8, -1, 0, 7, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
@@ -66,7 +66,7 @@ if __name__ == "__main__":
 	State_orig = State_orig_real + 1j*State_orig_imag
 	State_orig = State_orig/np.linalg.norm(State_orig)
 
-
+	'''
 	one_qubit_circuits = []
 	circuit = Circuit(qbit_num)
 	circuit2 = Circuit(qbit_num) ########
@@ -104,8 +104,274 @@ if __name__ == "__main__":
 		else:
 			error("Unimplemented case wit target qubit and control qubit.")
 		
+	'''
+
+	target_qbits = []
+	control_qbits = []	
+	one_qubit_circuits = []
+	circuit = Circuit(qbit_num)
+	#circuit2 = Circuit(qbit_num) ########
+
+	layers = 5000
+	gate_idx = 0
+	for layer in range(layers):
+
+		
+    	# single qubit gates in a ablock are then merged into a single gate kernel.
+		circuit.add_RZ(1)
+		target_qbits.append(1)
+		control_qbits.append(-1)
+
+		circuit_1 = Circuit( 1 )
+		circuit_1.add_RZ( 0 )
+		one_qubit_circuits.append( circuit_1 )
+
+		gate_idx = gate_idx + 1
+		if gate_idx >= gate_count:
+			break
+			
+		
+		circuit.add_RY(1)
+		target_qbits.append(1)
+		control_qbits.append(-1)
+
+		circuit_1 = Circuit( 1 )
+		circuit_1.add_RY( 0 )
+		one_qubit_circuits.append( circuit_1 )
+		gate_idx = gate_idx + 1
+		if gate_idx >= gate_count:
+			break
+		
+		circuit.add_RZ(1)  
+		target_qbits.append(1)
+		control_qbits.append(-1)
+
+		circuit_1 = Circuit( 1 )
+		circuit_1.add_RZ( 0 )
+		one_qubit_circuits.append( circuit_1 )
+		gate_idx = gate_idx + 1
+		if gate_idx >= gate_count:
+			break
+                           
+		
+		circuit.add_RZ(0)
+		target_qbits.append(0)
+		control_qbits.append(-1)
+
+		circuit_1 = Circuit( 1 )
+		circuit_1.add_RZ( 0 )
+		one_qubit_circuits.append( circuit_1 )
+		gate_idx = gate_idx + 1
+		if gate_idx >= gate_count:
+			break
+
+		circuit.add_RY(0)
+		target_qbits.append(0)
+		control_qbits.append(-1)
+
+		circuit_1 = Circuit( 1 )
+		circuit_1.add_RY( 0 )
+		one_qubit_circuits.append( circuit_1 )
+		gate_idx = gate_idx + 1
+		if gate_idx >= gate_count:
+			break
+			
+		circuit.add_RZ(0) 
+		target_qbits.append(0)
+		control_qbits.append(-1)
+
+		circuit_1 = Circuit( 1 )
+		circuit_1.add_RZ( 0 )
+		one_qubit_circuits.append( circuit_1 )
+		gate_idx = gate_idx + 1
+		if gate_idx >= gate_count:
+			break
+			        
+          
+		     
+		circuit.add_CNOT(1,0);
+		target_qbits.append(1)
+		control_qbits.append(0)
+
+		circuit_1 = Circuit( 1 )
+		circuit_1.add_X( 0 )
+		one_qubit_circuits.append( circuit_1 )
+		gate_idx = gate_idx + 1
+		if gate_idx >= gate_count:
+			break
 		
 		
+		for control_qbit in range(1, qbit_num-1, 2):
+			if (control_qbit+2<qbit_num)   :                    
+
+				circuit.add_RZ(control_qbit+1)
+				target_qbits.append(control_qbit+1)
+				control_qbits.append(-1)
+
+				circuit_1 = Circuit( 1 )
+				circuit_1.add_RZ( 0 )
+				one_qubit_circuits.append( circuit_1 )
+				gate_idx = gate_idx + 1
+				if gate_idx >= gate_count:
+					break
+			
+				circuit.add_RY(control_qbit+1)
+				target_qbits.append(control_qbit+1)
+				control_qbits.append(-1)
+
+				circuit_1 = Circuit( 1 )
+				circuit_1.add_RY( 0 )
+				one_qubit_circuits.append( circuit_1 )
+				gate_idx = gate_idx + 1
+				if gate_idx >= gate_count:
+					break
+			
+				circuit.add_RZ(control_qbit+1)
+				target_qbits.append(control_qbit+1)
+				control_qbits.append(-1)
+
+				circuit_1 = Circuit( 1 )
+				circuit_1.add_RZ( 0 )
+				one_qubit_circuits.append( circuit_1 )
+				gate_idx = gate_idx + 1
+				if gate_idx >= gate_count:
+					break
+			                   
+			
+				circuit.add_RZ(control_qbit+2)
+				target_qbits.append(control_qbit+2)
+				control_qbits.append(-1)
+
+				circuit_1 = Circuit( 1 )
+				circuit_1.add_RZ( 0 )
+				one_qubit_circuits.append( circuit_1 )
+				gate_idx = gate_idx + 1
+				if gate_idx >= gate_count:
+					break
+			
+				circuit.add_RY(control_qbit+2)
+				target_qbits.append(control_qbit+2)
+				control_qbits.append(-1)
+
+				circuit_1 = Circuit( 1 )
+				circuit_1.add_RY( 0 )
+				one_qubit_circuits.append( circuit_1 )
+				gate_idx = gate_idx + 1
+				if gate_idx >= gate_count:
+					break
+			
+				circuit.add_RZ(control_qbit+2)
+				target_qbits.append(control_qbit+2)
+				control_qbits.append(-1)
+
+				circuit_1 = Circuit( 1 )
+				circuit_1.add_RZ( 0 )
+				one_qubit_circuits.append( circuit_1 )
+				gate_idx = gate_idx + 1
+				if gate_idx >= gate_count:
+					break
+			
+                            
+				if (control_qbit >= 15 ):
+					continue
+		  
+
+			circuit.add_CNOT(control_qbit+2,control_qbit+1)
+			target_qbits.append(control_qbit+2)
+			control_qbits.append(control_qbit+1)
+
+			circuit_1 = Circuit( 1 )
+			circuit_1.add_X( 0 )
+			one_qubit_circuits.append( circuit_1 )
+			gate_idx = gate_idx + 1
+			if gate_idx >= gate_count:
+				break
+			
+                        
+		
+			circuit.add_RZ(control_qbit+1)
+			target_qbits.append(control_qbit+1)
+			control_qbits.append(-1)
+
+			circuit_1 = Circuit( 1 )
+			circuit_1.add_RZ( 0 )
+			one_qubit_circuits.append( circuit_1 )
+			gate_idx = gate_idx + 1
+			if gate_idx >= gate_count:
+				break
+		
+			circuit.add_RY(control_qbit+1)
+			target_qbits.append(control_qbit+1)
+			control_qbits.append(-1)
+		
+			circuit_1 = Circuit( 1 )
+			circuit_1.add_RY( 0 )
+			one_qubit_circuits.append( circuit_1 )
+			gate_idx = gate_idx + 1
+			if gate_idx >= gate_count:
+				break
+		
+			circuit.add_RZ(control_qbit+1)
+			target_qbits.append(control_qbit+1)
+			control_qbits.append(-1)
+
+			circuit_1 = Circuit( 1 )
+			circuit_1.add_RZ( 0 )
+			one_qubit_circuits.append( circuit_1 )
+			gate_idx = gate_idx + 1
+			if gate_idx >= gate_count:
+				break
+			             
+
+			circuit.add_RZ(control_qbit)
+			target_qbits.append(control_qbit)
+			control_qbits.append(-1)
+
+			circuit_1 = Circuit( 1 )
+			circuit_1.add_RZ( 0 )
+			one_qubit_circuits.append( circuit_1 )
+			gate_idx = gate_idx + 1
+			if gate_idx >= gate_count:
+				break
+			
+			circuit.add_RY(control_qbit)
+			target_qbits.append(control_qbit)
+			control_qbits.append(-1)
+
+			circuit_1 = Circuit( 1 )
+			circuit_1.add_RY( 0 )
+			one_qubit_circuits.append( circuit_1 )
+			gate_idx = gate_idx + 1
+			if gate_idx >= gate_count:
+				break
+			
+			circuit.add_RZ(control_qbit)
+			target_qbits.append(control_qbit)
+			control_qbits.append(-1)
+
+			circuit_1 = Circuit( 1 )
+			circuit_1.add_RZ( 0 )
+			one_qubit_circuits.append( circuit_1 )
+			gate_idx = gate_idx + 1
+			if gate_idx >= gate_count:
+				break
+			        
+
+			circuit.add_CNOT(control_qbit+1,control_qbit)
+			target_qbits.append(control_qbit+1)
+			control_qbits.append(control_qbit)
+
+			circuit_1 = Circuit( 1 )
+			circuit_1.add_X( 0 )
+			one_qubit_circuits.append( circuit_1 )
+			gate_idx = gate_idx + 1
+			if gate_idx >= gate_count:
+				break
+		
+		if gate_idx >= gate_count:
+				break
+			
+   	
 	
 
 	# get the number of free parameters in the circuit
@@ -115,7 +381,7 @@ if __name__ == "__main__":
 	#create an array of random parameters
 	np.random.seed(0)
 	parameters = np.random.rand( parameter_num )*2*np.pi
-	print('parameters: ', parameters )
+	#print('parameters: ', parameters )
 	
 	'''
 	if parameters.size > 3:
@@ -132,7 +398,7 @@ if __name__ == "__main__":
 	start_time = time.time()
 	
 	circuit.apply_to( parameters, State_transformed_oracle )
-	circuit2.apply_to( parameters, State_transformed_oracle )
+	#circuit2.apply_to( parameters, State_transformed_oracle )
 	time_Cpp = time.time()-start_time
 
 

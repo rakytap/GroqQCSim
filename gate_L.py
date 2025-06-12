@@ -89,7 +89,7 @@ class Gate(Gate_L_base):
 				
 				# export the calculated state into memory and set program output
 				target_qubit_L_write_map_st = self.select_target_qbit_write_map_east()
-				target_qubit_L_write_map_st.write( name='ooo2', layout='H1(W), -1, S1', program_output=True)
+				#target_qubit_L_write_map_st.write( name='ooo2', layout='H1(W), -1, S1', program_output=True)
 				self.write_tranformed_states_2_mem( Psi_transformed_real_st, Psi_transformed_imag_st, target_qubit_L_write_map_st )
 				
 				

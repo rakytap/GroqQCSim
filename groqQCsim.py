@@ -33,7 +33,7 @@ def compile(mxm_permutation = True) -> List[str]:
 	Return: (List[str]): A list of IOP files.
 	"""
 	output_dir = "./build_iop"
-	shutil.rmtree(output_dir, ignore_errors=True)
+	#shutil.rmtree(output_dir, ignore_errors=True)
 	pgm_pkg = g.ProgramPackage(f"QCsim_multi_program.{ML.qbit_num}.{ML.gate_count}", output_dir)
 
 	
@@ -99,7 +99,7 @@ def compile(mxm_permutation = True) -> List[str]:
 	# program to perform gate_H8 operation
 	program.gate_H8_program()
 	
-	# program to perform gate_HL operation
+	# program to perform gate_HH operation
 	program.gate_HH_program()
 
 	# program to reset the state vector to (1,0,0,0,0,0,0,...)
@@ -209,7 +209,8 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	device.load(iop[18], unsafe_keep_entry_points=True) #HS
 	device.load(iop[19], unsafe_keep_entry_points=True) #HL
 	device.load(iop[20], unsafe_keep_entry_points=True) #H8
-	device.load(iop[21], unsafe_keep_entry_points=True) #H8
+	device.load(iop[21], unsafe_keep_entry_points=True) #HH
+	device.load(iop[22], unsafe_keep_entry_points=True) #reset state vector
 
 	print("time elapsed with IOP uploading: ", time.time() - start_time )
 			
@@ -283,8 +284,8 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			# SL and 8L gates
 			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - ML.small_qbit_num_limit - 1)
 			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - ML.small_qbit_num_limit - 1) + 1
-		elif control_qbit > 16 and control_qbit < 21 and target_qbit < 8:
-			# SH gate
+		elif control_qbit > 16 and control_qbit < 21 and target_qbit <= 8:
+			# SH and 8H gates
 			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - 17)
 			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - 17) + 1
 		elif control_qbit > 8 and control_qbit <= 16 and target_qbit > 8 and target_qbit < 21:
@@ -312,7 +313,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			pass
 
 
-	# target qubit distributor maps for L(?) gates
+	# target qubit distributor maps for L and H gates
 	target_qubit_distributor_map_np = np.zeros( (ML.gate_count, 320,), dtype=np.uint8 )
 	for gate_idx in range(ML.gate_count):
 	
@@ -363,7 +364,17 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	# run the upload program
 	start_time = time.time()	
 	entry_point = iop["upload"]["mono"]
-	pgm_1_output = invoke(device, iop, 0, entry_point, {"mxm_permutation_selector": mxm_permutation_selector, "permutation_selector": permutation_selector, "gate_kernels_real_packed": gate_kernels_real_packed, "gate_kernels_imag_packed": gate_kernels_imag_packed, "state_1_selector": state_1_selector, "state_0_selector": state_0_selector, "control_state_1_selector": control_state_1_selector, "control_state_0_selector": control_state_0_selector, "control_qubit_distributor_maps": distributor_map_np, "target_qubit_distributor_maps": target_qubit_distributor_map_np})
+	pgm_1_output = invoke(device, iop, 0, entry_point, {"mxm_permutation_selector": mxm_permutation_selector, 
+														"permutation_selector": permutation_selector, 
+														"gate_kernels_real_packed": gate_kernels_real_packed, 
+														"gate_kernels_imag_packed": gate_kernels_imag_packed, 
+														"state_1_selector": state_1_selector, 
+														"state_0_selector": state_0_selector, 
+														"control_state_1_selector": control_state_1_selector, 
+														"control_state_0_selector": control_state_0_selector, 
+														"control_qubit_distributor_maps": distributor_map_np, 
+														"target_qubit_distributor_maps": target_qubit_distributor_map_np})
+
 	print("time elapsed with uploading gate data: ", time.time() - start_time )
 	#print( pgm_1_output["gate_kernel_packed_0"].shape )
 	#print( pgm_1_output["gate_kernel_packed_0"][:,:,0:12] )
@@ -682,15 +693,15 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			error("QCsim::run: Unimplemented case wit target qubit and control qubit.")
 			
-		gate_output = invoke_gate(device, iop, index_of_gate_program, entry_point, input_buffer, output_buffer)	
-		#gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+		#gate_output = invoke_gate(device, iop, index_of_gate_program, entry_point, input_buffer, output_buffer)	
+		gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
 		#if gate_idx==0 or gate_idx == gate_count-1:
 		#	print(gate_output)
 	
 	print("time elapsed on groq with gate operations: ", time.time() - start_time )
 
 
-
+	'''
 ###################################################################################x
 	# run the upload program
 	start_time = time.time()	
@@ -700,7 +711,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 	
 	output_buffer_indices = [ [], [], [] ]
-	for _ in range(12):
+	for _ in range(22-3):
 		output_buffer_indices.append( 0 )
 
 	start_time = time.time()
@@ -900,13 +911,13 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 			error("QCsim::run: Unimplemented case wit target qubit and control qubit.")
 			
-		gate_output = invoke_gate(device, iop, index_of_gate_program, entry_point, input_buffer, output_buffer)	
-		#gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
+		#gate_output = invoke_gate(device, iop, index_of_gate_program, entry_point, input_buffer, output_buffer)	
+		gate_output = invoke(device, iop, index_of_gate_program, entry_point, {})
 		#if gate_idx==0 :
 		#	print(gate_output)
 	
 	print("time elapsed on groq with gate operations: ", time.time() - start_time )
-	
+	'''
 
 ###################################################################################x
 
@@ -934,7 +945,7 @@ def main( qbit_num, gate_count, State_orig_real_float32, State_orig_imag_float32
 	ML = MemoryLayouts( qbit_num, gate_count )
 
 
-	tocompile = 1
+	tocompile = 0
 	if tocompile:
 		iop_files = compile( mxm_permutation )
 	else:
@@ -944,7 +955,7 @@ def main( qbit_num, gate_count, State_orig_real_float32, State_orig_imag_float32
 	import time
 
 	start_time = time.time()
-	#transformed_state = run(iop_files[0], State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, np.real(gate_kernels), np.imag(gate_kernels), ML, mxm_permutation )
+	transformed_state = run(iop_files[0], State_orig_real_float32, State_orig_imag_float32, target_qbits, control_qbits, np.real(gate_kernels), np.imag(gate_kernels), ML, mxm_permutation )
 
 	print("total time elapsed during computations with Groq: ", time.time() - start_time )
 	
