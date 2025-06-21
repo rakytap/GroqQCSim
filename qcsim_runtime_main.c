@@ -825,76 +825,76 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
 
             for (int j = 0; j < 320; j+=16) {
 
-                if (target_qubits[cur_gate+i] < 8) {
+                if (target_qbit < 8) {
                     // S gates
                     state_0_sel[i*320+j] = target_qbit;
                     state_1_sel[i*320+j] = target_qbit;
                     perm_sel[i*320+j] = target_qbit;
                 }
 
-                if (control_qubits[cur_gate+i] < 8 && control_qubits[cur_gate+i] >= 0) {
+                if (control_qbit < 8 && control_qbit >= 0) {
                     // SS, LS, HS gates
-                    control_0_sel[i*320+j] = control_qubits[cur_gate+i];
-                    control_1_sel[i*320+j] = control_qubits[cur_gate+i];
+                    control_0_sel[i*320+j] = control_qbit;
+                    control_1_sel[i*320+j] = control_qbit;
                 }
 
 
-                // control qubit distributor maps for SL gates
-		        if (control_qbit > 8 && control_qbit <= 16 && target_qbit <= 8 ) {
-			        // SL and 8L gates
+                // control qubit distributor maps for SL, 8L, SH, 8H, LL, HL, LH, HH gates
+                if (control_qbit > 8 && control_qbit <= 16 && target_qbit <= 8 ) {
+                    // SL and 8L gates
                     control_qubit_dmap[i*320+j] = 2*(control_qbit - 9);
                     control_qubit_dmap[i*320+j+1] = 2*(control_qbit - 9) + 1;
                 }
                 else if (control_qbit > 16 && control_qbit < 21 && target_qbit <= 8) {
-			        // SH and 8H gates
+                    // SH and 8H gates
                     control_qubit_dmap[i*320+j] = 2*(control_qbit - 17);
                     control_qubit_dmap[i*320+j+1] = 2*(control_qbit - 17) + 1;
                 }
-		        else if (control_qbit > 8 && control_qbit <= 16 && target_qbit > 8 && target_qbit < 21) {
-			        // LL gate
+                if (control_qbit > 8 && control_qbit <= 16 && target_qbit > 8 && target_qbit < 21) {
+                    // LL and HL gate
                     int offset;
-			        if (control_qbit == 16 && control_qbit < target_qbit ) {
-				        offset = 9;
+                    if (control_qbit == 16 && control_qbit < target_qbit ) {
+                        offset = 9;
                     }
-			        else if (control_qbit < target_qbit) {
-				        offset = control_qbit;
+                    else if (control_qbit < target_qbit) {
+                        offset = control_qbit;
                     }
-			        else {
-				        offset = control_qbit - 1;
+                    else {
+                        offset = control_qbit - 1;
                     }
 
                     control_qubit_dmap[i*320+j] = 2*(offset-9);
                     control_qubit_dmap[i*320+j+1] = 2*(offset-9) + 1;
                 }
-		        else if (control_qbit > 16 && control_qbit < 21 && target_qbit > 8 && target_qbit < 21 ) {
-			        // LH gate
+                else if (control_qbit > 16 && control_qbit < 21 && target_qbit > 8 && target_qbit < 21 ) {
+                    // LH and HH gate
                     int offset;
-			        if (control_qbit < target_qbit) {
-				        offset = control_qbit;
+                    if (control_qbit < target_qbit) {
+                        offset = control_qbit;
                     }
-			        else {
-				        offset = control_qbit - 1;
+                    else {
+                        offset = control_qbit - 1;
                     }
 
                     control_qubit_dmap[i*320+j] = 2*(offset-9-7);
                     control_qubit_dmap[i*320+j+1] = 2*(offset-9-7) + 1;
                 }
-		        else {
-			        // when the control qubits is not L or H, no valid distributor map is required
+                else {
+                    // when the control qubits is not L or H, no valid distributor map is required
                 }
 
                 // target qubit distributor maps for L and H gates
-		        if (target_qbit > 8 && target_qbit <= 16 ) {
+                if (target_qbit > 8 && target_qbit <= 16 ) {
                     target_qubit_dmap[i*320+j] = 2*(target_qbit - 8 - 1);
                     target_qubit_dmap[i*320+j+1] = 2*(target_qbit - 8 - 1) + 1;
                 }
-		        else if (target_qbit > 16 && target_qbit < 21) {
+                else if (target_qbit > 16 && target_qbit < 21) {
                     target_qubit_dmap[i*320+j] = 2*(target_qbit - 17);
                     target_qubit_dmap[i*320+j+1] = 2*(target_qbit - 17) + 1;
                 }
-		        else {
-			        // when the target qubit is not L or H, no valid distributor map is required
-			        // the map selectors are padded with zeros for these cases
+                else {
+                    // when the target qubit is not L or H, no valid distributor map is required
+                    // the map selectors are padded with zeros for these cases
                     target_qubit_dmap[i*320+j] = 0;
                     target_qubit_dmap[i*320+j+1] = 0;
                 }
@@ -1004,7 +1004,7 @@ extern "C" int calcsvKernelGroq(int num_gates, Complex32* gates, int* target_qub
             int c = (control_qubits[cur_gate+i] != -1) + (control_qubits[cur_gate+i] >= 8) + (control_qubits[cur_gate+i] > 8) + (control_qubits[cur_gate+i] > 16);
             int t = (target_qubits[cur_gate+i] >= 8) + (target_qubits[cur_gate+i] > 8) + (target_qubits[cur_gate+i] > 16);
             int p = qubitProgs[c][t];
-            //printf("target_qbit=%d control_qbit=%d program_idx=%d\n", target_qubits[cur_gate+i], control_qubits[cur_gate+i], p);
+            printf("target_qbit=%d control_qbit=%d program_idx=%d\n", target_qubits[cur_gate+i], control_qubits[cur_gate+i], p);
             int queueIdx = queueFree->data;
             transferNode(&queueFree, &queueOccupied, queueFree);
             int bufIdx = bufferIndices[p-3]++ % QUEUE_LIMIT;

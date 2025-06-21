@@ -232,7 +232,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	# maps for mem_gather to select the correct state_1 indices according to the target qubit
 	state_1_selector = np.zeros( (ML.gate_count,320,), dtype=np.uint8 )#np.zeros( (2,320,), dtype=np.uint8 )
 	state_0_selector = np.zeros( (ML.gate_count,320,), dtype=np.uint8 )#np.zeros( (2,320,), dtype=np.uint8 )	
-	for gate_idx in range(ML.gate_count):
+	for gate_idx in range(ML.used_gate_count):
 		target_qbit = target_qbits[gate_idx]
 		if target_qbit < 8:
 			state_0_selector[gate_idx, 0:320:16] = target_qbit
@@ -246,7 +246,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 	
 	control_state_1_selector = np.zeros( (ML.gate_count,320,), dtype=np.uint8 )
-	for gate_idx in range(ML.gate_count):
+	for gate_idx in range(ML.used_gate_count):
 		
 		control_qbit = control_qbits[gate_idx]
 
@@ -274,9 +274,9 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	
 
 
-	# control qubit distributor maps for SL gates
+	# control qubit distributor maps for SL, 8L, SH, 8H, LL, HL, LH, HH gates
 	distributor_map_np = np.zeros( (ML.gate_count, 320,), dtype=np.uint8 )
-	for gate_idx in range(ML.gate_count):
+	for gate_idx in range(ML.used_gate_count):
 	
 		control_qbit = control_qbits[gate_idx]
 		target_qbit  = target_qbits[gate_idx]
@@ -289,7 +289,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			distributor_map_np[gate_idx, 0:320:16] = 2*(control_qbit - 17)
 			distributor_map_np[gate_idx, 1:320:16] = 2*(control_qbit - 17) + 1
 		elif control_qbit > 8 and control_qbit <= 16 and target_qbit > 8 and target_qbit < 21:
-			# LL gate
+			# LL and HL gate
 			if control_qbit == 16 and control_qbit < target_qbit:
 				offset = 9
 			elif control_qbit < target_qbit:
@@ -300,7 +300,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 			distributor_map_np[gate_idx, 0:320:16] = 2*(offset - ML.small_qbit_num_limit - 1)
 			distributor_map_np[gate_idx, 1:320:16] = 2*(offset - ML.small_qbit_num_limit - 1) + 1
 		elif control_qbit > 16 and control_qbit < 21 and target_qbit > 8 and target_qbit < 21:
-			# LH gate
+			# LH and HH gate
 			if control_qbit < target_qbit:
 				offset = control_qbit
 			else: 
@@ -315,7 +315,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 
 	# target qubit distributor maps for L and H gates
 	target_qubit_distributor_map_np = np.zeros( (ML.gate_count, 320,), dtype=np.uint8 )
-	for gate_idx in range(ML.gate_count):
+	for gate_idx in range(ML.used_gate_count):
 	
 		target_qbit = target_qbits[gate_idx]
 		if target_qbit > 8 and target_qbit <= 16:
@@ -498,7 +498,7 @@ def run(iop_file, input_real, input_imag, target_qbits, control_qbits, gate_kern
 	
 	start_time = time.time()
 	
-	for gate_idx in range(ML.gate_count):
+	for gate_idx in range(ML.used_gate_count):
 
 		if gate_idx % 50 == 0:
 			time.sleep(0.05)
@@ -943,6 +943,7 @@ def main( qbit_num, gate_count, State_orig_real_float32, State_orig_imag_float32
 	
 	global ML
 	ML = MemoryLayouts( qbit_num, gate_count )
+	ML.used_gate_count = len(target_qbits)
 
 
 	tocompile = 0

@@ -13,6 +13,9 @@ class MemoryLayouts():
 		self.gate_count = gate_count_#256*7 
 		gate_count = self.gate_count # for local usage
 
+                # gate count used in the actual execution. Should be less than or equal to the total maximum gate count in one shot
+		self.used_gate_count = gate_count_
+                
 
 		self.gate_splits = (gate_count-1+80) // 80  # on each 320-element vector 80 gate kernels are stored in the input
 		gate_splits = self.gate_splits

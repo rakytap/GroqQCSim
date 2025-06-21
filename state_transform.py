@@ -12,26 +12,18 @@ import random
 
 qbit_num = 20
 gate_count = 7*256
+used_gate_count = 1
 
 ML = MemoryLayouts( qbit_num, gate_count )
+ML.used_gate_count = used_gate_count
 
 
 if __name__ == "__main__":
 
-	
-	#target_qbits  = [8] * gate_count
-	#control_qbits = [17] * gate_count
 	'''
-	target_qbits  = [12,  12, 0,  10, 8, 6,   8,  4, 15, 3, 13, 16, 8, 5, 8, 12, 7]
-	control_qbits = [-1,  8, 15,  4,  2, 10, -1, -1, 10, 5, 7,  8, -1, 0, 7, -1, 2] #-1 ... no cotrol qubit is incolved in the operation
-	'''
-	
-	#target_qbits  = [6,  2,  12, 1, 15, 8, 16, 4,  6, 16, 10, 11, 15,  8, 12, 13, 8]
-	#control_qbits = [-1, -1, 3,  0, 3, -1, 9, 10,  8,  7, -1,  16,  7, -1, 2, 8, 11] #-1 ... no control qubit is incolved in the operation
-	
 	target_qbits = []
 	control_qbits = []	
-	while len(target_qbits) < gate_count:
+	while len(target_qbits) < used_gate_count:
 		target_qbit = random.randint(0, qbit_num-1)
 		
 		tmp = random.randint(0,1)
@@ -47,13 +39,13 @@ if __name__ == "__main__":
 			control_qbits.append( control_qbit )		
         
 	
-	if len(target_qbits) != gate_count:
+	if len(target_qbits) != used_gate_count:
 		raise Exception("Number of target qubits in the list of target qubits should be equal to the gate count")
 
-	if len(control_qbits) != gate_count:
+	if len(control_qbits) != used_gate_count:
 		raise Exception("Number of control qubits in the list of control qubits should be equal to the gate count")
 
-	gate_count = len(target_qbits)
+	'''     
 
 	# determine the soze of the unitary to be decomposed
 	matrix_size = 1 << qbit_num
@@ -105,15 +97,23 @@ if __name__ == "__main__":
 			error("Unimplemented case wit target qubit and control qubit.")
 		
 	'''
-
+     
 	target_qbits = []
 	control_qbits = []	
 	one_qubit_circuits = []
 	circuit = Circuit(qbit_num)
-	#circuit2 = Circuit(qbit_num) ########
+	
+	circuit.add_CNOT(18,16)
+	target_qbits.append(18)
+	control_qbits.append(16)
 
+	circuit_1 = Circuit( 1 )
+	circuit_1.add_X( 0 )
+	one_qubit_circuits.append( circuit_1 )
+	'''
 	layers = 5000
-	gate_idx = 0
+	gate_idx = 1
+
 	for layer in range(layers):
 
 		
@@ -127,7 +127,7 @@ if __name__ == "__main__":
 		one_qubit_circuits.append( circuit_1 )
 
 		gate_idx = gate_idx + 1
-		if gate_idx >= gate_count:
+		if gate_idx >= used_gate_count:
 			break
 			
 		
@@ -139,7 +139,7 @@ if __name__ == "__main__":
 		circuit_1.add_RY( 0 )
 		one_qubit_circuits.append( circuit_1 )
 		gate_idx = gate_idx + 1
-		if gate_idx >= gate_count:
+		if gate_idx >= used_gate_count:
 			break
 		
 		circuit.add_RZ(1)  
@@ -150,7 +150,7 @@ if __name__ == "__main__":
 		circuit_1.add_RZ( 0 )
 		one_qubit_circuits.append( circuit_1 )
 		gate_idx = gate_idx + 1
-		if gate_idx >= gate_count:
+		if gate_idx >= used_gate_count:
 			break
                            
 		
@@ -162,7 +162,7 @@ if __name__ == "__main__":
 		circuit_1.add_RZ( 0 )
 		one_qubit_circuits.append( circuit_1 )
 		gate_idx = gate_idx + 1
-		if gate_idx >= gate_count:
+		if gate_idx >= used_gate_count:
 			break
 
 		circuit.add_RY(0)
@@ -173,7 +173,7 @@ if __name__ == "__main__":
 		circuit_1.add_RY( 0 )
 		one_qubit_circuits.append( circuit_1 )
 		gate_idx = gate_idx + 1
-		if gate_idx >= gate_count:
+		if gate_idx >= used_gate_count:
 			break
 			
 		circuit.add_RZ(0) 
@@ -184,7 +184,7 @@ if __name__ == "__main__":
 		circuit_1.add_RZ( 0 )
 		one_qubit_circuits.append( circuit_1 )
 		gate_idx = gate_idx + 1
-		if gate_idx >= gate_count:
+		if gate_idx >= used_gate_count:
 			break
 			        
           
@@ -197,7 +197,7 @@ if __name__ == "__main__":
 		circuit_1.add_X( 0 )
 		one_qubit_circuits.append( circuit_1 )
 		gate_idx = gate_idx + 1
-		if gate_idx >= gate_count:
+		if gate_idx >= used_gate_count:
 			break
 		
 		
@@ -212,7 +212,7 @@ if __name__ == "__main__":
 				circuit_1.add_RZ( 0 )
 				one_qubit_circuits.append( circuit_1 )
 				gate_idx = gate_idx + 1
-				if gate_idx >= gate_count:
+				if gate_idx >= used_gate_count:
 					break
 			
 				circuit.add_RY(control_qbit+1)
@@ -223,7 +223,7 @@ if __name__ == "__main__":
 				circuit_1.add_RY( 0 )
 				one_qubit_circuits.append( circuit_1 )
 				gate_idx = gate_idx + 1
-				if gate_idx >= gate_count:
+				if gate_idx >= used_gate_count:
 					break
 			
 				circuit.add_RZ(control_qbit+1)
@@ -234,7 +234,7 @@ if __name__ == "__main__":
 				circuit_1.add_RZ( 0 )
 				one_qubit_circuits.append( circuit_1 )
 				gate_idx = gate_idx + 1
-				if gate_idx >= gate_count:
+				if gate_idx >= used_gate_count:
 					break
 			                   
 			
@@ -246,7 +246,7 @@ if __name__ == "__main__":
 				circuit_1.add_RZ( 0 )
 				one_qubit_circuits.append( circuit_1 )
 				gate_idx = gate_idx + 1
-				if gate_idx >= gate_count:
+				if gate_idx >= used_gate_count:
 					break
 			
 				circuit.add_RY(control_qbit+2)
@@ -257,7 +257,7 @@ if __name__ == "__main__":
 				circuit_1.add_RY( 0 )
 				one_qubit_circuits.append( circuit_1 )
 				gate_idx = gate_idx + 1
-				if gate_idx >= gate_count:
+				if gate_idx >= used_gate_count:
 					break
 			
 				circuit.add_RZ(control_qbit+2)
@@ -268,23 +268,23 @@ if __name__ == "__main__":
 				circuit_1.add_RZ( 0 )
 				one_qubit_circuits.append( circuit_1 )
 				gate_idx = gate_idx + 1
-				if gate_idx >= gate_count:
+				if gate_idx >= used_gate_count:
 					break
 			
                             
-				if (control_qbit >= 15 ):
-					continue
+				#if (control_qbit >= 15 ):
+				#	continue
 		  
 
-			circuit.add_CNOT(control_qbit+2,control_qbit+1)
-			target_qbits.append(control_qbit+2)
-			control_qbits.append(control_qbit+1)
+				circuit.add_CNOT(control_qbit+2,control_qbit+1)
+				target_qbits.append(control_qbit+2)
+				control_qbits.append(control_qbit+1)
 
 			circuit_1 = Circuit( 1 )
 			circuit_1.add_X( 0 )
 			one_qubit_circuits.append( circuit_1 )
 			gate_idx = gate_idx + 1
-			if gate_idx >= gate_count:
+			if gate_idx >= used_gate_count:
 				break
 			
                         
@@ -297,7 +297,7 @@ if __name__ == "__main__":
 			circuit_1.add_RZ( 0 )
 			one_qubit_circuits.append( circuit_1 )
 			gate_idx = gate_idx + 1
-			if gate_idx >= gate_count:
+			if gate_idx >= used_gate_count:
 				break
 		
 			circuit.add_RY(control_qbit+1)
@@ -308,7 +308,7 @@ if __name__ == "__main__":
 			circuit_1.add_RY( 0 )
 			one_qubit_circuits.append( circuit_1 )
 			gate_idx = gate_idx + 1
-			if gate_idx >= gate_count:
+			if gate_idx >= used_gate_count:
 				break
 		
 			circuit.add_RZ(control_qbit+1)
@@ -319,7 +319,7 @@ if __name__ == "__main__":
 			circuit_1.add_RZ( 0 )
 			one_qubit_circuits.append( circuit_1 )
 			gate_idx = gate_idx + 1
-			if gate_idx >= gate_count:
+			if gate_idx >= used_gate_count:
 				break
 			             
 
@@ -331,7 +331,7 @@ if __name__ == "__main__":
 			circuit_1.add_RZ( 0 )
 			one_qubit_circuits.append( circuit_1 )
 			gate_idx = gate_idx + 1
-			if gate_idx >= gate_count:
+			if gate_idx >= used_gate_count:
 				break
 			
 			circuit.add_RY(control_qbit)
@@ -342,7 +342,7 @@ if __name__ == "__main__":
 			circuit_1.add_RY( 0 )
 			one_qubit_circuits.append( circuit_1 )
 			gate_idx = gate_idx + 1
-			if gate_idx >= gate_count:
+			if gate_idx >= used_gate_count:
 				break
 			
 			circuit.add_RZ(control_qbit)
@@ -353,7 +353,7 @@ if __name__ == "__main__":
 			circuit_1.add_RZ( 0 )
 			one_qubit_circuits.append( circuit_1 )
 			gate_idx = gate_idx + 1
-			if gate_idx >= gate_count:
+			if gate_idx >= used_gate_count:
 				break
 			        
 
@@ -365,15 +365,17 @@ if __name__ == "__main__":
 			circuit_1.add_X( 0 )
 			one_qubit_circuits.append( circuit_1 )
 			gate_idx = gate_idx + 1
-			if gate_idx >= gate_count:
+			if gate_idx >= used_gate_count:
 				break
 		
-		if gate_idx >= gate_count:
+		if gate_idx >= used_gate_count:
 				break
-			
-   	
-	
+		
 
+       
+	'''
+	
+            
 	# get the number of free parameters in the circuit
 	parameter_num = circuit.get_Parameter_Num()
 	print('Number of parameters in the circuit: ', parameter_num, flush=True)
@@ -383,14 +385,6 @@ if __name__ == "__main__":
 	parameters = np.random.rand( parameter_num )*2*np.pi
 	#print('parameters: ', parameters )
 	
-	'''
-	if parameters.size > 3:
-		for gate_idx in range( len(target_qbits)-1 ):
-			parameters[gate_idx*3:3*(gate_idx+1)] = parameters[(len(target_qbits)-1)*3:]
-	#parameters[2] = -parameters[1]
-	
-	print( parameters )
-	'''
 
 	# apply the circuit to a quantum state
 	State = State_orig.copy()
@@ -398,7 +392,6 @@ if __name__ == "__main__":
 	start_time = time.time()
 	
 	circuit.apply_to( parameters, State_transformed_oracle )
-	#circuit2.apply_to( parameters, State_transformed_oracle )
 	time_Cpp = time.time()-start_time
 
 
@@ -415,7 +408,7 @@ if __name__ == "__main__":
 	start_time = time.time()
 	gate_kernels = np.zeros((ML.gate_splits*80, 2, 2,), dtype=np.complex64)
 	for idx in range(ML.gate_splits*80):
-		if idx < gate_count:
+		if idx < used_gate_count:
 
 			gate = gates[idx]
 			parameter_idx = gate.get_Parameter_Start_Index()
