@@ -10,7 +10,7 @@ import groqQCsim
 import time
 import random
 
-qbit_num = 20
+qbit_num = 19
 gate_count = 7*256
 used_gate_count = gate_count
 
@@ -45,7 +45,7 @@ if __name__ == "__main__":
 	if len(control_qbits) != used_gate_count:
 		raise Exception("Number of control qubits in the list of control qubits should be equal to the gate count")
 
-	'    
+	    
 
 	# determine the soze of the unitary to be decomposed
 	matrix_size = 1 << qbit_num
@@ -59,6 +59,43 @@ if __name__ == "__main__":
 	State_orig = State_orig/np.linalg.norm(State_orig)
 
 	
+	one_qubit_circuits = []
+	circuit = Circuit(qbit_num)
+	circuit2 = Circuit(qbit_num) ########
+	for gate_idx in range( len(target_qbits) ):
+
+		target_qbit  = target_qbits[gate_idx]
+		control_qbit = control_qbits[gate_idx]
+
+		if target_qbit == control_qbit:
+			error("The control qubit and target qubit should be different")
+
+		elif target_qbit >= 0 and target_qbit < 21 and control_qbit == -1:
+			print("adding U3 gate")
+			circuit.add_U3( target_qbit )
+		
+			circuit_1 = Circuit( 1 )
+			circuit_1.add_U3( 0 )
+			one_qubit_circuits.append( circuit_1 )
+
+			if gate_idx < ML.second_gate_count:
+				circuit2.add_U3( target_qbit )
+		
+		elif target_qbit >= 0 and target_qbit < 21 and control_qbit >= 0 and control_qbit < 21 :	
+	
+			print("adding controlled gate")
+			circuit.add_CRY( target_qbit, control_qbit )
+	
+			circuit_1 = Circuit( 1 )
+			circuit_1.add_RY( 0  )		
+			one_qubit_circuits.append( circuit_1 )
+
+			if gate_idx < ML.second_gate_count:
+				circuit2.add_CRY( target_qbit, control_qbit )
+		
+		else:
+			error("Unimplemented case wit target qubit and control qubit.")
+		
 	
             
 	# get the number of free parameters in the circuit
