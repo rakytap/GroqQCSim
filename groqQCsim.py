@@ -946,7 +946,7 @@ def main( qbit_num, gate_count, State_orig_real_float32, State_orig_imag_float32
 	ML.used_gate_count = len(target_qbits)
 
 
-	tocompile = 0
+	tocompile = 1
 	if tocompile:
 		iop_files = compile( mxm_permutation )
 	else:
