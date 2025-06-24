@@ -225,7 +225,7 @@ extern "C" int initialize_groq_sv( int accelerator_num_in )
     return 1;
   }
 
-    //allocate devices
+  //allocate devices
   unsigned int num_devices = 0;
   status = groq_get_number_of_devices(state.driver, &num_devices);
   if (status) {
@@ -327,10 +327,22 @@ int lookup_str_idx(const char* str, const char* strs[], int num_strs)
     return -1;
 }
 
+
+
+
 int load_iop(size_t num_qubits, int device_idx)
 {
-    if (num_qubits == state.num_qubits[device_idx]) return 0;
+    if (num_qubits == state.num_qubits[device_idx]) {
+        return 0;
+    }
+    
+    // store the current working directory
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+       printf("Cant get current working directory");
+    }  
 
+    // change current directory to where the loaded library is located
     static bool path_fixed = false;
     if (!path_fixed) { 
         Dl_info dl_info;
@@ -338,12 +350,18 @@ int load_iop(size_t num_qubits, int device_idx)
         char* fixpath = strdup(dl_info.dli_fname);
         fixpath = dirname(fixpath);
         strcat(fixpath, "/.."); //filename removed must be at least 3 characters
+        
         if (chdir(fixpath) != 0) { 
             printf("Could not change working directory to %s\n", fixpath); 
         }
+        
         free(fixpath);
+        
         path_fixed = true;
     }
+    
+    // open the directory where the IOP is located 
+    // and look for the suitable IOP with the correct qbit number and maximal gates 
     char fname[PATH_MAX];
     unsigned int cur_qubits, max_gates, n;
     DIR* d;
@@ -412,7 +430,7 @@ int load_iop(size_t num_qubits, int device_idx)
     }
       //printf("number of programs: %u\n", num_programs);
 
-      for (unsigned int j = 0; j < num_programs; j++) {
+    for (unsigned int j = 0; j < num_programs; j++) {
         status = groq_load_program(state.device[device_idx], state.prog[device_idx], j, true);
         if (status) {
             printf("ERROR: load program %d\n", status);
@@ -595,19 +613,26 @@ int load_iop(size_t num_qubits, int device_idx)
             printf("ERROR: allocate iobuffer array %d\n", status);
             return 1;
         }
-      }
+     
+    } 
+    
+    // change back the current directory to the current working directory
+    if ( chdir( cwd ) ) {
+        printf("ERROR: could not change to directory %s\n", cwd);
+        return 1;    
+    }
 
-  state.num_qubits[device_idx] = num_qubits;
-  state.max_gates[device_idx] = max_gates;
-  //printf("Initialized Groq for %lu qbits on device %d\n", num_qubits, device_idx);
-  return 0;
+    state.num_qubits[device_idx] = num_qubits;
+    state.max_gates[device_idx] = max_gates;
+    //printf("Initialized Groq for %lu qbits on device %d\n", num_qubits, device_idx);
+    return 0;
 }
 
 /**
 @brief Call to either upload a state vector onto the chip, or initialize the state vector to (1,0,0,0,0,0, ... ) on the chip
 @param data Pointer to the data of the state vector. If NULL pointer, the state (1,0,0,0,0,0, ... ) is initialized on the chip
 @param num_qubits The number of qubits for which the IOP progra should be selected (an individual IOP program is compiled for different number of qubits)
-@param device_num The number of devices onto which the IOP should be uploaded.
+@param device_num The device onto which the IOP should be executed.
 */
 extern "C" int prepare_state_vector(Complex32* data, size_t num_qubits, int device_num)
 {
