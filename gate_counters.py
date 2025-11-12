@@ -44,9 +44,13 @@ class Gate_counters(Generate_static_data):
 		alu_rq_5 = g.tensor.create_alu_request( alus=[5] )
 		gate_counter_address_offset_higher_bits_shared = g.shared_memory_tensor(self.gate_counter_address_offset_higher_bits_mt, 
                                                                                name="gate_counter_address_offset_higher_bits_shared" )
+		constant_1_address_offset_higher_bits_shared = g.shared_memory_tensor(self.constant_1_address_offset_higher_bits_mt, 
+																			   name="constant_1_address_offset_higher_bits_shared" )
+		constant_1_address_offset_lower_bits_shared = g.shared_memory_tensor(self.constant_1_address_offset_lower_bits_mt, 
+																		name="constant_1_address_offset_lower_bits_shared" )		
 
 
-		constant_1_address_offset_higher_bits_st   = self.constant_1_address_offset_higher_bits_mt.read(streams=[g.SG1_E[16]])
+		constant_1_address_offset_higher_bits_st   = constant_1_address_offset_higher_bits_shared.read(streams=[g.SG1_E[16]])
 		gate_counter_address_offset_higher_bits_st = gate_counter_address_offset_higher_bits_shared.read(streams=[g.SG1_E[20]])	
 
 		gate_counter_address_offset_higher_bits_st = g.add(constant_1_address_offset_higher_bits_st, 
@@ -55,7 +59,7 @@ class Gate_counters(Generate_static_data):
                                                           output_streams=g.SG4_E[5], 
                                                           overflow_mode=g.OverflowMode.MODULAR)
 		
-		constant_1_address_offset_higher_bits_st   = self.constant_1_address_offset_higher_bits_mt.read(streams=[g.SG1_E[16]])
+		constant_1_address_offset_higher_bits_st   = constant_1_address_offset_higher_bits_shared.read(streams=[g.SG1_E[16]])
 
 		masked_1_address_offset_higher_bits_st     = g.mask_bar( gate_counter_address_offset_higher_bits_st,
                                                                          constant_1_address_offset_higher_bits_st,
@@ -103,7 +107,7 @@ class Gate_counters(Generate_static_data):
 		alu_rq_12 = g.tensor.create_alu_request( alus=[12] ) # for low bits
 		alu_rq_13 = g.tensor.create_alu_request( alus=[13] ) # for high bits
 				
-		constant_1_address_offset_st           = self.constant_1_address_offset_lower_bits_mt.read(streams=[g.SG1_E[0]])	
+		constant_1_address_offset_st           = constant_1_address_offset_lower_bits_shared.read(streams=[g.SG1_E[0]])	
 		masked_1_address_offset_higher_bits_st = masked_1_address_offset_higher_bits_mt.read(streams=[g.SG1_E[24]])	
 		gate_counters_west_st                  = gate_counters_west_mt.read(streams=[g.SG1_E[4]])
 				
@@ -174,7 +178,7 @@ class Gate_counters(Generate_static_data):
 		alu_rq_14 = g.tensor.create_alu_request( alus=[14] ) # for high bits
 			
 				
-		constant_1_address_offset_st           = self.constant_1_address_offset_lower_bits_mt.read(streams=[g.SG1_E[0]])	
+		constant_1_address_offset_st           = constant_1_address_offset_lower_bits_shared.read(streams=[g.SG1_E[0]])	
 		masked_1_address_offset_higher_bits_st = masked_1_address_offset_higher_bits_mt.read(streams=[g.SG1_E[28]])				
 
 		gate_counters_east_st  = gate_counters_east_mt.read(streams=[g.SG1_W[4]])
