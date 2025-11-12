@@ -74,7 +74,7 @@ class Gate(Gate_S_base):
 		gate_counter_perm_map_selector_st_b   = gate_counter_perm_map_selector_shared.read(streams=[g.SG1_E[0]])		
 
 		state_permute_map_selector_shared = g.shared_memory_tensor(self.state_permute_map_selector_mt, name="state_permute_map_selector_shared")		
-		state_permute_map_selector_list   = g.split_vectors(input=state_permute_map_selector_shared, splits=self.ML.gate_count)
+		state_permute_map_selector_list   = g.split_vectors(input=state_permute_map_selector_shared, splits=[1]*self.ML.gate_count)
 			
 		# otherwise the permutor slices are used
 		permute_maps_mt_west_shared = g.shared_memory_tensor(self.permute_maps_mt_west, name="permute_maps_west_shared")
