@@ -60,14 +60,13 @@ class Gate(Gate_L_base):
 		Returns with the stream tensor of the target qubits memory map.
 		"""
 
+		target_qubit_read_maps_LL_shared = g.shared_memory_tensor(self.target_qubit_read_maps_LL_mt, name="target_qubit_read_maps_LL_shared" )
 
-		half_memory_slices = self.ML.memory_addresses >> 1
-		control_qbit_state_1_selector_list = g.split(self.target_qubit_read_maps_LL_mt, 1)
-		control_qbit_state_1_selector_mt = g.concat(control_qbit_state_1_selector_list[:half_memory_slices])
-		control_qbit_state_1_selector_st = control_qbit_state_1_selector_mt.read( streams=g.SG1[16] )
+		control_qbit_state_1_selector_st = target_qubit_read_maps_LL_shared.read( streams=g.SG1[16] )
 		
+		gate_counter_distributor_maps_west_mt_shared = g.shared_memory_tensor(self.gate_counter_distributor_maps_west_mt, name="gate_counter_distributor_maps_west_mt_shared" )
 		
-		gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1_W[17]] )		
+		gate_counter_distribute_map_selector_st = gate_counter_distributor_maps_west_mt_shared.read( streams=[g.SG1_W[17]] )		
 		distributor_map_st                      = g.mem_gather(self.distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[17]] )
 		#distributor_map_st                      = self.distributor_map_mt.read( streams=g.SG1[17] )
 		
@@ -94,8 +93,9 @@ class Gate(Gate_L_base):
 
 		read_out_qubit_memory_tensor_st = g.stack( [read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st], dim=1 )
 		
+		gate_counter_target_qubit_L_distributor_maps_write_shared = g.shared_memory_tensor(self.gate_counter_target_qubit_L_distributor_maps_write_mt, name="gate_counter_target_qubit_L_distributor_maps_write_shared" )
 		
-		gate_counter_distribute_map_selector_st = self.gate_counter_target_qubit_L_distributor_maps_write_mt.read( streams=[g.SG1_W[12]] )		
+		gate_counter_distribute_map_selector_st = gate_counter_target_qubit_L_distributor_maps_write_shared.read( streams=[g.SG1_W[12]] )		
 		distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
 		#distributor_map_st                      = self.target_qubit_distributor_map_mt.read( streams=g.SG1[6] )
 		
@@ -148,10 +148,7 @@ class Gate(Gate_L_base):
 		Returns with the stream tensor of the target qubits memory map.
 		"""
 
-		half_memory_addresses = self.ML.memory_addresses >> 1
-		control_qbit_state_1_selector_list = g.split(self.target_qubit_write_maps_LL_mt, 1)
-		control_qbit_state_1_selector_mt = g.concat(control_qbit_state_1_selector_list[:half_memory_addresses])
-		control_qbit_state_1_selector_st = control_qbit_state_1_selector_mt.read( streams=g.SG1[15] )
+		control_qbit_state_1_selector_st = self.target_qubit_write_maps_LL_mt.read( streams=g.SG1[15] )
 		
 		gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1_W[9]] )		
 		distributor_map_st                      = g.mem_gather(self.distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[9]] )
