@@ -1,4 +1,4 @@
-GROQ_DIR ?= /opt/groq/runtime
+GROQ_DIR ?= /opt/groq/runtime.0.9.3
 
 CC = g++
 
