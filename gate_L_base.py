@@ -152,8 +152,9 @@ class Gate_L_base(Gate_counters):
 		Returns with the stream tensor of the target qubits memory map.
 		"""
 
+		target_qubit_write_maps_L_shared = g.shared_memory_tensor(self.target_qubit_write_maps_L_mt, name="target_qubit_write_maps_L_shared" )
 
-		target_qubit_write_maps_L_st = self.target_qubit_write_maps_L_mt.read( streams=g.SG1[16] )
+		target_qubit_write_maps_L_st = target_qubit_write_maps_L_shared.read( streams=g.SG1[16] )
 
 		
 		gate_counter_target_qubit_L_distributor_maps_write_shared = g.shared_memory_tensor(self.gate_counter_target_qubit_L_distributor_maps_write_mt, name="gate_counter_target_qubit_L_distributor_maps_write_shared" )
@@ -267,19 +268,23 @@ class Gate_L_base(Gate_counters):
 		
 		"""
 	
+		gate_counter_gate_element_selector_00_shared = g.shared_memory_tensor(self.gate_counter_gate_element_selector_00_mt, name="gate_counter_gate_element_selector_00_shared" )
+		gate_counter_gate_element_selector_01_shared = g.shared_memory_tensor(self.gate_counter_gate_element_selector_01_mt, name="gate_counter_gate_element_selector_01_shared" )
+		gate_counter_gate_element_selector_10_shared = g.shared_memory_tensor(self.gate_counter_gate_element_selector_10_mt, name="gate_counter_gate_element_selector_10_shared" )
+		gate_counter_gate_element_selector_11_shared = g.shared_memory_tensor(self.gate_counter_gate_element_selector_11_mt, name="gate_counter_gate_element_selector_11_shared" )
 	
 		gate_element_counter_first_column_list  = []
 		gate_element_counter_second_column_list = []
 		for idx in range(element_num//4):
-			gate_element_counter_first_column_list.append( self.gate_counter_gate_element_selector_00_mt)
-			gate_element_counter_first_column_list.append( self.gate_counter_gate_element_selector_00_mt )
-			gate_element_counter_first_column_list.append( self.gate_counter_gate_element_selector_10_mt )
-			gate_element_counter_first_column_list.append( self.gate_counter_gate_element_selector_10_mt )	
+			gate_element_counter_first_column_list.append( gate_counter_gate_element_selector_00_shared)
+			gate_element_counter_first_column_list.append( gate_counter_gate_element_selector_00_shared )
+			gate_element_counter_first_column_list.append( gate_counter_gate_element_selector_10_shared )
+			gate_element_counter_first_column_list.append( gate_counter_gate_element_selector_10_shared )	
 
-			gate_element_counter_second_column_list.append( self.gate_counter_gate_element_selector_01_mt )
-			gate_element_counter_second_column_list.append( self.gate_counter_gate_element_selector_01_mt )
-			gate_element_counter_second_column_list.append( self.gate_counter_gate_element_selector_11_mt )
-			gate_element_counter_second_column_list.append( self.gate_counter_gate_element_selector_11_mt )	
+			gate_element_counter_second_column_list.append( gate_counter_gate_element_selector_01_shared )
+			gate_element_counter_second_column_list.append( gate_counter_gate_element_selector_01_shared )
+			gate_element_counter_second_column_list.append( gate_counter_gate_element_selector_11_shared )
+			gate_element_counter_second_column_list.append( gate_counter_gate_element_selector_11_shared )	
 					
 					
 		gate_element_counter_first_column_mt  = g.stack( gate_element_counter_first_column_list, dim=0 )
