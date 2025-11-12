@@ -63,8 +63,9 @@ class Gate(Gate_counters):
 		control_qubit_address_maps_SL_east_mt   = g.concat( control_qubit_address_maps_SL_east_list[0:half_memory_addresses] )
 		control_qubit_address_maps_SL_east_st   = control_qubit_address_maps_SL_east_mt.read( streams = g.SG1[27], time=time )
 
+		gate_counter_distributor_maps_west_shared = g.shared_memory_tensor(self.gate_counter_distributor_maps_west_mt, name="gate_counter_distributor_maps_west_shared" )
 
-		gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1_W[12]] )		
+		gate_counter_distribute_map_selector_st = gate_counter_distributor_maps_west_shared.read( streams=[g.SG1_W[12]] )		
 		distributor_map_st                      = g.mem_gather(self.distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
 
 		control_qubit_address_maps_SL_east_st = g.distribute_8( control_qubit_address_maps_SL_east_st, 
@@ -114,9 +115,9 @@ class Gate(Gate_counters):
 		control_qubit_address_maps_SL_west_mt   = g.concat( control_qubit_address_maps_SL_west_list[0:half_memory_addresses] )
 		control_qubit_address_maps_SL_west_st   = control_qubit_address_maps_SL_west_mt.read( streams = g.SG1[31], time=time )
 		
+		gate_counter_distributor_maps_west_shared = g.shared_memory_tensor(self.gate_counter_distributor_maps_west_mt, name="gate_counter_distributor_maps_west_shared" )
 		
-		
-		gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1_W[12]] )		
+		gate_counter_distribute_map_selector_st = gate_counter_distributor_maps_west_shared.read( streams=[g.SG1_W[12]] )		
 		distributor_map_st                      = g.mem_gather(self.distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
 
 		control_qubit_address_maps_SL_west_st = g.distribute_8( control_qubit_address_maps_SL_west_st, 
