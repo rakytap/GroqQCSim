@@ -113,14 +113,18 @@ class Gate(Gate_8_base):
 		------
 		Returns with the stream tensor of the target qubits memory map.
 		"""
+		# half of the memory slices on which the state is stored
+		half_memory_addresses = self.ML.memory_addresses >> 1
 
-		target_qubit_read_maps_8L_shared = g.shared_memory_tensor(self.target_qubit_read_maps_8L_mt, name="target_qubit_read_maps_8L_shared")
-		target_qubit_read_maps_8L_pair_shared = g.shared_memory_tensor(self.target_qubit_read_maps_8L_pair_mt, name="target_qubit_read_maps_8L_pair_shared")
+		read_out_qubit_0_memory_tensor_list = g.split(self.target_qubit_read_maps_8L_shared, 1)
+		read_out_qubit_1_memory_tensor_list = g.split(self.target_qubit_read_maps_8L_pair_shared, 1)
 
-		read_out_qubit_0_memory_tensor_st = target_qubit_read_maps_8L_shared.read( streams=g.SG1[0] )
-		read_out_qubit_1_memory_tensor_st = target_qubit_read_maps_8L_pair_shared.read( streams=g.SG1[1] )
+		read_out_qubit_0_memory_tensor_mt = g.concat(read_out_qubit_0_memory_tensor_list[0:half_memory_addresses])
+		read_out_qubit_1_memory_tensor_mt = g.concat(read_out_qubit_1_memory_tensor_list[0:half_memory_addresses])
 
-		
+		read_out_qubit_0_memory_tensor_st = read_out_qubit_0_memory_tensor_mt.read( streams=g.SG1[0] )
+		read_out_qubit_1_memory_tensor_st = read_out_qubit_1_memory_tensor_mt.read( streams=g.SG1[1] )
+
 		read_out_qubit_memory_tensor_st = g.stack( [read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st], dim=1 )
 		
 		gate_counter_distributor_maps_west_shared = g.shared_memory_tensor(self.gate_counter_distributor_maps_west_mt, name="gate_counter_distributor_maps_west_shared")
@@ -174,13 +178,19 @@ class Gate(Gate_8_base):
 		------
 		Returns with the stream tensor of the target qubits memory map.
 		"""
+		# half of the memory slices on which the state is stored
+		half_memory_addresses = self.ML.memory_addresses >> 1
+
+		write_qubit_memory_tensor_list_a = g.split(self.target_qubit_write_maps_8L_shared, 1)
+		write_qubit_memory_tensor_list_b = g.split(self.target_qubit_write_maps_8L_shared_b, 1)
+
+		write_qubit_memory_tensor_mt_a = g.concat(write_qubit_memory_tensor_list_a[0:half_memory_addresses])
+		write_qubit_memory_tensor_mt_b = g.concat(write_qubit_memory_tensor_list_b[0:half_memory_addresses])
+
 		time_delay = 3
 
-		target_qubit_write_maps_8L_shared = g.shared_memory_tensor(self.target_qubit_write_maps_8L_mt, name="target_qubit_write_maps_8L_shared")
-		target_qubit_write_maps_8L_mt_b_shared = g.shared_memory_tensor(self.target_qubit_write_maps_8L_mt_b, name="target_qubit_write_maps_8L_mt_b_shared")
-
-		write_qubit_memory_tensor_st_a = target_qubit_write_maps_8L_shared.read( streams=g.SG1[16], time=time_delay )
-		write_qubit_memory_tensor_st_b = target_qubit_write_maps_8L_mt_b_shared.read( streams=g.SG1[19], time=0 )
+		write_qubit_memory_tensor_st_a = write_qubit_memory_tensor_mt_a.read( streams=g.SG1[16], time=time_delay )
+		write_qubit_memory_tensor_st_b = write_qubit_memory_tensor_mt_b.read( streams=g.SG1[19], time=0 )
 
 		write_qubit_memory_tensor_st_a_list = g.split( write_qubit_memory_tensor_st_a, dim=0, num_splits=self.ML.memory_addresses//2 )
 		write_qubit_memory_tensor_st_b_list = g.split( write_qubit_memory_tensor_st_b, dim=0, num_splits=self.ML.memory_addresses//2 )
@@ -566,7 +576,10 @@ class Gate(Gate_8_base):
 			Psi_transformed_real_copy_mt = State_input_real_copy_shared
 			Psi_transformed_imag_copy_mt = State_input_imag_copy_shared
 
-
+			self.target_qubit_read_maps_8L_shared = g.shared_memory_tensor(self.target_qubit_read_maps_8L_mt, name="target_qubit_read_maps_8L_shared")
+			self.target_qubit_read_maps_8L_pair_shared = g.shared_memory_tensor(self.target_qubit_read_maps_8L_pair_mt, name="target_qubit_read_maps_8L_shared")
+			self.target_qubit_write_maps_8L_shared = g.shared_memory_tensor(self.target_qubit_write_maps_8L_mt, name="target_qubit_write_maps_8L_shared")
+			self.target_qubit_write_maps_8L_shared_b = g.shared_memory_tensor(self.target_qubit_write_maps_8L_mt_b, name="target_qubit_write_maps_8L_shared")
 
 			with g.ResourceScope(name=f"apply_gate_scope", is_buffered=True, predecessors=[], time=0) as apply_gate_scope :
 				
