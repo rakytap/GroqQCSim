@@ -63,8 +63,10 @@ class Gate_H_base(Gate_counters):
 
 
 		memory_addresses = self.ML.memory_addresses
-		target_qubit_0_state_read_maps_list = self.target_qubit_read_maps_L_mt.split( dim=0, num_splits=memory_addresses)
-		target_qubit_1_state_read_maps_list = self.target_qubit_read_pair_maps_L_mt.split( dim=0, num_splits=memory_addresses)
+		target_qubit_read_maps_L_shared = g.shared_memory_tensor(self.target_qubit_read_maps_L_mt, name="target_qubit_read_maps_L_shared")
+		target_qubit_read_pair_maps_L_shared = g.shared_memory_tensor(self.target_qubit_read_pair_maps_L_mt, name="target_qubit_read_pair_maps_L_shared")
+		target_qubit_0_state_read_maps_list = target_qubit_read_maps_L_shared.split( dim=0, num_splits=memory_addresses)
+		target_qubit_1_state_read_maps_list = target_qubit_read_pair_maps_L_shared.split( dim=0, num_splits=memory_addresses)
 		read_out_state_0_memory_tensor_list = []
 		read_out_state_1_memory_tensor_list = []
 		for idx in range(memory_addresses//4):
@@ -96,8 +98,8 @@ class Gate_H_base(Gate_counters):
 
 		read_out_qubit_memory_tensor_st = g.stack( [read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st], dim=1 )
 		
-		
-		gate_counter_distribute_map_selector_st = self.gate_counter_target_qubit_L_distributor_maps_write_mt.read( streams=[g.SG1_W[12]] )		
+		gate_counter_target_qubit_L_distributor_maps_write_shared = g.shared_memory_tensor(self.gate_counter_target_qubit_L_distributor_maps_write_mt, name="gate_counter_target_qubit_L_distributor_maps_write_shared")
+		gate_counter_distribute_map_selector_st = gate_counter_target_qubit_L_distributor_maps_write_shared.read( streams=[g.SG1_W[12]] )		
 		distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
 		#distributor_map_st                      = self.target_qubit_distributor_map_mt.read( streams=g.SG1[6] )
 		
@@ -150,13 +152,13 @@ class Gate_H_base(Gate_counters):
 		Returns with the stream tensor of the target qubits memory map.
 		"""
 
+		target_qubit_write_maps_H_shared = g.shared_memory_tensor(self.target_qubit_write_maps_H_mt, name="target_qubit_write_maps_H_shared")
+		target_qubit_write_maps_H_st = target_qubit_write_maps_H_shared.read( streams=g.SG1[16] )
 
-		target_qubit_write_maps_H_st = self.target_qubit_write_maps_H_mt.read( streams=g.SG1[16] )
-
 		
 		
-		
-		gate_counter_distribute_map_selector_st = self.gate_counter_target_qubit_L_distributor_maps_write_mt.read( streams=[g.SG1_W[12]] )		
+		gate_counter_target_qubit_L_distributor_maps_write_shared = g.shared_memory_tensor(self.gate_counter_target_qubit_L_distributor_maps_write_mt, name="gate_counter_target_qubit_L_distributor_maps_write_shared")
+		gate_counter_distribute_map_selector_st = gate_counter_target_qubit_L_distributor_maps_write_shared.read( streams=[g.SG1_W[12]] )		
 		distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
 		#distributor_map_st                      = self.target_qubit_distributor_map_mt.read( streams=g.SG1[8] )
 		
