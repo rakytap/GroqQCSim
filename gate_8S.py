@@ -170,21 +170,28 @@ class Gate(Gate_8_base):
 				# filter the elements in the vector according to the indices standig for output states |0> and |1> 
 				# filter the elements in the vector according to the indices standig for output states |0> and |1> 
 
+				ones_shared = g.shared_memory_tensor(self.ones_mt, name="ones_shared")
+				zeros_shared = g.shared_memory_tensor(self.zeros_mt, name="zeros_shared")
 								
-				complex_one_mt  = g.stack( [self.ones_mt, self.zeros_mt], dim = 0 )
-				complex_zero_mt = g.stack( [self.zeros_mt, self.zeros_mt], dim = 0 ) 
+				complex_one_mt  = g.stack( [ones_shared, zeros_shared], dim = 0 )
+				complex_zero_mt = g.stack( [zeros_shared, zeros_shared], dim = 0 ) 
 
 				address_offset = 0#or 8191
-				
+
+				gate_counter_gate_element_selector_00_shared = g.shared_memory_tensor(self.gate_counter_gate_element_selector_00_mt, name="gate_counter_gate_element_selector_00_shared")
+				gate_counter_gate_element_selector_11_shared = g.shared_memory_tensor(self.gate_counter_gate_element_selector_11_mt, name="gate_counter_gate_element_selector_11_shared")
+				gate_counter_gate_element_selector_10_shared = g.shared_memory_tensor(self.gate_counter_gate_element_selector_10_mt, name="gate_counter_gate_element_selector_10_shared")
+				gate_counter_gate_element_selector_01_shared = g.shared_memory_tensor(self.gate_counter_gate_element_selector_01_mt, name="gate_counter_gate_element_selector_01_shared")
+
 				gate_00_real_filtered_mt, gate_00_imag_filtered_mt, gate_00_real_filtered_copy_mt, gate_00_imag_filtered_copy_mt = \
-									self.filter_gate_element( self.gate_counter_gate_element_selector_00_mt, complex_one_mt, address_offset, 0, '00' )
+									self.filter_gate_element( gate_counter_gate_element_selector_00_shared, complex_one_mt, address_offset, 0, '00' )
 									
 				g.add_mem_constraints([self.gate_kernels_broadcasted_real_mt], [gate_00_real_filtered_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)
 				g.add_mem_constraints([self.gate_kernels_broadcasted_imag_mt], [gate_00_imag_filtered_mt], g.MemConstraintType.NOT_MUTUALLY_EXCLUSIVE)	
 				
 				
 				gate_11_real_filtered_mt, gate_11_imag_filtered_mt, gate_11_real_filtered_copy_mt, gate_11_imag_filtered_copy_mt = \
-									self.filter_gate_element( self.gate_counter_gate_element_selector_11_mt, complex_one_mt, address_offset+3, 6, '11' )	
+									self.filter_gate_element( gate_counter_gate_element_selector_11_shared, complex_one_mt, address_offset+3, 6, '11' )	
 									
 	
 	
@@ -196,7 +203,7 @@ class Gate(Gate_8_base):
 													
 									
 				gate_10_real_filtered_mt, gate_10_imag_filtered_mt, gate_10_real_filtered_copy_mt, gate_10_imag_filtered_copy_mt = \
-									self.filter_gate_element( self.gate_counter_gate_element_selector_10_mt, complex_zero_mt, address_offset+1, 12, '10' )	
+									self.filter_gate_element( gate_counter_gate_element_selector_10_shared, complex_zero_mt, address_offset+1, 12, '10' )	
 									
 	
 	
@@ -207,7 +214,7 @@ class Gate(Gate_8_base):
 				
 				
 				gate_01_real_filtered_mt, gate_01_imag_filtered_mt, gate_01_real_filtered_copy_mt, gate_01_imag_filtered_copy_mt = \
-									self.filter_gate_element( self.gate_counter_gate_element_selector_01_mt, complex_zero_mt, address_offset+2, 18, '10' )	
+									self.filter_gate_element( gate_counter_gate_element_selector_01_shared, complex_zero_mt, address_offset+2, 18, '10' )	
 									
 	
 	
