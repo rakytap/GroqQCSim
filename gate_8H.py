@@ -129,8 +129,8 @@ class Gate(Gate_8_base):
 		
 		read_out_qubit_memory_tensor_st = g.stack( [read_out_qubit_0_memory_tensor_st, read_out_qubit_1_memory_tensor_st], dim=1 )
 		
-		
-		gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1[12]] )		
+		gate_counter_distributor_maps_west_shared = g.shared_memory_tensor(self.gate_counter_distributor_maps_west_mt, name="gate_counter_distributor_maps_west_shared")
+		gate_counter_distribute_map_selector_st = gate_counter_distributor_maps_west_shared.read( streams=[g.SG1[12]] )		
 		distributor_map_st                      = g.mem_gather(self.distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[12]] )
 		#distributor_map_st                      = self.distributor_map_mt.read( streams=g.SG1[6] )
 		
@@ -183,8 +183,10 @@ class Gate(Gate_8_base):
 		memory_addresses = self.ML.memory_addresses
 		half_memory_addresses = self.ML.memory_addresses >> 1
 
-		write_qubit_memory_tensor_list_a = g.split(self.target_qubit_write_maps_8L_mt, 1)
-		write_qubit_memory_tensor_list_b = g.split(self.target_qubit_write_maps_8L_mt_b, 1)
+		target_qubit_write_maps_8L_shared = g.shared_memory_tensor(self.target_qubit_write_maps_8L_mt, name="target_qubit_write_maps_8L_shared")
+		target_qubit_write_maps_8L_shared_b = g.shared_memory_tensor(self.target_qubit_write_maps_8L_mt_b, name="target_qubit_write_maps_8L_shared_b")
+		write_qubit_memory_tensor_list_a = g.split(target_qubit_write_maps_8L_shared, 1)
+		write_qubit_memory_tensor_list_b = g.split(target_qubit_write_maps_8L_shared_b, 1)
 
 		write_qubit_memory_tensor_mt_a = g.concat(write_qubit_memory_tensor_list_a[half_memory_addresses:memory_addresses])
 		write_qubit_memory_tensor_mt_b = g.concat(write_qubit_memory_tensor_list_b[half_memory_addresses:memory_addresses])
@@ -207,8 +209,8 @@ class Gate(Gate_8_base):
 
 		
 		##########################################	
-		
-		gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1[11]] )		
+		gate_counter_distributor_maps_west_mt_shared = g.shared_memory_tensor(self.gate_counter_distributor_maps_west_mt, name="gate_counter_distributor_maps_west_shared")
+		gate_counter_distribute_map_selector_st = gate_counter_distributor_maps_west_mt_shared.read( streams=[g.SG1[11]] )		
 		distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[10]] )
 		#distributor_map_st                      = self.distributor_map_mt.read( streams=g.SG1[8] )
 		
@@ -230,8 +232,8 @@ class Gate(Gate_8_base):
 		##########################################
 		write_qubit_memory_tensor_st = g.stack( [write_qubit_memory_tensor_st_a_first_part, write_qubit_memory_tensor_st_b_second_part], dim=1 )
 	
-			
-		gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1[11]] )		
+		gate_counter_distributor_maps_west_shared = g.shared_memory_tensor(self.gate_counter_distributor_maps_west_mt, name="gate_counter_distributor_maps_west_shared")
+		gate_counter_distribute_map_selector_st = gate_counter_distributor_maps_west_shared.read( streams=[g.SG1[11]] )		
 		distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[10]] )
 		#distributor_map_st                      = self.distributor_map_mt.read( streams=g.SG1[8] )
 		
@@ -258,7 +260,7 @@ class Gate(Gate_8_base):
 
 
 		##########################################
-		gate_counter_distribute_map_selector_st = self.gate_counter_distributor_maps_west_mt.read( streams=[g.SG1[11]] )		
+		gate_counter_distribute_map_selector_st = gate_counter_distributor_maps_west_shared.read( streams=[g.SG1[11]] )		
 		distributor_map_st                      = g.mem_gather(self.target_qubit_distributor_map_mt, gate_counter_distribute_map_selector_st, output_streams=[g.SG1[10]] )
 		#distributor_map_st                      = self.distributor_map_mt.read( streams=g.SG1[8] )
 		
