@@ -1544,7 +1544,7 @@ class Generate_static_data(IO):
 									shift, 
 									permutor_id=permutor_request, 
 									shift_src=[inst.NEW_SRC] * 2, 
-									dispatch_set=inst.DispatchSet.SET_1, 
+									dispatch_set=inst.DispatchSet.SET_0, 
 									input_streams=[g.SG4[0]], 
 									output_streams=[g.SG4[0]])	
 					
